@@ -855,9 +855,9 @@ function renderImagineSection(ws) {
     goBtn.disabled = true;
   }
 
-  pickBtn.disabled = photos.length === 0;
+  pickBtn.disabled = false;
   pickBtn.textContent = photos.length === 0
-    ? '📷 Upload a photo first'
+    ? '📤 Upload source photo'
     : (sourceEv ? '↻ Change source photo' : '📷 Set source photo');
 
   // Render the most recent generated result, if any
@@ -886,13 +886,51 @@ function renderImagineResult(ws) {
 
 function openImageLightbox(url) {
   const div = document.createElement('div');
-  div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;display:grid;place-items:center;cursor:zoom-out;padding:24px;';
-  div.innerHTML = `<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;">`;
+  div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:1000;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:24px;box-sizing:border-box;';
+  // Use calc(100vw - padding) / calc(100vh - padding) explicitly so the image
+  // never exceeds viewport — object-fit:contain alone isn't enough when the
+  // container can grow with its content.
+  div.innerHTML = `<img src="${url}" style="max-width:calc(100vw - 48px);max-height:calc(100vh - 48px);width:auto;height:auto;object-fit:contain;border-radius:6px;display:block;">`;
   div.onclick = () => div.remove();
   document.body.appendChild(div);
 }
 
 // -------- Source-photo picker -----------------------------------
+//
+// Hidden file input used for "upload new photo" in the source picker.
+// Reused across opens; we reset its value before each click so the same
+// file can be re-selected if the user wants to.
+const imagineUploadInput = document.createElement('input');
+imagineUploadInput.type = 'file';
+imagineUploadInput.accept = 'image/*';
+imagineUploadInput.style.display = 'none';
+document.body.appendChild(imagineUploadInput);
+
+imagineUploadInput.addEventListener('change', async e => {
+  const file = e.target.files?.[0];
+  e.target.value = '';
+  if (!file) return;
+
+  try {
+    // Reuse the same save-photo-as-evidence pipeline used everywhere else
+    const { evidenceId } = await savePhotoAsEvidence(file, null);
+    // Now set it as the source photo
+    state.workspace = {
+      ...state.workspace,
+      instance: {
+        ...state.workspace.instance,
+        sourcePhotoEvidenceId: evidenceId
+      }
+    };
+    state.listeners.forEach(fn => fn(state.workspace, { type: 'set-source-photo' }));
+    $('source-picker-modal').classList.remove('on');
+    log(`Uploaded and set source photo: ${file.name}`);
+  } catch (err) {
+    console.error('[imagine upload] failed:', err);
+    alert('Upload failed: ' + err.message);
+  }
+});
+
 $('imagine-pick-btn').onclick = () => {
   const ws = state.workspace;
   const photos = (ws.evidence || []).filter(e => e.kind === 'photo');
@@ -900,46 +938,52 @@ $('imagine-pick-btn').onclick = () => {
   const grid = $('source-picker-grid');
   grid.innerHTML = '';
 
+  // Always-on "Upload new photo" tile, first in the grid
+  const uploadTile = document.createElement('div');
+  uploadTile.className = 'source-picker-tile upload-tile';
+  uploadTile.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:6px;color:var(--info);">
+      <div style="font-size:28px;line-height:1;">📤</div>
+      <div style="font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.05em;">Upload new</div>
+    </div>`;
+  uploadTile.onclick = () => imagineUploadInput.click();
+  grid.appendChild(uploadTile);
+
   if (!photos.length) {
-    grid.innerHTML = '<div class="source-picker-grid-empty">No photos in this workspace yet. Upload one via the chat camera button or attach it to a condition.</div>';
-    $('source-picker-modal').classList.add('on');
-    return;
-  }
+    const hint = document.createElement('div');
+    hint.className = 'source-picker-grid-empty';
+    hint.style.gridColumn = '2 / -1';
+    hint.textContent = 'No photos yet. Click "Upload new" to add one — or upload via the chat camera or detail-modal "Add photo" button.';
+    grid.appendChild(hint);
+  } else {
+    for (const ev of photos) {
+      const tile = document.createElement('div');
+      tile.className = 'source-picker-tile' + (ev.id === sourceId ? ' selected' : '');
+      tile.innerHTML = '<div style="display:grid;place-items:center;height:100%;font-family:var(--mono);font-size:10px;color:var(--ink-mute);">…</div>';
+      grid.appendChild(tile);
 
-  for (const ev of photos) {
-    const tile = document.createElement('div');
-    tile.className = 'source-picker-tile' + (ev.id === sourceId ? ' selected' : '');
-    tile.innerHTML = '<div style="display:grid;place-items:center;height:100%;font-family:var(--mono);font-size:10px;color:var(--ink-mute);">…</div>';
-    grid.appendChild(tile);
-
-    PhotoStorage.get(ev.id).then(photo => {
-      if (!photo) {
-        tile.innerHTML = '<div style="display:grid;place-items:center;height:100%;font-family:var(--mono);font-size:10px;color:var(--ink-mute);">missing</div>';
-        return;
-      }
-      const url = URL.createObjectURL(photo.blob);
-      tile.innerHTML = `<img src="${url}" alt="">`;
-    });
-
-    tile.onclick = () => {
-      // Update sourcePhotoEvidenceId on the workspace instance.
-      // We use replace-assembly-style direct mutation through a custom batch
-      // (no dedicated command for this single field; piggyback on upsert-part
-      // semantics would be wrong). Use a custom approach: dispatch a noop and
-      // mutate directly via the apply() callback. Simpler: just mutate state
-      // and call renderAll. The workspace JSON export captures it.
-      state.workspace = {
-        ...state.workspace,
-        instance: {
-          ...state.workspace.instance,
-          sourcePhotoEvidenceId: ev.id
+      PhotoStorage.get(ev.id).then(photo => {
+        if (!photo) {
+          tile.innerHTML = '<div style="display:grid;place-items:center;height:100%;font-family:var(--mono);font-size:10px;color:var(--ink-mute);">missing</div>';
+          return;
         }
+        const url = URL.createObjectURL(photo.blob);
+        tile.innerHTML = `<img src="${url}" alt="">`;
+      });
+
+      tile.onclick = () => {
+        state.workspace = {
+          ...state.workspace,
+          instance: {
+            ...state.workspace.instance,
+            sourcePhotoEvidenceId: ev.id
+          }
+        };
+        state.listeners.forEach(fn => fn(state.workspace, { type: 'set-source-photo' }));
+        $('source-picker-modal').classList.remove('on');
+        log(`Set source photo: ${ev.fileName || ev.id}`);
       };
-      // Trigger listeners so the rest of the UI re-renders
-      state.listeners.forEach(fn => fn(state.workspace, { type: 'set-source-photo' }));
-      $('source-picker-modal').classList.remove('on');
-      log(`Set source photo: ${ev.fileName || ev.id}`);
-    };
+    }
   }
   $('source-picker-modal').classList.add('on');
 };
