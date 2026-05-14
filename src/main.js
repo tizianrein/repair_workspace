@@ -117,6 +117,14 @@ justificationPanel = createJustificationPanel($('justification-panel'), {
   }
 });
 
+viewer3D = createViewer3D(
+  $('viewer-canvas'),
+  $('info-box'),
+  target => { if (target) openDetail({ type: target.type, id: target.data.id }); }
+);
+$('explode-btn').onclick = () => viewer3D.explode();
+$('restore-btn').onclick = () => viewer3D.restore();
+
 // -------------------------------------------------------------------------
 // Render-all on state changes
 // -------------------------------------------------------------------------
@@ -594,5 +602,6 @@ document.addEventListener('keydown', e => {
 });
 
 renderAll();
+setTimeout(() => viewer3D.resize(), 50);
 chatSheet.setScope('global');
 log('Workspace ready.');
