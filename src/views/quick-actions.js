@@ -26,17 +26,17 @@ export function createQuickActions(container, { getScope, getWorkspace, getCurre
       chips.push({ label: '♻️ Replan from here', cls: '', scope: 'interventions', extra: `Starting from step ${ref}` });
       chips.push({ label: '💡 Suggest alternative', cls: '', scope: 'interventions', extra: `Suggest an alternative for step ${ref}` });
     } else if (scope === 'hypothesis' && ref) {
-      chips.push({ label: '✓ Confirm', cls: 'accent', scope: 'hypotheses', extra: `Confirm hypothesis ${ref}` });
-      chips.push({ label: '✗ Refute', cls: '', scope: 'hypotheses', extra: `Refute hypothesis ${ref}` });
-      chips.push({ label: '📝 Update plan', cls: '', scope: 'interventions', extra: `Update the plan to account for this hypothesis` });
+      chips.push({ label: '✓ Confirm', cls: 'accent', scope: 'hypotheses', extra: `Confirm condition ${ref}` });
+      chips.push({ label: '✗ Refute', cls: '', scope: 'hypotheses', extra: `Refute condition ${ref}` });
+      chips.push({ label: '📝 Update plan', cls: '', scope: 'interventions', extra: `Update the plan to account for this condition` });
     } else if (scope === 'part' && ref) {
-      chips.push({ label: '+ Add hypothesis', cls: 'primary', scope: 'hypotheses', extra: `Add a hypothesis on part ${ref}` });
+      chips.push({ label: '+ Add condition', cls: 'primary', scope: 'hypotheses', extra: `Add a condition on part ${ref}` });
       chips.push({ label: '🔧 Plan for this part', cls: '', scope: 'interventions', extra: `Generate or update plan focusing on ${ref}` });
     } else {
       if (!hasAssembly) {
         chips.push({ label: '🧱 Extract assembly', cls: 'primary', scope: 'assembly' });
       } else {
-        chips.push({ label: '📍 Catalog hypotheses', cls: hasHypotheses ? '' : 'primary', scope: 'hypotheses' });
+        chips.push({ label: '📍 Catalog conditions', cls: hasHypotheses ? '' : 'primary', scope: 'hypotheses' });
         if (hasHypotheses && !hasPlan) {
           chips.push({ label: '📝 Generate plan', cls: 'primary', scope: 'interventions' });
         } else if (hasPlan) {

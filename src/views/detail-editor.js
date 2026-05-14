@@ -68,7 +68,7 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     const hyps = (ws.hypotheses || []).filter(x => x.partRef === id);
     if (hyps.length) {
       const list = el('div', 'detail-section');
-      list.appendChild(el('div', 'detail-section-label', 'Hypotheses on this part'));
+      list.appendChild(el('div', 'detail-section-label', 'Conditions on this part'));
       hyps.forEach(h => {
         const row = el('div', 'detail-link-row');
         row.textContent = `${h.type} (${h.status})`;
@@ -106,7 +106,7 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
   function openHypothesis(id, ws) {
     const h = (ws.hypotheses || []).find(x => x.id === id);
     if (!h) return;
-    titleEl.textContent = `Hypothesis: ${h.type || h.id}`;
+    titleEl.textContent = `Condition: ${h.type || h.id}`;
     bodyEl.innerHTML = '';
 
     const form = el('div', 'detail-form');
@@ -142,9 +142,9 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
 
     // Delete button
     const actions = el('div', 'detail-actions');
-    const del = el('button', 'detail-delete', 'Delete hypothesis');
+    const del = el('button', 'detail-delete', 'Delete condition');
     del.onclick = () => {
-      if (!confirm(`Delete hypothesis "${h.type}"? This can be undone with Ctrl+Z.`)) return;
+      if (!confirm(`Delete condition "${h.type}"? This can be undone with Ctrl+Z.`)) return;
       dispatch({ type: 'remove-hypothesis', payload: { hypothesisId: id } });
       hideModal();
     };

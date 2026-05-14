@@ -45,9 +45,9 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
   function renderTitle() {
     const map = {
       global: 'Discuss the repair',
-      instance: 'About the object',
+      instance: 'About the artefact',
       part: `About ${currentRef || 'part'}`,
-      hypothesis: `About ${currentRef || 'hypothesis'}`,
+      hypothesis: `About ${currentRef || 'condition'}`,
       step: `About ${currentRef || 'step'}`
     };
     titleEl.textContent = map[currentScope] || 'Discuss';
@@ -63,6 +63,14 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     return thread;
   }
 
+  const SCOPE_DISPLAY = {
+    global: 'global',
+    instance: 'artefact',
+    part: 'part',
+    hypothesis: 'condition',
+    step: 'step'
+  };
+
   function renderHistory() {
     history.innerHTML = '';
     const msgs = activeThread?.messages || [];
@@ -71,7 +79,7 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
       sys.className = 'chat-system';
       sys.textContent = currentScope === 'global'
         ? 'Type a message or attach a photo to begin'
-        : `Scoped to this ${currentScope} — questions and changes apply here`;
+        : `Scoped to this ${SCOPE_DISPLAY[currentScope] || currentScope} — questions and changes apply here`;
       history.appendChild(sys);
     } else {
       msgs.forEach(m => appendBubble(m));

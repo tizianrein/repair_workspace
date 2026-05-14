@@ -232,6 +232,7 @@
   line-height: 1;
   border: 2px solid var(--bg-panel);
 }
+.fab-badge[hidden] { display: none; }
 .fab-chat .fab-badge { background: var(--ink); border-color: var(--accent); }
 
 @media (min-width: 1100px) {

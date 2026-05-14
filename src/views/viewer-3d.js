@@ -155,7 +155,7 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     if (selection.hypothesisId) {
       const h = (currentWorkspace?.hypotheses || []).find(x => x.id === selection.hypothesisId);
       if (h) {
-        infoBox.textContent = `Hypothesis: ${h.type}\nStatus: ${h.status}\nPart: ${h.partRef || '—'}\n${h.description || ''}`;
+        infoBox.textContent = `Condition: ${h.type}\nStatus: ${h.status}\nPart: ${h.partRef || '—'}\n${h.description || ''}`;
         return;
       }
     }

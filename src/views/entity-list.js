@@ -55,7 +55,7 @@ export function createEntityList(container, searchInput, filterSelect, countEl, 
         card.className = 'entity-card' + (p.id === selection.partId ? ' selected' : '');
         const dmgs = hypsByPart.get(p.id) || [];
         const meta = dmgs.length
-          ? `${dmgs.length} hypothesis${dmgs.length > 1 ? 'es' : ''} · ${dmgs.map(d => d.type).join(', ')}`
+          ? `${dmgs.length} condition${dmgs.length > 1 ? 's' : ''} · ${dmgs.map(d => d.type).join(', ')}`
           : (p.material || '');
         card.innerHTML = `
           <div class="ec-row">
@@ -75,7 +75,7 @@ export function createEntityList(container, searchInput, filterSelect, countEl, 
         const statusBadge = `<span class="ec-status ${h.status}">${h.status.toUpperCase()}</span>`;
         card.innerHTML = `
           <div class="ec-row">
-            <span class="ec-id"><span class="ec-type-pill">${escapeHtml(h.type || 'hypothesis')}</span>${escapeHtml(h.id)}</span>
+            <span class="ec-id"><span class="ec-type-pill">${escapeHtml(h.type || 'condition')}</span>${escapeHtml(h.id)}</span>
             ${statusBadge}
           </div>
           <div class="ec-meta">on ${escapeHtml(h.partRef || '—')}${h.description ? ' · ' + escapeHtml(h.description.slice(0, 80)) : ''}</div>
