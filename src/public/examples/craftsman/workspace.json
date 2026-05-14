@@ -1,0 +1,459 @@
+{
+  "schemaVersion": "2.0.0",
+  "template": null,
+  "instance": {
+    "id": "inst_santo02",
+    "name": "santo_02",
+    "templateRef": null,
+    "parts": [
+      {
+        "id": "front_left_leg",
+        "label": "Front Left Leg",
+        "origin": { "x": -0.235, "y": 0.221, "z": -0.2225 },
+        "dimensions": { "width": 0.03, "height": 0.426, "depth": 0.045 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_apron", "left_side_apron", "seat", "front_left_glider"],
+        "material": "beech timber, clear lacquer",
+        "status": "defective",
+        "notes": "Severe breakout of wood near the top of the leg."
+      },
+      {
+        "id": "front_right_leg",
+        "label": "Front Right Leg",
+        "origin": { "x": 0.235, "y": 0.221, "z": -0.2225 },
+        "dimensions": { "width": 0.03, "height": 0.426, "depth": 0.045 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_apron", "right_side_apron", "seat", "front_right_glider"],
+        "material": "beech timber, clear lacquer",
+        "status": "defective",
+        "notes": "Crack on the top surface of the leg."
+      },
+      {
+        "id": "back_left_leg",
+        "label": "Back Left Leg",
+        "origin": { "x": -0.235, "y": 0.384, "z": 0.2225 },
+        "dimensions": { "width": 0.03, "height": 0.752, "depth": 0.045 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["back_apron", "left_side_apron", "seat", "backrest", "back_left_glider"],
+        "material": "beech timber, clear lacquer",
+        "status": "defective",
+        "notes": "Surface scratches on the left face mid-shaft; cosmetic only."
+      },
+      {
+        "id": "back_right_leg",
+        "label": "Back Right Leg",
+        "origin": { "x": 0.235, "y": 0.384, "z": 0.2225 },
+        "dimensions": { "width": 0.03, "height": 0.752, "depth": 0.045 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["back_apron", "right_side_apron", "seat", "backrest", "back_right_glider"],
+        "material": "beech timber, clear lacquer",
+        "status": "defective",
+        "notes": "Big chip on top surface near the backrest joint."
+      },
+      {
+        "id": "front_apron",
+        "label": "Front Apron",
+        "origin": { "x": 0, "y": 0.404, "z": -0.2315 },
+        "dimensions": { "width": 0.44, "height": 0.06, "depth": 0.027 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_left_leg", "front_right_leg", "seat"],
+        "material": "beech timber, clear lacquer",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "back_apron",
+        "label": "Back Apron",
+        "origin": { "x": 0, "y": 0.404, "z": 0.2315 },
+        "dimensions": { "width": 0.44, "height": 0.06, "depth": 0.027 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["back_left_leg", "back_right_leg", "seat"],
+        "material": "beech timber, clear lacquer",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "left_side_apron",
+        "label": "Left Side Apron",
+        "origin": { "x": -0.2065, "y": 0.404, "z": 0 },
+        "dimensions": { "width": 0.027, "height": 0.06, "depth": 0.436 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_left_leg", "back_left_leg", "seat"],
+        "material": "beech timber, clear lacquer",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "right_side_apron",
+        "label": "Right Side Apron",
+        "origin": { "x": 0.2065, "y": 0.404, "z": 0 },
+        "dimensions": { "width": 0.027, "height": 0.06, "depth": 0.436 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_right_leg", "back_right_leg", "seat"],
+        "material": "beech timber, clear lacquer",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "seat",
+        "label": "Seat Panel",
+        "origin": { "x": 0, "y": 0.437, "z": 0 },
+        "dimensions": { "width": 0.44, "height": 0.006, "depth": 0.49 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_left_leg", "front_right_leg", "back_left_leg", "back_right_leg", "front_apron", "back_apron", "left_side_apron", "right_side_apron"],
+        "material": "beech plywood, clear lacquer",
+        "status": "defective",
+        "notes": "Rough surface texture on top; worn lacquer."
+      },
+      {
+        "id": "backrest",
+        "label": "Backrest",
+        "origin": { "x": 0, "y": 0.705, "z": 0.225 },
+        "dimensions": { "width": 0.44, "height": 0.11, "depth": 0.05 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["back_left_leg", "back_right_leg"],
+        "material": "beech timber, clear lacquer",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "front_left_glider",
+        "label": "Front Left Glider",
+        "origin": { "x": -0.235, "y": 0.004, "z": -0.2225 },
+        "dimensions": { "width": 0.025, "height": 0.008, "depth": 0.04 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_left_leg"],
+        "material": "plastic",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "front_right_glider",
+        "label": "Front Right Glider",
+        "origin": { "x": 0.235, "y": 0.004, "z": -0.2225 },
+        "dimensions": { "width": 0.025, "height": 0.008, "depth": 0.04 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_right_leg"],
+        "material": "plastic",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "back_left_glider",
+        "label": "Back Left Glider",
+        "origin": { "x": -0.235, "y": 0.004, "z": 0.2225 },
+        "dimensions": { "width": 0.025, "height": 0.008, "depth": 0.04 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["back_left_leg"],
+        "material": "plastic",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "back_right_glider",
+        "label": "Back Right Glider",
+        "origin": { "x": 0.235, "y": 0.004, "z": 0.2225 },
+        "dimensions": { "width": 0.025, "height": 0.008, "depth": 0.04 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["back_right_leg"],
+        "material": "plastic",
+        "status": "intact",
+        "notes": ""
+      }
+    ],
+    "location": "Workshop, ground floor",
+    "provenance": "Stacking chair, c. 1970s Central European industrial design. Light beech with clear lacquer.",
+    "notes": "Owner wants the chair restored to its original function with traditional, sympathetic repairs that preserve as much original material as possible.",
+    "createdAt": "2026-05-14T10:00:00.000Z",
+    "sourcePhotoEvidenceId": "ev_mp63iqa301d"
+  },
+  "evidence": [
+    {
+      "id": "ev_initial_inspection",
+      "kind": "note",
+      "attachedTo": null,
+      "capturedAt": "2026-05-14T09:30:00.000Z",
+      "capturedBy": null,
+      "url": null,
+      "text": "Walk-around inspection. Chair sits stable on its gliders. Joints feel snug. Damage concentrated on the legs (breakout, crack, chip, scratches) and seat surface (worn lacquer).",
+      "measurement": null,
+      "confirmsHypothesisRef": null,
+      "refutesHypothesisRef": null
+    },
+    {
+      "id": "ev_mp63iqa301d",
+      "kind": "photo",
+      "attachedTo": null,
+      "capturedAt": "2026-05-14T23:04:38.283Z",
+      "capturedBy": null,
+      "url": "idb://ev_mp63iqa301d",
+      "text": null,
+      "measurement": null,
+      "confirmsHypothesisRef": null,
+      "refutesHypothesisRef": null,
+      "fileName": "santo_02.jpg",
+      "byteSize": 160327
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "hyp_front_left_breakout",
+      "type": "Breakout",
+      "description": "Severe breakout of wood on the front left leg near the top, where it meets the apron and seat. Structural impact likely; requires patching.",
+      "partRef": "front_left_leg",
+      "coordinates": { "x": -0.235, "y": 0.434, "z": -0.2225 },
+      "status": "confirmed",
+      "confidence": 0.9,
+      "evidenceRefs": ["ev_initial_inspection"],
+      "createdAt": "2026-05-14T09:35:00.000Z",
+      "updatedAt": "2026-05-14T09:35:00.000Z"
+    },
+    {
+      "id": "hyp_front_right_crack",
+      "type": "Crack",
+      "description": "Large crack on the top surface of the front right leg. Compromises the joint area; should be patched out.",
+      "partRef": "front_right_leg",
+      "coordinates": { "x": 0.235, "y": 0.434, "z": -0.2225 },
+      "status": "confirmed",
+      "confidence": 0.85,
+      "evidenceRefs": ["ev_initial_inspection"],
+      "createdAt": "2026-05-14T09:36:00.000Z",
+      "updatedAt": "2026-05-14T09:36:00.000Z"
+    },
+    {
+      "id": "hyp_back_right_chip",
+      "type": "Chipping",
+      "description": "Big wood chipping on the top surface of the back right leg, near the backrest joint.",
+      "partRef": "back_right_leg",
+      "coordinates": { "x": 0.235, "y": 0.76, "z": 0.2225 },
+      "status": "confirmed",
+      "confidence": 0.95,
+      "evidenceRefs": ["ev_initial_inspection"],
+      "createdAt": "2026-05-14T09:37:00.000Z",
+      "updatedAt": "2026-05-14T09:37:00.000Z"
+    },
+    {
+      "id": "hyp_seat_rough",
+      "type": "Rough Surface",
+      "description": "Rough surface texture on top of the seat where the lacquer has worn through. Cosmetic; panel is structurally sound.",
+      "partRef": "seat",
+      "coordinates": { "x": 0, "y": 0.44, "z": 0 },
+      "status": "confirmed",
+      "confidence": 0.85,
+      "evidenceRefs": ["ev_initial_inspection"],
+      "createdAt": "2026-05-14T09:38:00.000Z",
+      "updatedAt": "2026-05-14T09:38:00.000Z"
+    },
+    {
+      "id": "hyp_back_left_scratch",
+      "type": "Scratches",
+      "description": "Scratches in the middle of the left side of the back left leg. Surface only, no structural impact.",
+      "partRef": "back_left_leg",
+      "coordinates": { "x": -0.25, "y": 0.56, "z": 0.2225 },
+      "status": "confirmed",
+      "confidence": 0.8,
+      "evidenceRefs": ["ev_initial_inspection"],
+      "createdAt": "2026-05-14T09:39:00.000Z",
+      "updatedAt": "2026-05-14T09:39:00.000Z"
+    }
+  ],
+  "intent": {
+    "axes": [
+      { "id": "axis_1", "label": "Material Authenticity", "value": 0.9 },
+      { "id": "axis_2", "label": "Structural Performance", "value": 0.85 },
+      { "id": "axis_3", "label": "Economic Viability", "value": 0.4 },
+      { "id": "axis_4", "label": "Cultural Continuity", "value": 0.75 },
+      { "id": "axis_5", "label": "Ecological Sustainability", "value": 0.6 },
+      { "id": "axis_6", "label": "Aesthetic Intervention", "value": 0.2 }
+    ],
+    "summary": "Gentle craftsman approach: restore the chair to its original function using traditional, sympathetic repair techniques. Preserve as much original material as possible. Patch damaged areas with matching wood (scarf joint, dovetail patch, Dutchman patch). Blend repairs into the existing patina rather than concealing them."
+  },
+  "constraints": {
+    "tools_available": "fine-toothed hand saw, chisel set, mallet, clamps, cauls, block plane, cabinet scraper, sanding block, sandpaper assortment, marking knife, dovetail gauge",
+    "materials_available": "matching beech wood stock, hide glue, shellac, linseed oil, lint-free cloths, tack cloth",
+    "time_budget_minutes": 480,
+    "budget_limit": "moderate — matching wood and quality glue acceptable",
+    "skill_level": "advanced",
+    "safety_level": "normal",
+    "allowed_operations": "saw, chisel, plane, sand, glue, finish",
+    "avoid_operations": "no power saw, no synthetic fillers, no aggressive material removal",
+    "additional_constraints": "Repairs should be reversible where possible and use traditional joinery techniques."
+  },
+  "plans": [
+    {
+      "id": "plan_gentle_craftsman_repair",
+      "label": "Gentle Craftsman Repair",
+      "status": "draft",
+      "steps": [
+        {
+          "id": "step_scarf_joint_front_left_leg",
+          "title": "Scarf Joint Repair on Front Left Leg",
+          "description": "Mark and cut a shallow scarf joint on the front left leg to remove the breakout. Prepare a matching beech blank, cut to the same angle, glue with hide glue, clamp, and after curing, shape flush with chisel and block plane.",
+          "affectedPartRefs": ["front_left_leg"],
+          "addressesHypothesisRefs": ["hyp_front_left_breakout"],
+          "toolsRequired": ["fine-toothed hand saw", "chisel set", "block plane", "clamps", "cauls"],
+          "materialsRequired": ["matching beech stock", "hide glue"],
+          "estimatedMinutes": 90,
+          "expectedOutcome": "Breakout replaced with a flush, structurally sound scarf insert that blends with the original leg.",
+          "safetyNotes": "Secure the leg in a vise; wear eye protection when chiseling.",
+          "justification": {
+            "drivingIntentAxes": ["axis_1", "axis_2"],
+            "drivingHypotheses": ["hyp_front_left_breakout"],
+            "drivingConstraints": [],
+            "rationale": "A scarf joint preserves maximum original material while restoring structural integrity using traditional joinery."
+          },
+          "confidence": 0.85,
+          "optional": false
+        },
+        {
+          "id": "step_dovetail_patch_front_right_leg",
+          "title": "Dovetail Patch on Front Right Leg",
+          "description": "Mark a shallow dovetail housing around the crack on the top of the front right leg. Cut the housing with chisels, prepare a matching dovetail patch from beech stock, test-fit, then glue and clamp. Trim flush after curing.",
+          "affectedPartRefs": ["front_right_leg"],
+          "addressesHypothesisRefs": ["hyp_front_right_crack"],
+          "toolsRequired": ["marking knife", "dovetail gauge", "fine chisels", "mallet", "block plane", "clamps"],
+          "materialsRequired": ["matching beech stock", "hide glue"],
+          "estimatedMinutes": 75,
+          "expectedOutcome": "Cracked area replaced with a snug dovetail patch that stops the crack from propagating.",
+          "safetyNotes": "Wear eye protection when chiseling.",
+          "justification": {
+            "drivingIntentAxes": ["axis_1", "axis_2"],
+            "drivingHypotheses": ["hyp_front_right_crack"],
+            "drivingConstraints": [],
+            "rationale": "A dovetail patch is mechanically locked and arrests the crack while removing only the smallest area of compromised material."
+          },
+          "confidence": 0.8,
+          "optional": false
+        },
+        {
+          "id": "step_dutchman_patch_back_right_leg",
+          "title": "Dutchman Patch on Back Right Leg",
+          "description": "Mark a small, shallow housing around the chip on top of the back right leg. Cut the housing with chisels, fit a matching beech Dutchman patch, glue with hide glue, clamp, and trim flush after curing.",
+          "affectedPartRefs": ["back_right_leg"],
+          "addressesHypothesisRefs": ["hyp_back_right_chip"],
+          "toolsRequired": ["marking knife", "fine chisels", "mallet", "block plane", "clamps"],
+          "materialsRequired": ["matching beech stock", "hide glue"],
+          "estimatedMinutes": 60,
+          "expectedOutcome": "Chipped area replaced with a flush Dutchman patch that restores the top surface of the leg.",
+          "safetyNotes": "Wear eye protection when chiseling.",
+          "justification": {
+            "drivingIntentAxes": ["axis_1", "axis_2"],
+            "drivingHypotheses": ["hyp_back_right_chip"],
+            "drivingConstraints": [],
+            "rationale": "A Dutchman patch is the traditional, minimal-intervention solution for a localized chip."
+          },
+          "confidence": 0.9,
+          "optional": false
+        },
+        {
+          "id": "step_sand_scratches_back_left_leg",
+          "title": "Sand Scratches on Back Left Leg",
+          "description": "Lightly sand the scratched area on the back left leg with fine-grit sandpaper to smooth the surface, working with the grain. Do not remove more material than necessary — blend into the surrounding patina.",
+          "affectedPartRefs": ["back_left_leg"],
+          "addressesHypothesisRefs": ["hyp_back_left_scratch"],
+          "toolsRequired": ["fine-grit sandpaper", "sanding block"],
+          "materialsRequired": [],
+          "estimatedMinutes": 15,
+          "expectedOutcome": "Scratches softened and blended into the surrounding finish.",
+          "safetyNotes": "Wear a dust mask.",
+          "justification": {
+            "drivingIntentAxes": ["axis_1", "axis_6"],
+            "drivingHypotheses": ["hyp_back_left_scratch"],
+            "drivingConstraints": [],
+            "rationale": "A purely cosmetic issue, handled with the lightest possible intervention."
+          },
+          "confidence": 0.9,
+          "optional": false
+        },
+        {
+          "id": "step_sand_seat_surface",
+          "title": "Sand Seat Surface",
+          "description": "Sand the rough top of the seat panel with progressively finer grits (120 → 180 → 240) to remove worn lacquer and even out the surface, ready for a fresh finish.",
+          "affectedPartRefs": ["seat"],
+          "addressesHypothesisRefs": ["hyp_seat_rough"],
+          "toolsRequired": ["sanding block", "sandpaper assortment"],
+          "materialsRequired": [],
+          "estimatedMinutes": 30,
+          "expectedOutcome": "Smooth, clean seat surface ready for refinishing.",
+          "safetyNotes": "Wear a dust mask and eye protection.",
+          "justification": {
+            "drivingIntentAxes": ["axis_2", "axis_6"],
+            "drivingHypotheses": ["hyp_seat_rough"],
+            "drivingConstraints": [],
+            "rationale": "Restores the seat as a usable surface while preserving the panel itself."
+          },
+          "confidence": 0.9,
+          "optional": false
+        },
+        {
+          "id": "step_apply_finish",
+          "title": "Apply Shellac & Oil Finish",
+          "description": "Apply a thin coat of shellac to the patched and sanded areas to blend them with the surrounding patina, then a light coat of linseed oil over the whole chair to unify the appearance. Allow to cure between coats.",
+          "affectedPartRefs": ["front_left_leg", "front_right_leg", "back_right_leg", "back_left_leg", "seat"],
+          "addressesHypothesisRefs": ["hyp_front_left_breakout", "hyp_front_right_crack", "hyp_back_right_chip", "hyp_back_left_scratch", "hyp_seat_rough"],
+          "toolsRequired": ["lint-free cloths", "brush"],
+          "materialsRequired": ["shellac", "linseed oil"],
+          "estimatedMinutes": 45,
+          "expectedOutcome": "All repairs blended into the original finish; chair has a consistent, traditional appearance.",
+          "safetyNotes": "Work in a ventilated area. Dispose of oil-soaked rags properly to avoid spontaneous combustion.",
+          "justification": {
+            "drivingIntentAxes": ["axis_1", "axis_4"],
+            "drivingHypotheses": ["hyp_front_left_breakout", "hyp_front_right_crack", "hyp_back_right_chip", "hyp_back_left_scratch", "hyp_seat_rough"],
+            "drivingConstraints": [],
+            "rationale": "Traditional finishes sympathetic to the original lacquer; tie all repairs together."
+          },
+          "confidence": 0.9,
+          "optional": false
+        }
+      ],
+      "edges": [
+        { "id": "edge_1", "source": "step_scarf_joint_front_left_leg", "target": "step_apply_finish" },
+        { "id": "edge_2", "source": "step_dovetail_patch_front_right_leg", "target": "step_apply_finish" },
+        { "id": "edge_3", "source": "step_dutchman_patch_back_right_leg", "target": "step_apply_finish" },
+        { "id": "edge_4", "source": "step_sand_scratches_back_left_leg", "target": "step_apply_finish" },
+        { "id": "edge_5", "source": "step_sand_seat_surface", "target": "step_apply_finish" }
+      ],
+      "mutexGroups": [],
+      "createdAt": "2026-05-14T23:02:01.390Z",
+      "updatedAt": "2026-05-14T23:02:01.390Z"
+    }
+  ],
+  "currentPlanId": "plan_gentle_craftsman_repair",
+  "executionLog": [],
+  "conversations": [
+    {
+      "id": "thread_seed_global",
+      "scope": "global",
+      "ref": null,
+      "messages": [
+        {
+          "id": "msg_seed_1",
+          "role": "user",
+          "content": "I've got this old beech stacking chair with a few damaged spots — a breakout on one front leg, a crack on the other, a chip on the back, some scratches, and the seat is rough. I'd like to repair it properly, keeping it as original as possible. Traditional joinery if it makes sense.",
+          "createdAt": "2026-05-14T09:45:00.000Z"
+        },
+        {
+          "id": "msg_seed_2",
+          "role": "assistant",
+          "content": "Good candidate for a gentle craftsman approach. The breakout, crack, and chip each call for a different traditional patch: a scarf joint for the breakout (since it's a larger area on a leg), a dovetail patch for the crack (mechanically locks the wood), and a Dutchman patch for the localized chip. Scratches and the seat can be handled with light sanding and a sympathetic finish. When you're ready, I'll lay out the plan.",
+          "createdAt": "2026-05-14T09:45:30.000Z"
+        },
+        {
+          "id": "msg_seed_3",
+          "role": "user",
+          "content": "Sounds right. Generate the plan.",
+          "createdAt": "2026-05-14T09:46:00.000Z"
+        },
+        {
+          "id": "msg_seed_4",
+          "role": "assistant",
+          "content": "Here's the plan: scarf joint on the front left leg, dovetail patch on the front right leg, Dutchman patch on the back right leg, light sanding on the back left leg scratches and on the seat, then a unifying shellac and linseed oil finish. All using matching beech and hide glue.",
+          "createdAt": "2026-05-14T09:46:30.000Z"
+        }
+      ],
+      "createdAt": "2026-05-14T09:45:00.000Z"
+    }
+  ],
+  "createdAt": "2026-05-14T09:00:00.000Z",
+  "updatedAt": "2026-05-14T23:11:05.680Z"
+}
