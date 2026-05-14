@@ -245,6 +245,14 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     history.scrollTop = history.scrollHeight;
   }
 
+  function refresh() {
+    // Called when the workspace was replaced externally (load, reset).
+    // Re-resolve the active thread from the new conversations array and
+    // re-render. Keep the current scope/ref selection.
+    activeThread = findOrCreateThread();
+    renderHistory();
+  }
+
   return {
     setScope,
     open, close, isOpen,
@@ -255,7 +263,8 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     getActiveThread() { return activeThread; },
     pushMessage,
     pushActionRecord,
-    setBusy
+    setBusy,
+    refresh
   };
 }
 

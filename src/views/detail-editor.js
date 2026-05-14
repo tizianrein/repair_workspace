@@ -77,6 +77,21 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
       });
       bodyEl.appendChild(list);
     }
+
+    // Photos attached to this part (directly or via a hypothesis on it)
+    const photos = (ws.evidence || []).filter(e => {
+      if (e.kind !== 'photo') return false;
+      if (e.attachedTo?.type === 'part' && e.attachedTo.id === id) return true;
+      if (e.attachedTo?.type === 'hypothesis') {
+        const h = (ws.hypotheses || []).find(x => x.id === e.attachedTo.id);
+        if (h?.partRef === id) return true;
+      }
+      return false;
+    });
+    if (photos.length) {
+      buildPhotoGallery(photos).then(node => bodyEl.appendChild(node));
+    }
+
     showModal();
   }
 
@@ -117,11 +132,12 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
 
     bodyEl.appendChild(form);
 
-    // Photo gallery for this hypothesis
+    // Photo gallery for this hypothesis (direct + workspace-level photos
+    // when the hypothesis is the focus)
     const photos = (ws.evidence || []).filter(e =>
       e.kind === 'photo' && e.attachedTo?.type === 'hypothesis' && e.attachedTo.id === id);
     if (photos.length) {
-      bodyEl.appendChild(buildPhotoGallery(photos));
+      buildPhotoGallery(photos).then(node => bodyEl.appendChild(node));
     }
 
     // Delete button

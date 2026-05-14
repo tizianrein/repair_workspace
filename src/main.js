@@ -125,7 +125,16 @@ justificationPanel = createJustificationPanel($('justification-panel'), {
 viewer3D = createViewer3D(
   $('viewer-canvas'),
   $('info-box'),
-  target => { if (target) openDetail({ type: target.type, id: target.data.id }); }
+  target => {
+    if (target) {
+      openDetail({ type: target.type, id: target.data.id });
+    } else {
+      // Background click → clear selection, return to global chat scope
+      entityList.setSelection({ partId: null, hypothesisId: null });
+      chatSheet.setScope('global');
+      quickActions.render();
+    }
+  }
 );
 $('explode-btn').onclick = () => {
   viewer3D.toggleExplode();
@@ -217,7 +226,15 @@ function switchTab(paneId) {
     viewer3D = createViewer3D(
       $('viewer-canvas'),
       $('info-box'),
-      target => { if (target) openDetail({ type: target.type, id: target.data.id }); }
+      target => {
+        if (target) {
+          openDetail({ type: target.type, id: target.data.id });
+        } else {
+          entityList.setSelection({ partId: null, hypothesisId: null });
+          chatSheet.setScope('global');
+          quickActions.render();
+        }
+      }
     );
     $('explode-btn').onclick = () => {
       viewer3D.toggleExplode();
@@ -336,6 +353,10 @@ function loadWorkspaceJson(parsed) {
   state.future = [];
   selectedStepId = null;
   state.listeners.forEach(fn => fn(ws, { type: 'load-workspace' }));
+  // Reset chat to global scope and pick up any seeded conversation in the
+  // freshly loaded workspace.
+  chatSheet.setScope('global');
+  chatSheet.refresh();
 }
 
 $('download-state-btn').onclick = async () => {
@@ -381,6 +402,8 @@ $('reset-btn').onclick = () => {
   state.future = [];
   selectedStepId = null;
   state.listeners.forEach(fn => fn(state.workspace, { type: 'reset' }));
+  chatSheet.setScope('global');
+  chatSheet.refresh();
   log('Workspace reset.');
 };
 

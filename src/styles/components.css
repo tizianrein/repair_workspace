@@ -361,9 +361,9 @@
 }
 
 .detail-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 .detail-box {
   background: var(--bg-soft);
@@ -799,11 +799,13 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  width: 100%;
 }
 .detail-form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
   gap: 10px;
+  width: 100%;
 }
 .detail-field {
   display: flex;
@@ -880,11 +882,13 @@ select.detail-input { cursor: pointer; }
 .detail-link-row:hover { background: var(--info-soft); color: var(--info); }
 
 .detail-actions {
-  margin-top: 16px;
+  margin-top: 8px;
   padding-top: 12px;
   border-top: 1px solid var(--line-soft);
   display: flex;
   justify-content: flex-end;
+  flex-shrink: 0;
+  width: 100%;
 }
 .detail-delete {
   background: transparent;
@@ -895,6 +899,7 @@ select.detail-input { cursor: pointer; }
   font-family: var(--mono);
   font-size: 11px;
   cursor: pointer;
+  white-space: nowrap;
 }
 .detail-delete:hover {
   background: var(--accent);
