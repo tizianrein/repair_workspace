@@ -11,6 +11,7 @@
  */
 
 import { newConversation, newMessage } from '../core/schema.js';
+import { payloadForChat } from '../ai/ai-payload.js';
 
 export function createChatSheet(elements, { onScopeChange, getWorkspace, onProposeIntent }) {
   const {
@@ -129,7 +130,7 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
         body: JSON.stringify({
           thread: activeThread,
           userMessage: text,
-          workspace: getWorkspace(),
+          workspace: payloadForChat({ workspace: getWorkspace(), scope: currentScope, maxMessages: 8 }),
           files: pendingPhotos
         })
       });

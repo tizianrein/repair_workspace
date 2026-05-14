@@ -1,0 +1,318 @@
+/**
+ * Detail editor — replaces the read-only detail modal with editable forms.
+ *
+ * Three entity types share this surface:
+ *   - part: id, label, material, status, notes, dimensions, connections
+ *   - hypothesis: type, description, status, confidence, partRef, coordinates
+ *   - step: title, description, status, estimatedMinutes, expectedOutcome,
+ *           tools, materials, rationale
+ *
+ * Each change is dispatched through the apply() pipeline so undo works.
+ * Photos attached to a hypothesis (via add-evidence with attachedTo) are
+ * rendered as thumbnails below the form; clicking opens a full-size view.
+ *
+ * The Delete button on hypotheses dispatches remove-hypothesis with a
+ * confirmation prompt.
+ */
+
+import { PART_STATUS, HYPOTHESIS_STATUS, STEP_STATUS } from '../core/schema.js';
+
+export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, getPhotoBlob, dispatch }) {
+
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function open(target) {
+    if (!target) return;
+    const ws = getWorkspace();
+    if (target.type === 'part') openPart(target.id, ws);
+    else if (target.type === 'hypothesis') openHypothesis(target.id, ws);
+    else if (target.type === 'step') openStep(target.id, ws);
+  }
+
+  function showModal() {
+    modalEl.classList.add('on');
+  }
+  function hideModal() {
+    modalEl.classList.remove('on');
+    revokePhotoUrls();
+  }
+
+  // ---------------------------------------------------------------- parts
+  function openPart(id, ws) {
+    const p = (ws.instance?.parts || []).find(x => x.id === id);
+    if (!p) return;
+    titleEl.textContent = `Part: ${p.id}`;
+    bodyEl.innerHTML = '';
+
+    const form = el('div', 'detail-form');
+    form.appendChild(field('Label', input(p.label || '', v => patchPart(id, { label: v }))));
+    form.appendChild(field('Material', input(p.material || '', v => patchPart(id, { material: v }))));
+    form.appendChild(field('Status', selectInput(PART_STATUS, p.status || 'intact', v => patchPart(id, { status: v }))));
+
+    const d = p.dimensions || {};
+    const dimsRow = el('div', 'detail-form-row');
+    dimsRow.appendChild(field('Width (m)', numInput(d.width, v => patchPart(id, { dimensions: { ...d, width: v } }))));
+    dimsRow.appendChild(field('Height (m)', numInput(d.height, v => patchPart(id, { dimensions: { ...d, height: v } }))));
+    dimsRow.appendChild(field('Depth (m)', numInput(d.depth, v => patchPart(id, { dimensions: { ...d, depth: v } }))));
+    form.appendChild(dimsRow);
+
+    form.appendChild(field('Connections (comma-separated)',
+      input((p.connections || []).join(', '), v => patchPart(id, { connections: v.split(',').map(s => s.trim()).filter(Boolean) }))));
+    form.appendChild(field('Notes', textarea(p.notes || '', v => patchPart(id, { notes: v }))));
+
+    bodyEl.appendChild(form);
+
+    // Related hypotheses, quick navigation
+    const hyps = (ws.hypotheses || []).filter(x => x.partRef === id);
+    if (hyps.length) {
+      const list = el('div', 'detail-section');
+      list.appendChild(el('div', 'detail-section-label', 'Hypotheses on this part'));
+      hyps.forEach(h => {
+        const row = el('div', 'detail-link-row');
+        row.textContent = `${h.type} (${h.status})`;
+        row.onclick = () => openHypothesis(h.id, getWorkspace());
+        list.appendChild(row);
+      });
+      bodyEl.appendChild(list);
+    }
+    showModal();
+  }
+
+  function patchPart(id, patch) {
+    const ws = getWorkspace();
+    const existing = (ws.instance?.parts || []).find(x => x.id === id);
+    if (!existing) return;
+    dispatch({ type: 'upsert-part', payload: { part: { ...existing, ...patch } } });
+  }
+
+  // -------------------------------------------------------- hypotheses
+  function openHypothesis(id, ws) {
+    const h = (ws.hypotheses || []).find(x => x.id === id);
+    if (!h) return;
+    titleEl.textContent = `Hypothesis: ${h.type || h.id}`;
+    bodyEl.innerHTML = '';
+
+    const form = el('div', 'detail-form');
+    form.appendChild(field('Type', input(h.type || '', v => patchHypothesis(id, { type: v }))));
+    form.appendChild(field('Description', textarea(h.description || '', v => patchHypothesis(id, { description: v }))));
+
+    const meta = el('div', 'detail-form-row');
+    meta.appendChild(field('Status', selectInput(HYPOTHESIS_STATUS, h.status || 'suspected', v => patchHypothesis(id, { status: v }))));
+    meta.appendChild(field('Confidence',
+      rangeInput(h.confidence ?? 0.5, v => patchHypothesis(id, { confidence: v }))));
+    form.appendChild(meta);
+
+    form.appendChild(field('Part ref',
+      partRefSelect(h.partRef || '', ws, v => patchHypothesis(id, { partRef: v || null }))));
+
+    // Coordinates editor
+    const c = h.coordinates || { x: 0, y: 0, z: 0 };
+    const coordRow = el('div', 'detail-form-row');
+    coordRow.appendChild(field('X', numInput(c.x, v => patchHypothesis(id, { coordinates: { ...c, x: v } }))));
+    coordRow.appendChild(field('Y', numInput(c.y, v => patchHypothesis(id, { coordinates: { ...c, y: v } }))));
+    coordRow.appendChild(field('Z', numInput(c.z, v => patchHypothesis(id, { coordinates: { ...c, z: v } }))));
+    form.appendChild(coordRow);
+
+    bodyEl.appendChild(form);
+
+    // Photo gallery for this hypothesis
+    const photos = (ws.evidence || []).filter(e =>
+      e.kind === 'photo' && e.attachedTo?.type === 'hypothesis' && e.attachedTo.id === id);
+    if (photos.length) {
+      bodyEl.appendChild(buildPhotoGallery(photos));
+    }
+
+    // Delete button
+    const actions = el('div', 'detail-actions');
+    const del = el('button', 'detail-delete', 'Delete hypothesis');
+    del.onclick = () => {
+      if (!confirm(`Delete hypothesis "${h.type}"? This can be undone with Ctrl+Z.`)) return;
+      dispatch({ type: 'remove-hypothesis', payload: { hypothesisId: id } });
+      hideModal();
+    };
+    actions.appendChild(del);
+    bodyEl.appendChild(actions);
+
+    showModal();
+  }
+
+  function patchHypothesis(id, patch) {
+    dispatch({ type: 'update-hypothesis', payload: { hypothesisId: id, patch } });
+  }
+
+  function partRefSelect(value, ws, onChange) {
+    const sel = el('select', 'detail-input');
+    sel.innerHTML = '<option value="">— none —</option>';
+    (ws.instance?.parts || []).forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.id;
+      if (p.id === value) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.onchange = () => onChange(sel.value);
+    return sel;
+  }
+
+  // -------------------------------------------------------- steps
+  function openStep(id, ws) {
+    const plan = (ws.plans || []).find(p => p.id === ws.currentPlanId);
+    const s = plan?.steps?.find(x => x.id === id);
+    if (!s) return;
+    titleEl.textContent = `Step: ${s.title || s.id}`;
+    bodyEl.innerHTML = '';
+
+    const form = el('div', 'detail-form');
+    form.appendChild(field('Title', input(s.title || '', v => patchStep(plan.id, id, { title: v }))));
+    form.appendChild(field('Description', textarea(s.description || '', v => patchStep(plan.id, id, { description: v }))));
+    form.appendChild(field('Expected outcome', textarea(s.expectedOutcome || '', v => patchStep(plan.id, id, { expectedOutcome: v }))));
+
+    const row = el('div', 'detail-form-row');
+    row.appendChild(field('Status', selectInput(STEP_STATUS, s.status || 'pending', v => patchStep(plan.id, id, { status: v }))));
+    row.appendChild(field('Est. min', numInput(s.estimatedMinutes, v => patchStep(plan.id, id, { estimatedMinutes: v }))));
+    row.appendChild(field('Confidence', rangeInput(s.confidence ?? 0.7, v => patchStep(plan.id, id, { confidence: v }))));
+    form.appendChild(row);
+
+    form.appendChild(field('Tools (comma-separated)',
+      input((s.toolsRequired || []).join(', '), v => patchStep(plan.id, id, { toolsRequired: v.split(',').map(t => t.trim()).filter(Boolean) }))));
+    form.appendChild(field('Materials (comma-separated)',
+      input((s.materialsRequired || []).join(', '), v => patchStep(plan.id, id, { materialsRequired: v.split(',').map(t => t.trim()).filter(Boolean) }))));
+
+    if (s.justification?.rationale) {
+      const j = el('div', 'detail-section');
+      j.appendChild(el('div', 'detail-section-label', 'AI rationale'));
+      j.appendChild(el('div', 'detail-rationale', s.justification.rationale));
+      form.appendChild(j);
+    }
+
+    bodyEl.appendChild(form);
+    showModal();
+  }
+
+  function patchStep(planId, stepId, patch) {
+    const ws = getWorkspace();
+    const plan = (ws.plans || []).find(p => p.id === planId);
+    const step = plan?.steps?.find(x => x.id === stepId);
+    if (!step) return;
+    dispatch({ type: 'upsert-step', payload: { planId, step: { ...step, ...patch } } });
+  }
+
+  // -------------------------------------------------------- photo gallery
+  const objectUrls = [];
+  async function buildPhotoGallery(photos) {
+    const wrap = el('div', 'detail-section');
+    wrap.appendChild(el('div', 'detail-section-label', `Photos (${photos.length})`));
+    const grid = el('div', 'detail-photo-grid');
+    wrap.appendChild(grid);
+
+    for (const ev of photos) {
+      const slot = el('div', 'detail-photo-slot');
+      slot.innerHTML = '<div class="detail-photo-loading">…</div>';
+      grid.appendChild(slot);
+      try {
+        const photo = await getPhotoBlob(ev.id);
+        if (!photo) {
+          slot.innerHTML = '<div class="detail-photo-missing" title="Photo not on this device">📷 missing</div>';
+          continue;
+        }
+        const url = URL.createObjectURL(photo.blob);
+        objectUrls.push(url);
+        slot.innerHTML = `<img src="${url}" alt="${escapeHtml(ev.fileName || ev.id)}">`;
+        slot.onclick = () => openLightbox(url, ev.fileName);
+      } catch (err) {
+        slot.innerHTML = '<div class="detail-photo-missing">⚠️ failed</div>';
+      }
+    }
+    return wrap;
+  }
+
+  function revokePhotoUrls() {
+    while (objectUrls.length) URL.revokeObjectURL(objectUrls.pop());
+  }
+
+  function openLightbox(url, name) {
+    const overlay = el('div', 'photo-lightbox');
+    overlay.innerHTML = `<img src="${url}" alt=""><div class="photo-lightbox-name">${escapeHtml(name || '')}</div>`;
+    overlay.onclick = () => overlay.remove();
+    document.body.appendChild(overlay);
+  }
+
+  // -------------------------------------------------------- form helpers
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function field(labelText, inputEl) {
+    const wrap = el('label', 'detail-field');
+    wrap.appendChild(el('span', 'detail-field-label', labelText));
+    wrap.appendChild(inputEl);
+    return wrap;
+  }
+
+  function input(value, onChange) {
+    const i = el('input', 'detail-input');
+    i.type = 'text';
+    i.value = value;
+    i.onchange = () => onChange(i.value);
+    return i;
+  }
+
+  function textarea(value, onChange) {
+    const t = el('textarea', 'detail-input');
+    t.value = value;
+    t.rows = Math.max(2, Math.min(6, Math.ceil((value || '').length / 60) + 1));
+    t.onchange = () => onChange(t.value);
+    return t;
+  }
+
+  function numInput(value, onChange) {
+    const i = el('input', 'detail-input');
+    i.type = 'number';
+    i.step = 'any';
+    i.value = value ?? '';
+    i.onchange = () => {
+      const v = parseFloat(i.value);
+      onChange(Number.isFinite(v) ? v : null);
+    };
+    return i;
+  }
+
+  function selectInput(options, value, onChange) {
+    const sel = el('select', 'detail-input');
+    options.forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt;
+      o.textContent = opt;
+      if (opt === value) o.selected = true;
+      sel.appendChild(o);
+    });
+    sel.onchange = () => onChange(sel.value);
+    return sel;
+  }
+
+  function rangeInput(value, onChange) {
+    const wrap = el('div', 'detail-range-wrap');
+    const r = el('input', 'detail-range');
+    r.type = 'range';
+    r.min = '0';
+    r.max = '1';
+    r.step = '0.05';
+    r.value = value;
+    const display = el('span', 'detail-range-value', `${Math.round(value * 100)}%`);
+    r.oninput = () => {
+      display.textContent = `${Math.round(Number(r.value) * 100)}%`;
+    };
+    r.onchange = () => onChange(Number(r.value));
+    wrap.appendChild(r);
+    wrap.appendChild(display);
+    return wrap;
+  }
+
+  return { open, close: hideModal };
+}

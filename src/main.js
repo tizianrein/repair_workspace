@@ -21,7 +21,10 @@
 import { createState, subscribe, autoPersist, restore } from './core/state.js';
 import { apply, undo, redo } from './core/commands.js';
 import { migrateV1ToV2 } from './core/migrate.js';
-import { newWorkspace, validateWorkspace, SCHEMA_VERSION } from './core/schema.js';
+import { newWorkspace, validateWorkspace, SCHEMA_VERSION, newEvidence } from './core/schema.js';
+import { PhotoStorage } from './core/photo-storage.js';
+import { compressImage, blobToBase64, formatBytes } from './core/image-compress.js';
+import { exportWorkspaceBundle, importWorkspaceBundle, downloadBlob } from './core/workspace-bundle.js';
 import { createViewer3D } from './views/viewer-3d.js';
 import { createActionGraph } from './views/action-graph.js';
 import { createSpatialGraph } from './views/spatial-graph.js';
@@ -32,6 +35,8 @@ import { createQuickActions } from './views/quick-actions.js';
 import { createJustificationPanel } from './views/justification-panel.js';
 import { showProposeReview } from './views/propose-review.js';
 import { showExecutionEntry } from './views/execution-log.js';
+import { createDetailEditor } from './views/detail-editor.js';
+import { payloadForPropose } from './ai/ai-payload.js';
 
 const state = createState();
 let viewer3D = null, actionGraph = null, spatialGraph = null;
@@ -305,12 +310,14 @@ $('workspace-file').addEventListener('change', async e => {
   const file = e.target.files[0];
   if (!file) return;
   try {
-    const text = await file.text();
-    loadWorkspaceJson(JSON.parse(text));
-    log(`Loaded ${file.name}`);
+    const { workspace: parsed, photoCount } = await importWorkspaceBundle(file);
+    loadWorkspaceJson(parsed);
+    log(`Loaded ${file.name}${photoCount ? ` (+ ${photoCount} photos)` : ''}`);
   } catch (err) {
+    console.error(err);
     log(`Load failed: ${err.message}`);
   }
+  e.target.value = '';
 });
 
 function loadWorkspaceJson(parsed) {
@@ -331,13 +338,24 @@ function loadWorkspaceJson(parsed) {
   state.listeners.forEach(fn => fn(ws, { type: 'load-workspace' }));
 }
 
-$('download-state-btn').onclick = () => {
-  const blob = new Blob([JSON.stringify(state.workspace, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = (state.workspace.instance?.name || 'repair-workspace') + '.json';
-  a.click();
-  URL.revokeObjectURL(a.href);
+$('download-state-btn').onclick = async () => {
+  try {
+    const photoCount = (state.workspace.evidence || []).filter(e => e.kind === 'photo').length;
+    if (photoCount === 0) {
+      // No photos — plain JSON is friendlier
+      const blob = new Blob([JSON.stringify(state.workspace, null, 2)], { type: 'application/json' });
+      downloadBlob(blob, (state.workspace.instance?.name || 'workspace') + '.json');
+      log('Saved JSON (no photos).');
+      return;
+    }
+    log(`Bundling workspace with ${photoCount} photo${photoCount === 1 ? '' : 's'}…`);
+    const { blob, photoCount: included } = await exportWorkspaceBundle(state.workspace);
+    downloadBlob(blob, (state.workspace.instance?.name || 'workspace') + '.zip');
+    log(`Saved ZIP with ${included} photo${included === 1 ? '' : 's'}.`);
+  } catch (err) {
+    console.error(err);
+    log(`Save failed: ${err.message}`);
+  }
 };
 
 $('load-example-select').onchange = async (e) => {
@@ -348,9 +366,11 @@ $('load-example-select').onchange = async (e) => {
     if (!res.ok) throw new Error(`Example not found (${res.status})`);
     loadWorkspaceJson(await res.json());
     log(`Loaded example: ${slug}`);
-    e.target.value = '';
   } catch (err) {
+    console.error(err);
     log(`Example load failed: ${err.message}`);
+  } finally {
+    e.target.value = '';
   }
 };
 
@@ -366,103 +386,101 @@ $('reset-btn').onclick = () => {
 
 // -------------------------------------------------------------------------
 // Photo attachment for chat
+//
+// Pipeline:
+//   user picks a photo → compress to ~200-500 KB JPEG → store as Blob in
+//   IndexedDB (PhotoStorage) under a generated evidence ID → dispatch
+//   add-evidence command linking that ID to the current chat scope → also
+//   keep a transient base64 copy in chat-sheet's pendingPhotos so the next
+//   AI call can include the image as multimodal input.
+//
+// On reload the IndexedDB blobs survive; the workspace JSON only references
+// them by evidence ID, keeping the JSON itself small.
 // -------------------------------------------------------------------------
+
+PhotoStorage.init().catch(err => console.warn('PhotoStorage init failed:', err));
 
 $('chat-camera-btn').onclick = () => $('chat-photo-file').click();
 $('chat-photo-file').addEventListener('change', async e => {
   const files = [...(e.target.files || [])];
   for (const file of files) {
     try {
-      const data = await fileToBase64(file);
-      chatSheet.attachPhoto({ name: file.name, mimeType: file.type || 'image/jpeg', data });
+      log(`Compressing ${file.name}…`);
+      const blob = await compressImage(file);
+      const { scope, ref } = chatSheet.getCurrentScope();
+
+      // Map chat scope to evidence attachment.
+      // 'global' / 'instance' → null (attached to workspace at large)
+      // 'part' / 'hypothesis' / 'step' → { type, id }
+      const attachedTo = (ref && scope !== 'global' && scope !== 'instance')
+        ? { type: scope, id: ref }
+        : null;
+
+      const evidence = newEvidence('photo', {
+        attachedTo,
+        url: 'idb://' + 'placeholder'   // we set after save (uses evidence id)
+      });
+      evidence.url = `idb://${evidence.id}`;
+      evidence.fileName = file.name;
+      evidence.byteSize = blob.size;
+
+      await PhotoStorage.put(evidence.id, blob, file.name);
+      apply(state, { type: 'add-evidence', payload: { evidence } });
+
+      // Keep transient base64 for the next AI call.
+      const base64 = await blobToBase64(blob);
+      chatSheet.attachPhoto({
+        name: file.name,
+        mimeType: blob.type || 'image/jpeg',
+        data: base64,
+        evidenceId: evidence.id
+      });
+
+      log(`Saved photo ${file.name} (${formatBytes(blob.size)}) → evidence ${evidence.id}`);
     } catch (err) {
-      log(`Photo read failed: ${err.message}`);
+      console.error(err);
+      log(`Photo failed: ${err.message}`);
     }
   }
   e.target.value = '';
 });
 
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result).split(',')[1]);
-    r.onerror = () => reject(new Error('read error'));
-    r.readAsDataURL(file);
-  });
-}
-
 // -------------------------------------------------------------------------
-// Detail modal
+// Detail modal — editable forms backed by the apply() command pipeline.
 // -------------------------------------------------------------------------
 
 document.querySelectorAll('[data-close-modal]').forEach(b => {
   b.onclick = () => $(b.dataset.closeModal).classList.remove('on');
 });
 
+const detailEditor = createDetailEditor({
+  modalEl: $('detail-modal'),
+  titleEl: $('detail-title'),
+  bodyEl: $('detail-grid'),
+  getWorkspace: () => state.workspace,
+  getPhotoBlob: id => PhotoStorage.get(id),
+  dispatch: cmd => apply(state, cmd)
+});
+
 function openDetail(target) {
   if (!target) return;
-  const ws = state.workspace;
-  let title = '', entries = [];
+  // Update selections in the rest of the UI as a side effect
   if (target.type === 'part') {
-    const p = (ws.instance?.parts || []).find(x => x.id === target.id);
-    if (!p) return;
-    const d = p.dimensions || {};
-    const w = Math.round((d.width || 0) * 1000) / 10;
-    const h = Math.round((d.height || 0) * 1000) / 10;
-    const dp = Math.round((d.depth || 0) * 1000) / 10;
-    const hyps = (ws.hypotheses || []).filter(x => x.partRef === target.id);
-    title = `Part: ${p.id}`;
-    entries = [
-      ['Status', p.status || 'intact'],
-      ['Material', p.material || '—'],
-      ['Dimensions', `${w} × ${h} × ${dp} cm`],
-      ['Connections', (p.connections || []).join(', ') || '—'],
-      ['Hypotheses', hyps.length ? hyps.map(h => `${h.type} (${h.status})`).join(', ') : 'none']
-    ];
-    if (viewer3D) viewer3D.select({ partId: p.id });
-    entityList.setSelection({ partId: p.id, hypothesisId: null });
-    chatSheet.setScope('part', p.id);
+    if (viewer3D) viewer3D.select({ partId: target.id });
+    entityList.setSelection({ partId: target.id, hypothesisId: null });
+    chatSheet.setScope('part', target.id);
   } else if (target.type === 'hypothesis') {
-    const h = (ws.hypotheses || []).find(x => x.id === target.id);
-    if (!h) return;
-    title = `Hypothesis: ${h.id}`;
-    entries = [
-      ['Type', h.type || '—'],
-      ['Status', h.status],
-      ['Confidence', `${Math.round((h.confidence ?? 0) * 100)}%`],
-      ['Part', h.partRef || '—'],
-      ['Description', h.description || '—']
-    ];
-    if (viewer3D) viewer3D.select({ hypothesisId: h.id, partId: h.partRef });
-    entityList.setSelection({ partId: null, hypothesisId: h.id });
-    chatSheet.setScope('hypothesis', h.id);
+    const h = (state.workspace.hypotheses || []).find(x => x.id === target.id);
+    if (viewer3D) viewer3D.select({ hypothesisId: target.id, partId: h?.partRef });
+    entityList.setSelection({ partId: null, hypothesisId: target.id });
+    chatSheet.setScope('hypothesis', target.id);
   } else if (target.type === 'step') {
-    const plan = (ws.plans || []).find(p => p.id === ws.currentPlanId);
-    const s = plan?.steps?.find(x => x.id === target.id);
-    if (!s) return;
-    title = `Step: ${s.title || s.id}`;
-    entries = [
-      ['Status', s.status],
-      ['Confidence', `${Math.round((s.confidence ?? 0) * 100)}%`],
-      ['Affects parts', (s.affectedPartRefs || []).join(', ') || '—'],
-      ['Addresses', (s.addressesHypothesisRefs || []).join(', ') || '—'],
-      ['Tools', (s.toolsRequired || []).join(', ') || '—'],
-      ['Materials', (s.materialsRequired || []).join(', ') || '—'],
-      ['Estimated', s.estimatedMinutes ? `${s.estimatedMinutes} min` : '—'],
-      ['Expected outcome', s.expectedOutcome || '—'],
-      ['Description', s.description || '—'],
-      ['Rationale', s.justification?.rationale || '—']
-    ];
     selectedStepId = target.id;
     actionGraph.setCurrentStep(target.id);
     justificationPanel.show(target.id);
     chatSheet.setScope('step', target.id);
   }
-  $('detail-title').textContent = title;
-  $('detail-grid').innerHTML = entries.map(([l, v]) =>
-    `<div class="detail-box"><div class="label">${escapeHtml(l)}</div><div class="value">${escapeHtml(v)}</div></div>`
-  ).join('');
-  $('detail-modal').classList.add('on');
+  detailEditor.open(target);
   quickActions.render();
 }
 
@@ -503,7 +521,7 @@ async function runPropose({ scope = 'all', userMessage }) {
       body: JSON.stringify({
         scope,
         userMessage,
-        workspace: state.workspace
+        workspace: payloadForPropose({ workspace: state.workspace, scope })
       })
     });
     thinking.remove();

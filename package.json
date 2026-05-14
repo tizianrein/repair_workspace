@@ -1,6 +1,6 @@
 {
   "name": "repair-workspace",
-  "version": "2.0.0-alpha.4",
+  "version": "2.0.0-alpha.5",
   "type": "module",
   "private": true,
   "scripts": {
@@ -15,7 +15,8 @@
     "three": "^0.160.0",
     "cytoscape": "^3.28.1",
     "cytoscape-dagre": "^2.5.0",
-    "dagre": "^0.8.5"
+    "dagre": "^0.8.5",
+    "jszip": "^3.10.1"
   },
   "devDependencies": {
     "vite": "^5.4.0"

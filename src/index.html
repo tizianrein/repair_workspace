@@ -38,7 +38,7 @@
         <div class="data-grid">
           <button class="data-btn" id="load-workspace-btn"><span>📂</span> Load JSON</button>
           <button class="data-btn" id="download-state-btn"><span>💾</span> Save JSON</button>
-          <select id="load-example-select" class="data-btn">
+          <select class="data-btn data-select" id="load-example-select">
             <option value="">🪑 Load example…</option>
             <option value="santo_02">Santo 02 — adaptive reuse</option>
             <option value="old-wooden-door">Old wooden door</option>
@@ -191,7 +191,7 @@
 
 <div class="console" id="console-output">Repair Workspace ready.</div>
 
-<input type="file" id="workspace-file" accept=".json" hidden>
+<input type="file" id="workspace-file" accept=".json,.zip,application/json,application/zip" hidden>
 <input type="file" id="chat-photo-file" accept="image/*" multiple hidden>
 
 <script type="module" src="./main.js"></script>
