@@ -33,10 +33,10 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
 
   function setScope(scope, ref, label) {
     currentScope = scope;
-    currentRef = ref;
+    currentRef = ref ?? null;
     scopePill.textContent = label || scope.toUpperCase();
     scopePill.classList.toggle('global', scope === 'global');
-    onScopeChange?.({ scope, ref });
+    onScopeChange?.({ scope, ref: currentRef });
     renderTitle();
     activeThread = findOrCreateThread();
     renderHistory();
@@ -55,8 +55,11 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
 
   function findOrCreateThread() {
     const ws = getWorkspace();
-    let thread = (ws.conversations || []).find(t => t.scope === currentScope && t.ref === currentRef);
-    if (!thread) thread = newConversation(currentScope, currentRef);
+    const wantRef = currentRef ?? null;
+    let thread = (ws.conversations || []).find(t =>
+      t.scope === currentScope && (t.ref ?? null) === wantRef
+    );
+    if (!thread) thread = newConversation(currentScope, wantRef);
     return thread;
   }
 
