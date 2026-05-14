@@ -122,8 +122,11 @@ viewer3D = createViewer3D(
   $('info-box'),
   target => { if (target) openDetail({ type: target.type, id: target.data.id }); }
 );
-$('explode-btn').onclick = () => viewer3D.explode();
-$('restore-btn').onclick = () => viewer3D.restore();
+$('explode-btn').onclick = () => {
+  viewer3D.toggleExplode();
+  $('explode-btn').textContent = viewer3D.isExploded() ? '↩️' : '💥';
+  $('explode-btn').title = viewer3D.isExploded() ? 'Restore view' : 'Explode view';
+};
 
 // -------------------------------------------------------------------------
 // Render-all on state changes
@@ -211,8 +214,11 @@ function switchTab(paneId) {
       $('info-box'),
       target => { if (target) openDetail({ type: target.type, id: target.data.id }); }
     );
-    $('explode-btn').onclick = () => viewer3D.explode();
-    $('restore-btn').onclick = () => viewer3D.restore();
+    $('explode-btn').onclick = () => {
+      viewer3D.toggleExplode();
+      $('explode-btn').textContent = viewer3D.isExploded() ? '↩️' : '💥';
+      $('explode-btn').title = viewer3D.isExploded() ? 'Restore view' : 'Explode view';
+    };
     viewer3D.render(state.workspace);
     setTimeout(() => viewer3D.resize(), 50);
   } else if (paneId === 'pane-3d' && viewer3D) {

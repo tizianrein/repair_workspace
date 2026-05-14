@@ -198,24 +198,51 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     onSelect?.(hit);
   });
 
-  function explode() {
-    if (exploded) return; exploded = true; activeAnims = [];
+  function toggleExplode() {
+    if (!exploded) doExplode();
+    else doRestore();
+  }
+
+  function doExplode() {
+    exploded = true;
+    activeAnims = [];
     const box = new THREE.Box3().setFromObject(objectGroup);
     const center = box.getCenter(new THREE.Vector3());
-    partMeshes.forEach(mesh => {
+    const explodeDistance = 0.18;
+
+    const offsetByPart = new Map();
+    partMeshes.forEach((mesh, partId) => {
       const direction = mesh.position.clone().sub(center);
       if (direction.length() < 0.001) direction.set(Math.random() - 0.5, Math.random() - 0.2, Math.random() - 0.5);
       direction.normalize();
-      activeAnims.push({ mesh, start: mesh.position.clone(), end: mesh.position.clone().add(direction.multiplyScalar(0.18)), startTime: performance.now() });
+      const offset = direction.multiplyScalar(explodeDistance);
+      offsetByPart.set(partId, offset);
+      activeAnims.push({ mesh, start: mesh.position.clone(), end: mesh.position.clone().add(offset), startTime: performance.now() });
+    });
+
+    hypSpheres.forEach(sphere => {
+      const h = sphere.userData.hypothesis;
+      const offset = offsetByPart.get(h.partRef);
+      if (!offset) return;
+      activeAnims.push({ mesh: sphere, start: sphere.position.clone(), end: sphere.position.clone().add(offset), startTime: performance.now() });
     });
   }
 
-  function restore() {
-    if (!exploded) return; exploded = false; activeAnims = [];
+  function doRestore() {
+    exploded = false;
+    activeAnims = [];
+
     (currentWorkspace?.instance?.parts || []).forEach(part => {
-      const mesh = partMeshes.get(part.id); if (!mesh) return;
+      const mesh = partMeshes.get(part.id);
+      if (!mesh) return;
       const o = part.origin || { x: 0, y: 0, z: 0 };
       activeAnims.push({ mesh, start: mesh.position.clone(), end: new THREE.Vector3(o.x || 0, o.y || 0, o.z || 0), startTime: performance.now() });
+    });
+
+    hypSpheres.forEach(sphere => {
+      const h = sphere.userData.hypothesis;
+      if (!h.coordinates) return;
+      activeAnims.push({ mesh: sphere, start: sphere.position.clone(), end: new THREE.Vector3(h.coordinates.x || 0, h.coordinates.y || 0, h.coordinates.z || 0), startTime: performance.now() });
     });
   }
 
@@ -257,6 +284,7 @@ export function createViewer3D(canvas, infoBox, onSelect) {
       camera.updateProjectionMatrix();
       renderer.setSize(wrap.clientWidth, wrap.clientHeight);
     },
-    explode, restore
+    toggleExplode,
+    isExploded: () => exploded
   };
 }

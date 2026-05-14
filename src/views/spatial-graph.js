@@ -1,14 +1,24 @@
 /**
  * Spatial graph view.
  *
- * Renders parts as round-rectangle nodes connected by their connections list.
- * Hypotheses are red ellipses connected by dashed edges to their part. The
- * cose layout works well for this density of connections.
+ * Hierarchical layout (dagre) with parts assigned to columns based on their
+ * spatial role in the assembly. The result reads like the paper's example:
+ * left side on the left, right side on the right, central anchor in the
+ * middle. Hypotheses sit immediately next to their part as red ellipses
+ * connected with dashed edges.
+ *
+ * Columns are derived from X coordinate quantiles, so the layout adapts to
+ * any object: a chair gets 3 columns (legs / aprons / seat), a door might
+ * get 5 (hinges / frame / panes / handle / trim).
  *
  * Tap a part or hypothesis → onDetail callback opens the modal.
  */
 
 import cytoscape from 'cytoscape';
+import dagre from 'cytoscape-dagre';
+cytoscape.use(dagre);
+
+const NUM_COLUMNS = 8;
 
 export function createSpatialGraph(container, { onDetail }) {
   let cy = null;
@@ -23,15 +33,53 @@ export function createSpatialGraph(container, { onDetail }) {
     }
     container.innerHTML = '';
 
+    // Sort parts by X position (left to right in physical space).
+    // Assign each part to a column rank based on its quantile.
+    const sortedByX = [...parts].sort((a, b) =>
+      (a.origin?.x ?? 0) - (b.origin?.x ?? 0)
+    );
+    const rankByPart = new Map();
+    sortedByX.forEach((p, i) => {
+      const col = Math.floor((i / sortedByX.length) * NUM_COLUMNS);
+      rankByPart.set(p.id, Math.min(col, NUM_COLUMNS - 1));
+    });
+
     const partIds = new Set(parts.map(p => p.id));
     const nodes = [];
     const edges = [];
 
-    parts.forEach(p => {
-      nodes.push({ data: { id: `part:${p.id}`, label: `${p.id}\n(${p.status})`, status: p.status || 'intact', kind: 'part' } });
-    });
+    // Hypothesis grouping by parent part (for fanning)
+    const hypsByPart = new Map();
     hypotheses.forEach(h => {
-      nodes.push({ data: { id: `hyp:${h.id}`, label: (h.type || 'hypothesis').toLowerCase(), kind: 'hyp', status: h.status } });
+      if (!hypsByPart.has(h.partRef)) hypsByPart.set(h.partRef, []);
+      hypsByPart.get(h.partRef).push(h);
+    });
+
+    parts.forEach(p => {
+      nodes.push({
+        data: {
+          id: `part:${p.id}`,
+          label: `${p.id}\n(${p.status})`,
+          status: p.status || 'intact',
+          kind: 'part',
+          rank: rankByPart.get(p.id) ?? 0
+        }
+      });
+    });
+
+    hypotheses.forEach(h => {
+      const parentRank = rankByPart.get(h.partRef) ?? 0;
+      nodes.push({
+        data: {
+          id: `hyp:${h.id}`,
+          label: (h.type || 'hypothesis').toLowerCase(),
+          kind: 'hyp',
+          status: h.status,
+          // Place hypothesis one rank to the left of its parent (or right
+          // if parent is leftmost), so it sits adjacent in the dagre layout
+          rank: parentRank === 0 ? 1 : parentRank - 1
+        }
+      });
     });
 
     const seen = new Set();
@@ -40,11 +88,25 @@ export function createSpatialGraph(container, { onDetail }) {
       const k = [part.id, conn].sort().join('|');
       if (seen.has(k)) return;
       seen.add(k);
-      edges.push({ data: { id: `e_${k}`, source: `part:${part.id}`, target: `part:${conn}`, kind: 'connection' } });
+      edges.push({
+        data: {
+          id: `e_${k}`,
+          source: `part:${part.id}`,
+          target: `part:${conn}`,
+          kind: 'connection'
+        }
+      });
     }));
     hypotheses.forEach(h => {
       if (!h.partRef || !partIds.has(h.partRef)) return;
-      edges.push({ data: { id: `eh_${h.id}`, source: `hyp:${h.id}`, target: `part:${h.partRef}`, kind: 'hyp' } });
+      edges.push({
+        data: {
+          id: `eh_${h.id}`,
+          source: `hyp:${h.id}`,
+          target: `part:${h.partRef}`,
+          kind: 'hyp'
+        }
+      });
     });
 
     cy = cytoscape({
@@ -58,19 +120,22 @@ export function createSpatialGraph(container, { onDetail }) {
             'background-color': '#ffffff',
             'border-color': '#1a1a1a',
             'border-width': 1.0,
-            'label': 'data(label)', 'color': '#1a1a1a',
+            'label': 'data(label)',
+            'color': '#1a1a1a',
             'font-family': 'JetBrains Mono, monospace',
             'font-size': 10,
             'text-wrap': 'wrap',
-            'text-valign': 'center', 'text-halign': 'center',
-            'width': 'label', 'height': 'label',
-            'padding': 8
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'width': 'label',
+            'height': 'label',
+            'padding': 10
           }
         },
         { selector: 'node[status = "defective"]', style: { 'background-color': '#f4d2d4' } },
-        { selector: 'node[status = "missing"]', style: { 'background-color': '#fff3c4' } },
-        { selector: 'node[status = "new"]', style: { 'background-color': '#f0d8ff' } },
-        { selector: 'node[status = "repaired"]', style: { 'background-color': '#d8f0e0' } },
+        { selector: 'node[status = "missing"]',   style: { 'background-color': '#fff3c4' } },
+        { selector: 'node[status = "new"]',       style: { 'background-color': '#f0d8ff' } },
+        { selector: 'node[status = "repaired"]',  style: { 'background-color': '#d8f0e0' } },
         {
           selector: 'node[kind = "hyp"]',
           style: {
@@ -78,33 +143,59 @@ export function createSpatialGraph(container, { onDetail }) {
             'background-color': '#c1272d',
             'border-color': '#7a1418',
             'border-width': 1.2,
-            'label': 'data(label)', 'color': '#ffffff',
+            'label': 'data(label)',
+            'color': '#ffffff',
             'font-family': 'JetBrains Mono, monospace',
             'font-size': 9,
-            'text-wrap': 'wrap', 'text-max-width': 52,
-            'text-valign': 'center', 'text-halign': 'center',
-            'width': 60, 'height': 60
+            'text-wrap': 'wrap',
+            'text-max-width': 56,
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'width': 56,
+            'height': 56
           }
         },
-        { selector: 'node[kind = "hyp"][status = "refuted"]', style: { 'background-color': '#8a8a83', 'opacity': 0.6 } },
+        { selector: 'node[kind = "hyp"][status = "refuted"]',  style: { 'background-color': '#8a8a83', 'opacity': 0.6 } },
         { selector: 'node[kind = "hyp"][status = "confirmed"]', style: { 'border-color': '#fff', 'border-width': 2.5 } },
         {
           selector: 'edge[kind = "connection"]',
-          style: { 'curve-style': 'bezier', 'line-color': '#5a5a55', 'width': 1 }
+          style: {
+            'curve-style': 'straight',
+            'line-color': '#1a1a1a',
+            'width': 1
+          }
         },
         {
           selector: 'edge[kind = "hyp"]',
-          style: { 'curve-style': 'bezier', 'line-color': '#c1272d', 'line-style': 'dashed', 'width': 1 }
+          style: {
+            'curve-style': 'straight',
+            'line-color': '#c1272d',
+            'line-style': 'dashed',
+            'width': 1.2
+          }
         }
       ],
-      layout: { name: 'cose', nodeRepulsion: 6000, idealEdgeLength: 80, animate: false, padding: 30 },
-      minZoom: 0.3, maxZoom: 3
+    layout: {
+      name: 'dagre',
+      rankDir: 'LR',
+      rankSep: 130,
+      nodeSep: 60,
+      edgeSep: 25,
+      ranker: 'network-simplex',
+      rankFn: node => node.data('rank'),
+      animate: false,
+      padding: 40,
+      fit: true
+    },
+      minZoom: 0.3,
+      maxZoom: 3,
+      wheelSensitivity: 0.2
     });
 
     cy.on('tap', 'node', evt => {
       const id = evt.target.id();
-      if (id.startsWith('part:')) onDetail?.({ type: 'part', id: id.slice(5) });
-      else if (id.startsWith('hyp:')) onDetail?.({ type: 'hypothesis', id: id.slice(4) });
+      if (id.startsWith('part:'))      onDetail?.({ type: 'part',       id: id.slice(5) });
+      else if (id.startsWith('hyp:'))  onDetail?.({ type: 'hypothesis', id: id.slice(4) });
     });
   }
 
