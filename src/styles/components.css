@@ -995,3 +995,85 @@ select.detail-input { cursor: pointer; }
   padding-right: 22px;
   cursor: pointer;
 }
+
+/* =========================================================
+   Mutex group banner inside step detail modal
+   ========================================================= */
+.mutex-banner {
+  background: linear-gradient(180deg, rgba(193,39,45,0.05), rgba(193,39,45,0.02));
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mutex-banner-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  font-weight: 500;
+}
+.mutex-banner-status {
+  font-family: var(--display);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+.mutex-banner-status.chosen { color: var(--accent); font-weight: 500; }
+.mutex-banner-status.other { color: var(--ink-mute); font-style: italic; }
+.mutex-banner-actions {
+  display: flex;
+  gap: 8px;
+}
+.mutex-banner-btn {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.mutex-banner-btn:hover { background: rgba(193,39,45,0.08); }
+.mutex-banner-btn.primary {
+  background: var(--accent);
+  color: white;
+}
+.mutex-banner-btn.primary:hover { background: var(--accent-deep, #a01f24); }
+.mutex-banner-btn.outline { background: transparent; }
+
+.mutex-banner-siblings-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-mute);
+  margin-top: 4px;
+}
+.mutex-banner-siblings {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mutex-banner-sibling {
+  padding: 5px 10px;
+  background: rgba(255,255,255,0.6);
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.mutex-banner-sibling:hover {
+  border-color: var(--line-soft);
+  color: var(--ink);
+  background: var(--bg-panel);
+}

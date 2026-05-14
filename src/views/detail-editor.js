@@ -180,6 +180,14 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     titleEl.textContent = `Step: ${s.title || s.id}`;
     bodyEl.innerHTML = '';
 
+    // If this step is inside a mutex group (i.e. one of several alternatives),
+    // show a banner at the top with a button to commit to this branch.
+    const mutexGroup = (plan.mutexGroups || []).find(g => (g.stepIds || []).includes(id));
+    if (mutexGroup) {
+      const banner = buildMutexBanner(plan, mutexGroup, s);
+      bodyEl.appendChild(banner);
+    }
+
     const form = el('div', 'detail-form');
     form.appendChild(field('Title', input(s.title || '', v => patchStep(plan.id, id, { title: v }))));
     form.appendChild(field('Description', textarea(s.description || '', v => patchStep(plan.id, id, { description: v }))));
@@ -205,6 +213,68 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
 
     bodyEl.appendChild(form);
     showModal();
+  }
+
+  function buildMutexBanner(plan, group, currentStep) {
+    const banner = el('div', 'mutex-banner');
+    const isSelected = group.selectedStepId === currentStep.id;
+    const noneSelected = !group.selectedStepId;
+    const otherSelected = group.selectedStepId && !isSelected;
+
+    const label = el('div', 'mutex-banner-label');
+    label.textContent = group.label || 'Choose one alternative';
+    banner.appendChild(label);
+
+    // Status indicator
+    const status = el('div', 'mutex-banner-status');
+    if (isSelected) {
+      status.textContent = '✓ This branch is chosen. The other alternatives will be skipped.';
+      status.classList.add('chosen');
+    } else if (otherSelected) {
+      const other = plan.steps.find(st => st.id === group.selectedStepId);
+      status.textContent = `Currently chosen: ${other?.title || group.selectedStepId}. This branch will be skipped unless you switch.`;
+      status.classList.add('other');
+    } else {
+      status.textContent = `One of ${group.stepIds.length} alternatives — pick one before executing.`;
+    }
+    banner.appendChild(status);
+
+    // Action row
+    const actions = el('div', 'mutex-banner-actions');
+    if (isSelected) {
+      const undo = el('button', 'mutex-banner-btn outline', '↶ Unchoose');
+      undo.onclick = () => {
+        dispatch({ type: 'select-mutex-branch', payload: { planId: plan.id, groupId: group.id, stepId: null } });
+      };
+      actions.appendChild(undo);
+    } else {
+      const pick = el('button', 'mutex-banner-btn primary', '✓ Choose this branch');
+      pick.onclick = () => {
+        dispatch({ type: 'select-mutex-branch', payload: { planId: plan.id, groupId: group.id, stepId: currentStep.id } });
+      };
+      actions.appendChild(pick);
+    }
+    banner.appendChild(actions);
+
+    // Quick navigation to siblings
+    const siblings = group.stepIds.filter(sid => sid !== currentStep.id);
+    if (siblings.length) {
+      const sibLabel = el('div', 'mutex-banner-siblings-label', 'Other alternatives:');
+      banner.appendChild(sibLabel);
+      const sibList = el('div', 'mutex-banner-siblings');
+      siblings.forEach(sid => {
+        const sib = plan.steps.find(st => st.id === sid);
+        if (!sib) return;
+        const row = el('div', 'mutex-banner-sibling');
+        const isOtherChosen = group.selectedStepId === sid;
+        row.textContent = (isOtherChosen ? '✓ ' : '') + (sib.title || sid);
+        row.onclick = () => openStep(sid, getWorkspace());
+        sibList.appendChild(row);
+      });
+      banner.appendChild(sibList);
+    }
+
+    return banner;
   }
 
   function patchStep(planId, stepId, patch) {
