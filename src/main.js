@@ -340,12 +340,15 @@ $('download-state-btn').onclick = () => {
   URL.revokeObjectURL(a.href);
 };
 
-$('load-example-btn').onclick = async () => {
+$('load-example-select').onchange = async (e) => {
+  const slug = e.target.value;
+  if (!slug) return;
   try {
-    const res = await fetch('/examples/old-wooden-door/workspace.json');
+    const res = await fetch(`/examples/${slug}/workspace.json`);
     if (!res.ok) throw new Error(`Example not found (${res.status})`);
     loadWorkspaceJson(await res.json());
-    log('Loaded example: old wooden door');
+    log(`Loaded example: ${slug}`);
+    e.target.value = '';
   } catch (err) {
     log(`Example load failed: ${err.message}`);
   }
