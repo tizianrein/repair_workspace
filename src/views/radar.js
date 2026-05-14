@@ -24,7 +24,9 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    const cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.32;
+    // Polygon takes ~28% of canvas; labels need room outside (offset 38px
+    // + up to 130px wrap width / 2 on each side).
+    const cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.28;
     const axes = intent.axes;
     const n = Math.max(axes.length, 3);
 
@@ -51,11 +53,11 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
 
       ctx.fillStyle = '#1a1a1a';
       ctx.font = '20px "JetBrains Mono", monospace';
-      const lx = cx + Math.cos(a) * (r + 38);
-      const ly = cy + Math.sin(a) * (r + 38);
+      const lx = cx + Math.cos(a) * (r + 42);
+      const ly = cy + Math.sin(a) * (r + 42);
       ctx.textAlign = lx > cx + 6 ? 'left' : lx < cx - 6 ? 'right' : 'center';
       ctx.textBaseline = ly > cy + 6 ? 'top' : ly < cy - 6 ? 'bottom' : 'middle';
-      wrap(ctx, axis.label, lx, ly, 160, 22);
+      wrap(ctx, axis.label, lx, ly, 130, 22);
     });
 
     ctx.fillStyle = 'rgba(193,39,45,.18)';

@@ -269,10 +269,52 @@ export function createViewer3D(canvas, infoBox, onSelect) {
   tick();
 
   let currentWorkspace = null;
+  let lastGeometryKey = '';
+
+  function geometryKey(ws) {
+    // Hash inputs that affect the scene geometry (not selection, intent,
+    // chat, plans). If this string doesn't change, the 3D view doesn't need
+    // to rebuild — and the camera doesn't need to reframe.
+    const parts = (ws.instance?.parts || []).map(p => {
+      const d = p.dimensions || {};
+      const o = p.origin || {};
+      return `${p.id}|${p.status}|${o.x},${o.y},${o.z}|${d.width},${d.height},${d.depth}`;
+    }).join(';');
+    const hyps = (ws.hypotheses || []).map(h => {
+      const c = h.coordinates;
+      const k = c ? `${c.x},${c.y},${c.z}` : '_';
+      return `${h.id}|${h.partRef || '_'}|${k}`;
+    }).join(';');
+    return `${parts}::${hyps}`;
+  }
+
   return {
     render(workspace) {
       currentWorkspace = workspace;
-      rebuild(workspace);
+      const key = geometryKey(workspace);
+      if (key !== lastGeometryKey) {
+        rebuild(workspace);
+        // Frame only on first render; otherwise keep user's camera angle.
+        if (!lastGeometryKey) frame();
+        lastGeometryKey = key;
+      } else {
+        // Geometry unchanged — update part/hypothesis references in
+        // userData so click handlers still match latest state, then
+        // re-apply selection styling.
+        (workspace.instance?.parts || []).forEach(p => {
+          const m = partMeshes.get(p.id);
+          if (m) m.userData.part = p;
+        });
+        const hypById = new Map((workspace.hypotheses || []).map(h => [h.id, h]));
+        hypSpheres.forEach(s => {
+          const fresh = hypById.get(s.userData.hypothesis.id);
+          if (fresh) s.userData.hypothesis = fresh;
+        });
+        applySelection();
+      }
+    },
+    refit() {
+      // Manual reframe — for the user to recenter when they want to.
       frame();
     },
     select({ partId = null, hypothesisId = null }) {

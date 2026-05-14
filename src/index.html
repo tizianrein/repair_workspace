@@ -47,19 +47,21 @@
         </div>
       </div>
 
-      <div class="section">
-        <div class="section-label">Repair intent</div>
-        <div class="radar-wrap">
-          <canvas id="radar-canvas" width="540" height="540"></canvas>
+      <div class="section" id="intent-section">
+        <div class="section-label" data-toggle="intent-section">Repair intent <span class="chev">▾</span></div>
+        <div class="section-content">
+          <div class="radar-wrap">
+            <canvas id="radar-canvas" width="540" height="540"></canvas>
+          </div>
+          <div class="intent-summary-card">
+            <textarea id="intent-summary" placeholder="Intent summary appears here…"></textarea>
+          </div>
+          <div class="intent-actions">
+            <button class="mini-btn" id="add-axis-btn">+ axis</button>
+            <button class="mini-btn" id="reset-intent-btn">↺ reset</button>
+          </div>
+          <div class="axis-list" id="axis-list"></div>
         </div>
-        <div class="intent-summary-card">
-          <textarea id="intent-summary" placeholder="Intent summary appears here…"></textarea>
-        </div>
-        <div class="intent-actions">
-          <button class="mini-btn" id="add-axis-btn">+ axis</button>
-          <button class="mini-btn" id="reset-intent-btn">↺ reset</button>
-        </div>
-        <div class="axis-list" id="axis-list"></div>
       </div>
 
       <div class="section collapsed" id="constraints-section">
