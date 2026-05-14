@@ -40,6 +40,7 @@ let quickActions = null, justificationPanel = null;
 let activeTab = 'pane-3d';
 let selectedStepId = null;
 let proposeInFlight = false;
+let viewerDirty = {};
 
 const $ = id => document.getElementById(id);
 function log(msg) { $('console-output').textContent = msg; }
@@ -149,6 +150,10 @@ function renderAll() {
     }
   }
 
+  const dirty = { 'pane-3d': true, 'pane-action': true, 'pane-spatial': true };
+  delete dirty[activeTab];
+  viewerDirty = dirty;
+
   if (viewer3D && activeTab === 'pane-3d') viewer3D.render(ws);
   if (actionGraph && activeTab === 'pane-action') {
     actionGraph.render(ws);
@@ -188,6 +193,10 @@ function switchTab(paneId) {
   activeTab = paneId;
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.pane === paneId));
   document.querySelectorAll('.pane').forEach(p => p.classList.toggle('active', p.id === paneId));
+
+  const isDirty = viewerDirty[paneId];
+  delete viewerDirty[paneId];
+
   if (paneId === 'pane-3d' && !viewer3D) {
     viewer3D = createViewer3D(
       $('viewer-canvas'),
@@ -199,14 +208,16 @@ function switchTab(paneId) {
     viewer3D.render(state.workspace);
     setTimeout(() => viewer3D.resize(), 50);
   } else if (paneId === 'pane-3d' && viewer3D) {
-    viewer3D.render(state.workspace);
+    if (isDirty) viewer3D.render(state.workspace);
     setTimeout(() => viewer3D.resize(), 50);
   } else if (paneId === 'pane-action') {
-    actionGraph.render(state.workspace);
-    if (selectedStepId) actionGraph.setCurrentStep(selectedStepId);
+    if (isDirty) {
+      actionGraph.render(state.workspace);
+      if (selectedStepId) actionGraph.setCurrentStep(selectedStepId);
+    }
     setTimeout(() => actionGraph.resize(), 50);
   } else if (paneId === 'pane-spatial') {
-    spatialGraph.render(state.workspace);
+    if (isDirty) spatialGraph.render(state.workspace);
     setTimeout(() => spatialGraph.resize(), 50);
   }
 }
