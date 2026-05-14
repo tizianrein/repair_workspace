@@ -167,3 +167,73 @@ function balanceBraces(s) {
   }
   return out;
 }
+
+/**
+ * Call Gemini 2.5 Flash Image (Nano Banana) to generate or edit an image.
+ *
+ * Unlike callGemini which expects a JSON response, this returns the image
+ * as a base64-encoded data URL string along with any accompanying text.
+ *
+ * Inputs:
+ *   prompt:     text describing the desired output
+ *   files:      array of { name, mimeType, data } where data is base64.
+ *               Pass the source image(s) here. The model will treat them
+ *               as visual reference and edit/extend rather than ignoring.
+ *
+ * Returns:
+ *   { image: 'data:image/png;base64,...' | null, text: string, raw }
+ */
+export async function callGeminiImage({ prompt, files = [] }) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY not configured on the server');
+
+  const model = 'gemini-2.5-flash-image';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  const parts = [];
+  if (prompt) parts.push({ text: prompt });
+  for (const f of (files || [])) {
+    if (f.data && f.mimeType) {
+      parts.push({ inline_data: { mime_type: f.mimeType, data: f.data } });
+    }
+  }
+
+  const body = {
+    contents: [{ parts }]
+    // Note: no responseMimeType — we want the model's natural image output
+  };
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Gemini Image ${res.status}: ${errText.slice(0, 400)}`);
+  }
+
+  const json = await res.json();
+  const candidate = json?.candidates?.[0];
+  const responseParts = candidate?.content?.parts || [];
+
+  let image = null;
+  let text = '';
+  for (const part of responseParts) {
+    if (part.inline_data || part.inlineData) {
+      const d = part.inline_data || part.inlineData;
+      // Build a data URL the browser can directly use as <img src>
+      image = `data:${d.mime_type || d.mimeType || 'image/png'};base64,${d.data}`;
+    } else if (part.text) {
+      text += part.text;
+    }
+  }
+
+  if (!image) {
+    const reason = candidate?.finishReason || 'unknown';
+    throw new Error(`Image generation returned no image (finishReason=${reason}). Model said: "${text.slice(0, 200)}"`);
+  }
+
+  return { image, text, raw: json };
+}

@@ -183,13 +183,93 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     return null;
   }
 
-  renderer.domElement.addEventListener('pointermove', e => updateInfoBox(hitTest(e)));
+  /**
+   * Like hitTest but limited to parts and returning the world-space hit
+   * point. Used by "place new condition" mode to capture both the part
+   * identity AND the precise 3D location where the user clicked.
+   */
+  function hitTestPart(event) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObjects(objectGroup.children, true)
+      .filter(h => h.object.type !== 'LineSegments');
+    for (const h of hits) {
+      let item = h.object;
+      while (item && !item.userData.part && item.parent && item.parent !== scene) item = item.parent;
+      if (item?.userData?.part) {
+        return { part: item.userData.part, point: h.point.clone() };
+      }
+    }
+    return null;
+  }
+
+  // -------- Place mode (used when adding a new condition manually) -------
+  let placeMode = false;
+  let placeCallback = null;     // (result) => void with { part, point }
+  let placeMarker = null;       // a temporary pulsing sphere
+  let placeMarkerTime = 0;
+
+  function setPlaceMode(active, onPlace) {
+    placeMode = !!active;
+    placeCallback = active ? onPlace : null;
+    if (!active && placeMarker) {
+      scene.remove(placeMarker);
+      placeMarker.geometry.dispose();
+      placeMarker.material.dispose();
+      placeMarker = null;
+    }
+    renderer.domElement.style.cursor = active ? 'crosshair' : '';
+  }
+
+  function showPlaceMarker(point) {
+    if (!placeMarker) {
+      const geo = new THREE.SphereGeometry(0.012, 16, 16);
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0x1f4e79,           // accent blue from tokens
+        transparent: true,
+        opacity: 0.85,
+        depthTest: false
+      });
+      placeMarker = new THREE.Mesh(geo, mat);
+      placeMarker.renderOrder = 999;
+      scene.add(placeMarker);
+    }
+    placeMarker.position.copy(point);
+  }
+
+  function hidePlaceMarker() {
+    if (placeMarker) {
+      scene.remove(placeMarker);
+      placeMarker.geometry.dispose();
+      placeMarker.material.dispose();
+      placeMarker = null;
+    }
+  }
+
+  renderer.domElement.addEventListener('pointermove', e => {
+    if (placeMode) {
+      const hit = hitTestPart(e);
+      if (hit) showPlaceMarker(hit.point);
+      else hidePlaceMarker();
+      return;
+    }
+    updateInfoBox(hitTest(e));
+  });
   renderer.domElement.addEventListener('pointerdown', e => { downPos = { x: e.clientX, y: e.clientY }; });
   renderer.domElement.addEventListener('pointerup', e => {
     if (!downPos) return;
     const moved = Math.hypot(e.clientX - downPos.x, e.clientY - downPos.y);
     downPos = null;
     if (moved > 6) return;
+
+    if (placeMode) {
+      const hit = hitTestPart(e);
+      if (hit && placeCallback) placeCallback({ part: hit.part, point: hit.point });
+      return;
+    }
+
     const hit = hitTest(e);
     if (!hit) { selection = { partId: null, hypothesisId: null }; applySelection(); onSelect?.(null); return; }
     if (hit.type === 'part') { selection = { partId: hit.data.id, hypothesisId: null }; }
@@ -256,6 +336,13 @@ export function createViewer3D(canvas, infoBox, onSelect) {
         a.mesh.position.lerpVectors(a.start, a.end, e);
       });
       activeAnims = activeAnims.filter(a => performance.now() - a.startTime < ANIM_MS);
+    }
+    // Pulse the place marker to draw attention to it
+    if (placeMarker) {
+      const t = performance.now() * 0.004;
+      const pulse = 1 + Math.sin(t) * 0.25;
+      placeMarker.scale.setScalar(pulse);
+      placeMarker.material.opacity = 0.55 + Math.sin(t) * 0.3;
     }
     controls.update();
     renderer.clear();
@@ -327,6 +414,7 @@ export function createViewer3D(canvas, infoBox, onSelect) {
       renderer.setSize(wrap.clientWidth, wrap.clientHeight);
     },
     toggleExplode,
-    isExploded: () => exploded
+    isExploded: () => exploded,
+    setPlaceMode
   };
 }

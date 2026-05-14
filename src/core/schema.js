@@ -31,7 +31,7 @@ export const PART_STATUS = ['intact', 'defective', 'missing', 'new', 'repaired',
 export const HYPOTHESIS_STATUS = ['suspected', 'confirmed', 'refuted'];
 export const STEP_STATUS = ['pending', 'in-progress', 'completed', 'skipped', 'blocked'];
 export const PLAN_STATUS = ['draft', 'active', 'completed', 'archived'];
-export const EVIDENCE_KIND = ['photo', 'measurement', 'note', 'document'];
+export const EVIDENCE_KIND = ['photo', 'measurement', 'note', 'document', 'rendering'];
 export const CHAT_SCOPE = ['global', 'instance', 'part', 'hypothesis', 'step'];
 
 // ============================================================================

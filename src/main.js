@@ -21,7 +21,7 @@
 import { createState, subscribe, autoPersist, restore } from './core/state.js';
 import { apply, undo, redo } from './core/commands.js';
 import { migrateV1ToV2 } from './core/migrate.js';
-import { newWorkspace, validateWorkspace, SCHEMA_VERSION, newEvidence } from './core/schema.js';
+import { newWorkspace, validateWorkspace, SCHEMA_VERSION, newEvidence, newHypothesis } from './core/schema.js';
 import { PhotoStorage } from './core/photo-storage.js';
 import { compressImage, blobToBase64, formatBytes } from './core/image-compress.js';
 import { exportWorkspaceBundle, importWorkspaceBundle, downloadBlob } from './core/workspace-bundle.js';
@@ -154,8 +154,83 @@ $('explode-btn').onclick = () => {
 };
 
 // -------------------------------------------------------------------------
-// Render-all on state changes
+// Manual "place new condition" mode
+//
+// Entry: user clicks "+ New condition" in the right drawer.
+// Flow:
+//   1. Switch to Proxy/3D tab (if not already)
+//   2. Activate place mode in viewer-3d → crosshair cursor, banner appears
+//   3. User clicks on a part in the 3D view
+//   4. We dispatch add-hypothesis with partRef + world coordinates
+//   5. Exit place mode, then open the detail editor on the new hypothesis
+//      so the user can fill in type, description, status, attach photos.
+// Cancel: Esc, or click the Cancel button in the banner, or click the
+//   "+ New condition" button again (toggle).
 // -------------------------------------------------------------------------
+
+let inPlaceMode = false;
+
+function enterPlaceMode() {
+  if (inPlaceMode) return;
+  const ws = state.workspace;
+  if (!ws.instance?.parts?.length) {
+    log('No parts to attach a condition to. Load an artefact first.');
+    return;
+  }
+  // Make sure we're on the 3D tab
+  if (activeTab !== 'pane-3d') {
+    const tab = document.querySelector('[data-tab="pane-3d"]');
+    if (tab) tab.click();
+  }
+  inPlaceMode = true;
+  $('place-banner').hidden = false;
+  $('new-condition-btn').classList.add('active');
+  $('new-condition-btn').textContent = '✕ Cancel placement';
+  if (viewer3D) {
+    viewer3D.setPlaceMode(true, ({ part, point }) => {
+      // Build the new condition with sensible defaults
+      const newHyp = newHypothesis({
+        type: 'New condition',
+        description: '',
+        partRef: part.id,
+        coordinates: { x: point.x, y: point.y, z: point.z },
+        status: 'suspected',
+        confidence: 0.5
+      });
+      apply(state, { type: 'add-hypothesis', payload: { hypothesis: newHyp } });
+      exitPlaceMode();
+      log(`Added new condition on ${part.id}. Edit it below.`);
+      // Open the detail editor on the new hypothesis so the user can fill it in
+      openDetail({ type: 'hypothesis', id: newHyp.id });
+    });
+  }
+}
+
+function exitPlaceMode() {
+  if (!inPlaceMode) return;
+  inPlaceMode = false;
+  $('place-banner').hidden = true;
+  $('new-condition-btn').classList.remove('active');
+  $('new-condition-btn').textContent = '+ New condition';
+  if (viewer3D) viewer3D.setPlaceMode(false);
+}
+
+$('new-condition-btn').onclick = () => {
+  if (inPlaceMode) exitPlaceMode();
+  else enterPlaceMode();
+};
+
+$('place-cancel-btn').onclick = exitPlaceMode;
+
+// Escape exits place mode
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && inPlaceMode) {
+    e.preventDefault();
+    exitPlaceMode();
+  }
+});
+
+
 
 function renderAll() {
   const ws = state.workspace;
@@ -174,6 +249,7 @@ function renderAll() {
   radar.render(ws);
   entityList.render(ws);
   renderVersions(ws);
+  renderImagineSection(ws);
   quickActions.render();
 
   if (selectedStepId) {
@@ -440,32 +516,44 @@ $('reset-btn').onclick = () => {
 
 PhotoStorage.init().catch(err => console.warn('PhotoStorage init failed:', err));
 
+/**
+ * Process a File (image) by compressing, persisting to IndexedDB,
+ * and dispatching add-evidence to attach it. Optional `attachedTo`
+ * is the canonical {type, id} pointer (or null). Returns the new
+ * evidence ID and compressed Blob.
+ *
+ * Used by both the chat-upload flow and the detail-modal photo button.
+ */
+async function savePhotoAsEvidence(file, attachedTo) {
+  log(`Compressing ${file.name}…`);
+  const blob = await compressImage(file);
+  const evidence = newEvidence('photo', {
+    attachedTo,
+    url: 'idb://placeholder'   // updated below once we have the id
+  });
+  evidence.url = `idb://${evidence.id}`;
+  evidence.fileName = file.name;
+  evidence.byteSize = blob.size;
+
+  await PhotoStorage.put(evidence.id, blob, file.name);
+  apply(state, { type: 'add-evidence', payload: { evidence } });
+  log(`Saved photo ${file.name} (${formatBytes(blob.size)}) → ${evidence.id}`);
+  return { evidenceId: evidence.id, blob };
+}
+
 $('chat-camera-btn').onclick = () => $('chat-photo-file').click();
 $('chat-photo-file').addEventListener('change', async e => {
   const files = [...(e.target.files || [])];
   for (const file of files) {
     try {
-      log(`Compressing ${file.name}…`);
-      const blob = await compressImage(file);
       const { scope, ref } = chatSheet.getCurrentScope();
-
       // Map chat scope to evidence attachment.
       // 'global' / 'instance' → null (attached to workspace at large)
       // 'part' / 'hypothesis' / 'step' → { type, id }
       const attachedTo = (ref && scope !== 'global' && scope !== 'instance')
         ? { type: scope, id: ref }
         : null;
-
-      const evidence = newEvidence('photo', {
-        attachedTo,
-        url: 'idb://' + 'placeholder'   // we set after save (uses evidence id)
-      });
-      evidence.url = `idb://${evidence.id}`;
-      evidence.fileName = file.name;
-      evidence.byteSize = blob.size;
-
-      await PhotoStorage.put(evidence.id, blob, file.name);
-      apply(state, { type: 'add-evidence', payload: { evidence } });
+      const { evidenceId, blob } = await savePhotoAsEvidence(file, attachedTo);
 
       // Keep transient base64 for the next AI call.
       const base64 = await blobToBase64(blob);
@@ -473,10 +561,8 @@ $('chat-photo-file').addEventListener('change', async e => {
         name: file.name,
         mimeType: blob.type || 'image/jpeg',
         data: base64,
-        evidenceId: evidence.id
+        evidenceId: evidenceId
       });
-
-      log(`Saved photo ${file.name} (${formatBytes(blob.size)}) → evidence ${evidence.id}`);
     } catch (err) {
       console.error(err);
       log(`Photo failed: ${err.message}`);
@@ -484,6 +570,40 @@ $('chat-photo-file').addEventListener('change', async e => {
   }
   e.target.value = '';
 });
+
+// Hidden file input used by the detail-modal photo-add button.
+// We re-use one input element and re-assign its `attachedTo` target
+// just before clicking it programmatically.
+const detailPhotoInput = document.createElement('input');
+detailPhotoInput.type = 'file';
+detailPhotoInput.accept = 'image/*';
+detailPhotoInput.multiple = true;
+detailPhotoInput.style.display = 'none';
+document.body.appendChild(detailPhotoInput);
+
+let pendingDetailAttachTarget = null;
+detailPhotoInput.addEventListener('change', async e => {
+  const files = [...(e.target.files || [])];
+  const target = pendingDetailAttachTarget;
+  pendingDetailAttachTarget = null;
+  for (const file of files) {
+    try {
+      await savePhotoAsEvidence(file, target);
+    } catch (err) {
+      console.error(err);
+      log(`Photo failed: ${err.message}`);
+    }
+  }
+  e.target.value = '';
+  // Re-render the detail modal so the new photo appears
+  if (lastDetailTarget) openDetail(lastDetailTarget);
+});
+
+function attachPhotoToEntity(target) {
+  // target is { type: 'part'|'hypothesis', id }
+  pendingDetailAttachTarget = target ? { type: target.type, id: target.id } : null;
+  detailPhotoInput.click();
+}
 
 // -------------------------------------------------------------------------
 // Detail modal — editable forms backed by the apply() command pipeline.
@@ -493,17 +613,41 @@ document.querySelectorAll('[data-close-modal]').forEach(b => {
   b.onclick = () => $(b.dataset.closeModal).classList.remove('on');
 });
 
+// Close any open modal by clicking on its backdrop (the .modal element
+// itself, not any of its descendants — clicks inside the .modal-card
+// shouldn't dismiss).
+document.querySelectorAll('.modal').forEach(m => {
+  m.addEventListener('click', e => {
+    if (e.target === m) m.classList.remove('on');
+  });
+});
+
+// Escape closes the topmost open modal (but only if not already handled
+// by another listener like place-mode cancellation).
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (inPlaceMode) return;   // place-mode handler will catch this
+  const open = [...document.querySelectorAll('.modal.on')];
+  if (open.length === 0) return;
+  // Close just the most recently opened one (last in DOM order is a reasonable proxy)
+  open[open.length - 1].classList.remove('on');
+});
+
 const detailEditor = createDetailEditor({
   modalEl: $('detail-modal'),
   titleEl: $('detail-title'),
   bodyEl: $('detail-grid'),
   getWorkspace: () => state.workspace,
   getPhotoBlob: id => PhotoStorage.get(id),
-  dispatch: cmd => apply(state, cmd)
+  dispatch: cmd => apply(state, cmd),
+  onAttachPhoto: target => attachPhotoToEntity(target)
 });
+
+let lastDetailTarget = null;
 
 function openDetail(target) {
   if (!target) return;
+  lastDetailTarget = target;
   // Update selections in the rest of the UI as a side effect
   if (target.type === 'part') {
     if (viewer3D) viewer3D.select({ partId: target.id });
@@ -667,6 +811,275 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); redo(state); log('Redo');
   }
 });
+
+// =========================================================================
+// IMAGE GENERATION FLOW — "imagine result"
+//
+// Three-stage pipeline:
+//   1. describe-photo: source photo → Ist-JSON (current state)
+//   2. synthesize-target-json: Ist + Workspace → Soll-JSON (target state)
+//   3. imagine-result: source photo + Soll-JSON → generated image
+//
+// Stages 1+2 run when user clicks "Imagine repaired state". The review
+// modal lets the user inspect/edit the Soll before stage 3 runs.
+// =========================================================================
+
+let pendingIstJson = null;
+let pendingSollJson = null;
+
+function renderImagineSection(ws) {
+  const photos = (ws.evidence || []).filter(e => e.kind === 'photo');
+  const sourceId = ws.instance?.sourcePhotoEvidenceId || null;
+  const sourceEv = sourceId ? photos.find(p => p.id === sourceId) : null;
+
+  const thumbEl = $('imagine-source-thumb');
+  const goBtn = $('imagine-go-btn');
+  const pickBtn = $('imagine-pick-btn');
+
+  // Render source thumbnail
+  if (sourceEv) {
+    thumbEl.innerHTML = '<div class="imagine-source-empty">Loading…</div>';
+    PhotoStorage.get(sourceEv.id).then(photo => {
+      if (!photo) {
+        thumbEl.innerHTML = '<div class="imagine-source-empty">Photo not on device</div>';
+        return;
+      }
+      const url = URL.createObjectURL(photo.blob);
+      thumbEl.innerHTML = `<img src="${url}" alt="source">`;
+    }).catch(() => {
+      thumbEl.innerHTML = '<div class="imagine-source-empty">Failed to load</div>';
+    });
+    goBtn.disabled = false;
+  } else {
+    thumbEl.innerHTML = '<div class="imagine-source-empty">No source photo set</div>';
+    goBtn.disabled = true;
+  }
+
+  pickBtn.disabled = photos.length === 0;
+  pickBtn.textContent = photos.length === 0
+    ? '📷 Upload a photo first'
+    : (sourceEv ? '↻ Change source photo' : '📷 Set source photo');
+
+  // Render the most recent generated result, if any
+  renderImagineResult(ws);
+}
+
+function renderImagineResult(ws) {
+  const wrap = $('imagine-result-wrap');
+  const renderings = (ws.evidence || []).filter(e => e.kind === 'rendering');
+  if (!renderings.length) {
+    wrap.innerHTML = '<div class="imagine-result-empty">No imagined result yet.</div>';
+    return;
+  }
+  const latest = renderings[renderings.length - 1];
+  wrap.innerHTML = '<div class="imagine-result-empty">Loading…</div>';
+  PhotoStorage.get(latest.id).then(photo => {
+    if (!photo) {
+      wrap.innerHTML = '<div class="imagine-result-empty">Image not on device</div>';
+      return;
+    }
+    const url = URL.createObjectURL(photo.blob);
+    wrap.innerHTML = `<img src="${url}" alt="imagined result">`;
+    wrap.querySelector('img').onclick = () => openImageLightbox(url);
+  });
+}
+
+function openImageLightbox(url) {
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;display:grid;place-items:center;cursor:zoom-out;padding:24px;';
+  div.innerHTML = `<img src="${url}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:6px;">`;
+  div.onclick = () => div.remove();
+  document.body.appendChild(div);
+}
+
+// -------- Source-photo picker -----------------------------------
+$('imagine-pick-btn').onclick = () => {
+  const ws = state.workspace;
+  const photos = (ws.evidence || []).filter(e => e.kind === 'photo');
+  const sourceId = ws.instance?.sourcePhotoEvidenceId || null;
+  const grid = $('source-picker-grid');
+  grid.innerHTML = '';
+
+  if (!photos.length) {
+    grid.innerHTML = '<div class="source-picker-grid-empty">No photos in this workspace yet. Upload one via the chat camera button or attach it to a condition.</div>';
+    $('source-picker-modal').classList.add('on');
+    return;
+  }
+
+  for (const ev of photos) {
+    const tile = document.createElement('div');
+    tile.className = 'source-picker-tile' + (ev.id === sourceId ? ' selected' : '');
+    tile.innerHTML = '<div style="display:grid;place-items:center;height:100%;font-family:var(--mono);font-size:10px;color:var(--ink-mute);">…</div>';
+    grid.appendChild(tile);
+
+    PhotoStorage.get(ev.id).then(photo => {
+      if (!photo) {
+        tile.innerHTML = '<div style="display:grid;place-items:center;height:100%;font-family:var(--mono);font-size:10px;color:var(--ink-mute);">missing</div>';
+        return;
+      }
+      const url = URL.createObjectURL(photo.blob);
+      tile.innerHTML = `<img src="${url}" alt="">`;
+    });
+
+    tile.onclick = () => {
+      // Update sourcePhotoEvidenceId on the workspace instance.
+      // We use replace-assembly-style direct mutation through a custom batch
+      // (no dedicated command for this single field; piggyback on upsert-part
+      // semantics would be wrong). Use a custom approach: dispatch a noop and
+      // mutate directly via the apply() callback. Simpler: just mutate state
+      // and call renderAll. The workspace JSON export captures it.
+      state.workspace = {
+        ...state.workspace,
+        instance: {
+          ...state.workspace.instance,
+          sourcePhotoEvidenceId: ev.id
+        }
+      };
+      // Trigger listeners so the rest of the UI re-renders
+      state.listeners.forEach(fn => fn(state.workspace, { type: 'set-source-photo' }));
+      $('source-picker-modal').classList.remove('on');
+      log(`Set source photo: ${ev.fileName || ev.id}`);
+    };
+  }
+  $('source-picker-modal').classList.add('on');
+};
+
+// -------- "Imagine repaired state" entry point ------------------
+$('imagine-go-btn').onclick = async () => {
+  const ws = state.workspace;
+  const sourceId = ws.instance?.sourcePhotoEvidenceId;
+  if (!sourceId) { log('Please set a source photo first.'); return; }
+
+  const ev = (ws.evidence || []).find(e => e.id === sourceId);
+  if (!ev) { log('Source photo evidence missing.'); return; }
+
+  const photo = await PhotoStorage.get(sourceId);
+  if (!photo) { log('Source photo file not on this device.'); return; }
+
+  const goBtn = $('imagine-go-btn');
+  const statusEl = $('imagine-status');
+  goBtn.disabled = true;
+  goBtn.classList.add('busy');
+  goBtn.textContent = '⏳ Analyzing photo…';
+  statusEl.textContent = 'Step 1 of 3: describing what is in the photo…';
+
+  try {
+    const base64 = await blobToBase64(photo.blob);
+    const filePayload = {
+      name: ev.fileName || 'source.jpg',
+      mimeType: photo.blob.type || 'image/jpeg',
+      data: base64
+    };
+
+    // Stage 1 — describe-photo
+    const istResp = await fetch('/api/describe-photo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: filePayload, workspace: ws })
+    });
+    if (!istResp.ok) throw new Error('describe-photo failed: ' + (await istResp.text()));
+    const { ist } = await istResp.json();
+    pendingIstJson = ist;
+
+    // Stage 2 — synthesize-target-json
+    goBtn.textContent = '⏳ Planning the edit…';
+    statusEl.textContent = 'Step 2 of 3: synthesizing the target description…';
+    const sollResp = await fetch('/api/synthesize-target-json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ist, workspace: ws })
+    });
+    if (!sollResp.ok) throw new Error('synthesize-target-json failed: ' + (await sollResp.text()));
+    const { soll, rationale } = await sollResp.json();
+    pendingSollJson = soll;
+
+    // Show the review modal
+    $('soll-review-rationale').textContent = rationale || '(no rationale provided)';
+    $('ist-textarea').value = JSON.stringify(ist, null, 2);
+    $('soll-textarea').value = JSON.stringify(soll, null, 2);
+    $('soll-review-modal').classList.add('on');
+    statusEl.textContent = 'Review the target description and click Generate Image.';
+    goBtn.textContent = '✨ Imagine repaired state';
+    goBtn.classList.remove('busy');
+    goBtn.disabled = false;
+  } catch (err) {
+    console.error('[imagine] stage 1-2 failed:', err);
+    log(`Imagine failed: ${err.message}`);
+    statusEl.textContent = `Failed: ${err.message}`;
+    goBtn.textContent = '✨ Imagine repaired state';
+    goBtn.classList.remove('busy');
+    goBtn.disabled = false;
+  }
+};
+
+// -------- Stage 3 from the review modal -------------------------
+$('soll-generate-btn').onclick = async () => {
+  let editedSoll;
+  try {
+    editedSoll = JSON.parse($('soll-textarea').value);
+  } catch (err) {
+    alert('Target JSON is not valid JSON: ' + err.message);
+    return;
+  }
+
+  const ws = state.workspace;
+  const sourceId = ws.instance?.sourcePhotoEvidenceId;
+  const ev = (ws.evidence || []).find(e => e.id === sourceId);
+  if (!ev) { alert('Source photo missing.'); return; }
+  const photo = await PhotoStorage.get(sourceId);
+  if (!photo) { alert('Source photo file not on this device.'); return; }
+
+  const generateBtn = $('soll-generate-btn');
+  generateBtn.disabled = true;
+  generateBtn.textContent = '⏳ Generating…';
+
+  try {
+    const base64 = await blobToBase64(photo.blob);
+    const filePayload = {
+      name: ev.fileName || 'source.jpg',
+      mimeType: photo.blob.type || 'image/jpeg',
+      data: base64
+    };
+    const resp = await fetch('/api/imagine-result', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file: filePayload, soll: editedSoll })
+    });
+    if (!resp.ok) throw new Error('imagine-result failed: ' + (await resp.text()));
+    const { image } = await resp.json();
+
+    // Decode data URL back to a Blob and persist as evidence
+    const imgBlob = await dataUrlToBlob(image);
+    const rendering = newEvidence('rendering', {
+      attachedTo: null,
+      url: 'idb://placeholder'
+    });
+    rendering.url = `idb://${rendering.id}`;
+    rendering.fileName = `imagined-${Date.now()}.png`;
+    rendering.byteSize = imgBlob.size;
+    rendering.basedOnSourceEvidenceId = sourceId;
+    rendering.sollJson = editedSoll;
+    rendering.istJson = pendingIstJson;
+
+    await PhotoStorage.put(rendering.id, imgBlob, rendering.fileName);
+    apply(state, { type: 'add-evidence', payload: { evidence: rendering } });
+    log(`Generated imagined result → ${rendering.id}`);
+
+    $('soll-review-modal').classList.remove('on');
+    $('imagine-status').textContent = 'Done.';
+  } catch (err) {
+    console.error('[imagine] stage 3 failed:', err);
+    alert('Image generation failed: ' + err.message);
+  } finally {
+    generateBtn.disabled = false;
+    generateBtn.textContent = '✨ Generate image';
+  }
+};
+
+async function dataUrlToBlob(dataUrl) {
+  const r = await fetch(dataUrl);
+  return r.blob();
+}
 
 renderAll();
 setTimeout(() => viewer3D.resize(), 50);

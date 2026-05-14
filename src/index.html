@@ -89,6 +89,24 @@
           <div class="entity-empty">No plans yet.</div>
         </div>
       </div>
+
+      <div class="section collapsed" id="imagine-section">
+        <div class="section-label" data-toggle="imagine-section">Imagined result <span class="chev">▾</span></div>
+        <div class="section-content">
+          <div class="imagine-controls">
+            <div class="imagine-source">
+              <div class="imagine-source-label">Source photo</div>
+              <div class="imagine-source-thumb" id="imagine-source-thumb">
+                <div class="imagine-source-empty">No source photo set</div>
+              </div>
+              <button class="mini-btn imagine-pick-btn" id="imagine-pick-btn">📷 Set source photo</button>
+            </div>
+            <button class="imagine-go-btn" id="imagine-go-btn" disabled>✨ Imagine repaired state</button>
+            <div class="imagine-status" id="imagine-status"></div>
+          </div>
+          <div class="imagine-result" id="imagine-result-wrap"></div>
+        </div>
+      </div>
     </div>
   </aside>
 
@@ -123,6 +141,12 @@
           <div id="info-box"></div>
           <div class="hud-tr">
             <button class="hud-btn" id="explode-btn" title="Explode view">💥</button>
+          </div>
+          <div class="place-banner" id="place-banner" hidden>
+            <div class="place-banner-inner">
+              <span class="place-banner-text">Click on a part to place a new condition. <kbd>Esc</kbd> to cancel.</span>
+              <button class="place-banner-cancel" id="place-cancel-btn">Cancel</button>
+            </div>
           </div>
           <div class="viewer-empty" id="viewer-empty" hidden>
             <div class="viewer-empty-inner">
@@ -162,6 +186,8 @@
         <option value="confirmed">Confirmed conditions</option>
       </select>
     </div>
+
+    <button class="new-condition-btn" id="new-condition-btn">+ New condition</button>
 
     <div class="entity-list" id="entity-list">
       <div class="entity-empty">Load an example or workspace JSON.</div>
@@ -216,6 +242,53 @@
     <div class="modal-head"><h3 id="detail-title">Detail</h3><button class="icon-btn" data-close-modal="detail-modal">✕</button></div>
     <div class="modal-body">
       <div class="detail-grid" id="detail-grid"></div>
+    </div>
+    <div class="modal-foot">
+      <div class="spacer"></div>
+      <button class="btn" data-close-modal="detail-modal">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Source-photo picker: lists all photos in the workspace and lets the user
+     pick which one is the "source" for AI image generation -->
+<div class="modal" id="source-picker-modal">
+  <div class="modal-card">
+    <div class="modal-head"><h3>Pick source photo</h3><button class="icon-btn" data-close-modal="source-picker-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="source-picker-hint">Pick one of your uploaded photos as the visual reference for image generation.</div>
+      <div class="source-picker-grid" id="source-picker-grid"></div>
+    </div>
+    <div class="modal-foot">
+      <div class="spacer"></div>
+      <button class="btn" data-close-modal="source-picker-modal">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Soll-JSON review: shown after describe-photo and synthesize-target-json
+     have run, before sending to the image generator. Lets the user inspect
+     and edit the structured target description. -->
+<div class="modal" id="soll-review-modal">
+  <div class="modal-card big">
+    <div class="modal-head"><h3>Review target description</h3><button class="icon-btn" data-close-modal="soll-review-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="soll-review-intro" id="soll-review-rationale"></div>
+      <div class="soll-review-grid">
+        <div class="soll-col">
+          <div class="soll-col-label">Current (from photo)</div>
+          <textarea class="soll-textarea" id="ist-textarea" readonly></textarea>
+        </div>
+        <div class="soll-col">
+          <div class="soll-col-label">Target (editable)</div>
+          <textarea class="soll-textarea" id="soll-textarea"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn ghost" data-close-modal="soll-review-modal">Cancel</button>
+      <div class="spacer"></div>
+      <button class="btn" id="soll-generate-btn">✨ Generate image</button>
     </div>
   </div>
 </div>

@@ -17,7 +17,7 @@
 
 import { PART_STATUS, HYPOTHESIS_STATUS, STEP_STATUS } from '../core/schema.js';
 
-export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, getPhotoBlob, dispatch }) {
+export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, getPhotoBlob, dispatch, onAttachPhoto }) {
 
   function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -88,9 +88,7 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
       }
       return false;
     });
-    if (photos.length) {
-      buildPhotoGallery(photos).then(node => bodyEl.appendChild(node));
-    }
+    appendPhotoSection(bodyEl, photos, { type: 'part', id });
 
     showModal();
   }
@@ -132,13 +130,10 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
 
     bodyEl.appendChild(form);
 
-    // Photo gallery for this hypothesis (direct + workspace-level photos
-    // when the hypothesis is the focus)
+    // Photo gallery for this hypothesis (direct attachments only)
     const photos = (ws.evidence || []).filter(e =>
       e.kind === 'photo' && e.attachedTo?.type === 'hypothesis' && e.attachedTo.id === id);
-    if (photos.length) {
-      buildPhotoGallery(photos).then(node => bodyEl.appendChild(node));
-    }
+    appendPhotoSection(bodyEl, photos, { type: 'hypothesis', id });
 
     // Delete button
     const actions = el('div', 'detail-actions');
@@ -287,7 +282,60 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
 
   // -------------------------------------------------------- photo gallery
   const objectUrls = [];
+
+  /**
+   * Always-rendered photo section for an entity (part or hypothesis):
+   *   - section label with count
+   *   - thumbnail grid (if any photos)
+   *   - "+ Add photo" button at the bottom
+   * Photos load asynchronously; the section is appended synchronously
+   * so the button is immediately visible.
+   */
+  function appendPhotoSection(parentEl, photos, attachTarget) {
+    const wrap = el('div', 'detail-section');
+    const labelText = photos.length ? `Photos (${photos.length})` : 'Photos';
+    wrap.appendChild(el('div', 'detail-section-label', labelText));
+
+    const grid = el('div', 'detail-photo-grid');
+    if (photos.length) {
+      // Render placeholders synchronously, fill them in async
+      photos.forEach(ev => {
+        const slot = el('div', 'detail-photo-slot');
+        slot.innerHTML = '<div class="detail-photo-loading">…</div>';
+        grid.appendChild(slot);
+        getPhotoBlob(ev.id).then(photo => {
+          if (!photo) {
+            slot.innerHTML = '<div class="detail-photo-missing" title="Photo not on this device">📷 missing</div>';
+            return;
+          }
+          const url = URL.createObjectURL(photo.blob);
+          objectUrls.push(url);
+          slot.innerHTML = `<img src="${url}" alt="${escapeHtml(ev.fileName || ev.id)}">`;
+          slot.onclick = () => openLightbox(url, ev.fileName);
+        }).catch(() => {
+          slot.innerHTML = '<div class="detail-photo-missing">⚠️ failed</div>';
+        });
+      });
+    } else {
+      const empty = el('div', 'detail-photo-empty');
+      empty.textContent = 'No photos yet.';
+      grid.appendChild(empty);
+    }
+    wrap.appendChild(grid);
+
+    // Add-photo button (only if a handler was provided)
+    if (onAttachPhoto) {
+      const addBtn = el('button', 'detail-photo-add-btn', '📷  Add photo');
+      addBtn.onclick = () => onAttachPhoto(attachTarget);
+      wrap.appendChild(addBtn);
+    }
+
+    parentEl.appendChild(wrap);
+    return wrap;
+  }
+
   async function buildPhotoGallery(photos) {
+    // Legacy wrapper kept for any callers that still use it.
     const wrap = el('div', 'detail-section');
     wrap.appendChild(el('div', 'detail-section-label', `Photos (${photos.length})`));
     const grid = el('div', 'detail-photo-grid');
