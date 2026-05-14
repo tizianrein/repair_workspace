@@ -190,7 +190,7 @@ export function newEdge(sourceStepId, targetStepId) {
 export function newMutexGroup(stepIds, opts = {}) {
   return {
     id: uid('mutex'),
-    stepIds: [...stepIds],
+    stepIds: Array.isArray(stepIds) ? [...stepIds] : [],
     label: opts.label || 'Pick one approach',
     selectedStepId: opts.selectedStepId || null
   };

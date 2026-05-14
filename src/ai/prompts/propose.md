@@ -95,6 +95,10 @@ Each command in `commands` is one of the types listed below. Pick the most speci
 - `remove-step` — remove a step. Provide `planId` and `stepId`.
 - `add-edge` / `remove-edge` — modify prerequisite ordering.
 - `add-mutex-group` / `remove-mutex-group` / `select-mutex-branch` — manage alternatives.
+  ```json
+  { "type": "add-mutex-group", "payload": { "planId": "plan_xyz", "stepIds": ["step_3a", "step_3b"], "label": "Choose final form" } }
+  ```
+  **Required fields:** `planId`, `stepIds` (array of at least 2 step IDs that already exist in the plan), `label`. Never omit `stepIds` — without it, the group has nothing to compare. The steps must already be added via `add-plan` or `upsert-step` earlier in the same batch.
 
 ### When scope is "all" (intent and constraints)
 

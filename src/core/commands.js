@@ -300,8 +300,16 @@ defineCommand('add-mutex-group', (ws, { planId, stepIds, label }) => {
   const idx = ws.plans.findIndex(p => p.id === planId);
   if (idx < 0) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
   const plan = ws.plans[idx];
-  const group = newMutexGroup(stepIds, { label });
-  const newPlan = { ...plan, mutexGroups: [...plan.mutexGroups, group], updatedAt: new Date().toISOString() };
+  if (!Array.isArray(stepIds) || stepIds.length < 2) {
+    throw new Error(`add-mutex-group: stepIds must be an array of at least 2 step IDs (got ${JSON.stringify(stepIds)})`);
+  }
+  // Validate the IDs actually exist in the plan
+  const validIds = stepIds.filter(id => (plan.steps || []).some(s => s.id === id));
+  if (validIds.length < 2) {
+    throw new Error(`add-mutex-group: not enough valid step IDs found in plan (got ${validIds.length} of ${stepIds.length})`);
+  }
+  const group = newMutexGroup(validIds, { label });
+  const newPlan = { ...plan, mutexGroups: [...(plan.mutexGroups || []), group], updatedAt: new Date().toISOString() };
   return {
     workspace: { ...ws, plans: ws.plans.map((p, i) => i === idx ? newPlan : p) },
     inverse: { type: 'remove-mutex-group', payload: { planId, groupId: group.id } }
@@ -404,12 +412,17 @@ defineCommand('noop', (ws) => ({ workspace: ws, inverse: { type: 'noop', payload
 defineCommand('batch', (ws, { commands, label }) => {
   let workspace = ws;
   const inverses = [];
-  for (const cmd of commands) {
+  for (let i = 0; i < commands.length; i++) {
+    const cmd = commands[i];
     const handler = registry.get(cmd.type);
-    if (!handler) throw new Error(`Unknown command type in batch: ${cmd.type}`);
-    const result = handler(workspace, cmd.payload);
-    workspace = result.workspace;
-    inverses.unshift(result.inverse);
+    if (!handler) throw new Error(`Command ${i + 1}/${commands.length} (${cmd.type}): unknown command type`);
+    try {
+      const result = handler(workspace, cmd.payload);
+      workspace = result.workspace;
+      inverses.unshift(result.inverse);
+    } catch (err) {
+      throw new Error(`Command ${i + 1}/${commands.length} (${cmd.type}): ${err.message}`);
+    }
   }
   return {
     workspace,
