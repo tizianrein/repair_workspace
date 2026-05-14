@@ -21,8 +21,10 @@ const materials = {
   discarded: new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.FrontSide }),
   selected: new THREE.MeshBasicMaterial({ color: 0x2f6bff, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.FrontSide }),
   outline: new THREE.LineBasicMaterial({ color: 0x1a1a1a }),
-  hypothesis: new THREE.MeshBasicMaterial({ color: 0xc1272d, depthWrite: false, depthTest: false }),
-  selectedHypothesis: new THREE.MeshBasicMaterial({ color: 0x2f6bff, depthWrite: false, depthTest: false })
+  hypothesis: new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.95 }),
+  hypothesisGhost: new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.25, depthTest: false, depthWrite: false }),
+  selectedHypothesis: new THREE.MeshBasicMaterial({ color: 0x2f6bff, transparent: true, opacity: 0.95 }),
+  selectedHypothesisGhost: new THREE.MeshBasicMaterial({ color: 0x2f6bff, transparent: true, opacity: 0.25, depthTest: false, depthWrite: false })
 };
 
 export function createViewer3D(canvas, infoBox, onSelect) {
@@ -81,14 +83,27 @@ export function createViewer3D(canvas, infoBox, onSelect) {
       partMeshes.set(part.id, mesh);
     });
 
+    // Compute scale from the object's bounding box, after parts are added
+    const objBox = new THREE.Box3().setFromObject(objectGroup);
+    const objSize = objBox.isEmpty() ? new THREE.Vector3(1, 1, 1) : objBox.getSize(new THREE.Vector3());
+    const objExtent = Math.max(objSize.x, objSize.y, objSize.z, 0.1);
+    const sphereRadius = objExtent * 0.025;   // 2.5% of largest dimension
+    const outlineRadius = sphereRadius * 1.03;
+
     hypSpheres.forEach(s => scene.remove(s));
     hypSpheres.length = 0;
     (workspace.hypotheses || []).forEach(h => {
       if (!h.coordinates) return;
-      const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.02, 18, 18), materials.hypothesis);
+      const geo = new THREE.SphereGeometry(sphereRadius, 18, 18);
+      const sphere = new THREE.Mesh(geo, materials.hypothesis);
       sphere.position.set(h.coordinates.x || 0, h.coordinates.y || 0, h.coordinates.z || 0);
-      sphere.renderOrder = 999;
       sphere.userData.hypothesis = h;
+
+      const ghost = new THREE.Mesh(geo, materials.hypothesisGhost);
+      ghost.renderOrder = 999;
+      ghost.userData.hypothesisGhost = true;
+      sphere.add(ghost);
+
       hypSpheres.push(sphere);
       scene.add(sphere);
     });
@@ -116,7 +131,11 @@ export function createViewer3D(canvas, infoBox, onSelect) {
       mesh.material = id === selection.partId ? materials.selected : materialForPart(mesh.userData.part.status);
     });
     hypSpheres.forEach(s => {
-      s.material = s.userData.hypothesis.id === selection.hypothesisId ? materials.selectedHypothesis : materials.hypothesis;
+      const isSelected = s.userData.hypothesis.id === selection.hypothesisId;
+      s.material = isSelected ? materials.selectedHypothesis : materials.hypothesis;
+      // First child is the ghost overlay
+      const ghost = s.children.find(c => c.userData.hypothesisGhost);
+      if (ghost) ghost.material = isSelected ? materials.selectedHypothesisGhost : materials.hypothesisGhost;
     });
     updateInfoBox();
   }
