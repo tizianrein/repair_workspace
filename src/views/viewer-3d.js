@@ -21,8 +21,8 @@ const materials = {
   discarded: new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.FrontSide }),
   selected: new THREE.MeshBasicMaterial({ color: 0x2f6bff, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.FrontSide }),
   outline: new THREE.LineBasicMaterial({ color: 0x1a1a1a }),
-  hypothesis: new THREE.MeshBasicMaterial({ color: 0xc1272d, depthWrite: false }),
-  selectedHypothesis: new THREE.MeshBasicMaterial({ color: 0x2f6bff, depthWrite: false })
+  hypothesis: new THREE.MeshBasicMaterial({ color: 0xff6a00, depthWrite: false, depthTest: false }),
+  selectedHypothesis: new THREE.MeshBasicMaterial({ color: 0x2f6bff, depthWrite: false, depthTest: false })
 };
 
 export function createViewer3D(canvas, infoBox, onSelect) {
