@@ -22,6 +22,26 @@ import { loadPrompt } from './_shared/prompts.js';
 
 export const config = { maxDuration: 60 };
 
+// Set of command types the workspace's command registry actually understands.
+// Kept in sync with src/core/commands.js — when adding a new command there,
+// add the type string here too. If the AI returns anything else, we strip it
+// from the response and surface the rejected types to the user.
+const KNOWN_COMMAND_TYPES = new Set([
+  'set-object-name',
+  'upsert-part', 'remove-part', 'replace-assembly',
+  'add-hypothesis', 'update-hypothesis', 'remove-hypothesis',
+  'confirm-hypothesis', 'refute-hypothesis',
+  'add-evidence', 'remove-evidence',
+  'set-intent', 'set-constraints',
+  'add-plan', 'remove-plan', 'set-current-plan', 'set-plan-status',
+  'upsert-step', 'remove-step',
+  'add-edge', 'remove-edge',
+  'add-mutex-group', 'remove-mutex-group', 'select-mutex-branch',
+  'log-execution', 'remove-execution',
+  'start-conversation', 'remove-conversation',
+  'noop'
+]);
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -52,6 +72,25 @@ export default async function handler(req, res) {
     }
     if (!Array.isArray(result.commands)) {
       return res.status(502).json({ error: 'Model returned no commands array', raw: result });
+    }
+
+    // Filter out commands with unknown types so they never make it to the
+    // accept-modal-then-fail path. Surface the rejected types so the user
+    // (and we, in logs) can see what the AI tried.
+    const known = [];
+    const rejected = [];
+    for (const cmd of result.commands) {
+      if (cmd && typeof cmd === 'object' && KNOWN_COMMAND_TYPES.has(cmd.type)) {
+        known.push(cmd);
+      } else {
+        rejected.push(cmd?.type || '(missing type)');
+      }
+    }
+    if (rejected.length) {
+      console.warn('[propose] Filtered unknown command types:', rejected);
+      const note = ` (Skipped ${rejected.length} unsupported command${rejected.length === 1 ? '' : 's'}: ${rejected.join(', ')}.)`;
+      result.summary = (result.summary || '') + note;
+      result.commands = known;
     }
 
     return res.status(200).json(result);

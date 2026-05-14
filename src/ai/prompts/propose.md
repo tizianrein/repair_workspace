@@ -96,6 +96,25 @@ Each command in `commands` is one of the types listed below. Pick the most speci
 - `add-edge` / `remove-edge` — modify prerequisite ordering.
 - `add-mutex-group` / `remove-mutex-group` / `select-mutex-branch` — manage alternatives.
 
+### When scope is "all" (intent and constraints)
+
+These can also be modified when scope is `"all"`:
+
+- `set-intent` — replace the entire intent (axes + summary). Always send the **full intent object**, including all existing axes with their current values, plus your updates. Never send partial intent objects.
+  ```json
+  { "type": "set-intent", "payload": { "intent": { "axes": [ { "id": "axis_1", "label": "Material Authenticity", "value": 0.25 }, ... ], "summary": "Adaptive reuse: convert chair into a side-table. Remove backrest, keep visible patina." } } }
+  ```
+  To update *only* the summary, copy the existing axes verbatim and change `summary`. To shift a single axis value, copy all other axes verbatim and change one value.
+
+- `set-constraints` — replace the entire constraints object. Same rule as `set-intent`: send the full object with your changes folded in.
+  ```json
+  { "type": "set-constraints", "payload": { "constraints": { "tools_available": "...", "materials_available": "...", "time_budget_minutes": 180, ... } } }
+  ```
+
+- `set-object-name` — rename the artefact. Payload `{ "name": "new name" }`.
+
+**There is no `update-intent-summary`, `patch-intent`, `update-constraints`, or similar command.** The only way to change intent or constraints is to send the full object via `set-intent` / `set-constraints`.
+
 ## Key rules
 
 1. **Always populate `justification` on steps.** Non-negotiable. The rationale, the driving hypotheses, and the driving intent axes must be traceable. A step with empty justification is an error.
