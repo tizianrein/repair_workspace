@@ -1,0 +1,333 @@
+{
+  "schemaVersion": "2.0.0",
+  "template": null,
+  "instance": {
+    "id": "inst_santo04",
+    "name": "santo_04",
+    "templateRef": null,
+    "parts": [
+      {
+        "id": "front_left_leg",
+        "label": "Front Left Leg",
+        "origin": { "x": -0.235, "y": 0.221, "z": -0.2225 },
+        "dimensions": { "width": 0.03, "height": 0.426, "depth": 0.045 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_apron", "left_side_apron", "seat", "front_left_glider"],
+        "material": "beech timber, clear lacquer",
+        "status": "defective",
+        "notes": "Horizontal scuff marks on the front face."
+      },
+      {
+        "id": "front_right_leg",
+        "label": "Front Right Leg",
+        "origin": { "x": 0.235, "y": 0.221, "z": -0.2225 },
+        "dimensions": { "width": 0.03, "height": 0.426, "depth": 0.045 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_apron", "right_side_apron", "seat", "front_right_glider"],
+        "material": "beech timber, clear lacquer",
+        "status": "defective",
+        "notes": "Hairline crack near the top, by the seat joint."
+      },
+      {
+        "id": "back_left_leg",
+        "label": "Back Left Leg",
+        "origin": { "x": -0.235, "y": 0.384, "z": 0.2225 },
+        "dimensions": { "width": 0.03, "height": 0.752, "depth": 0.045 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["back_apron", "left_side_apron", "seat", "backrest", "back_left_glider"],
+        "material": "beech timber, clear lacquer",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "back_right_leg",
+        "label": "Back Right Leg",
+        "origin": { "x": 0.235, "y": 0.384, "z": 0.2225 },
+        "dimensions": { "width": 0.03, "height": 0.752, "depth": 0.045 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["back_apron", "right_side_apron", "seat", "backrest", "back_right_glider"],
+        "material": "beech timber, clear lacquer",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "front_apron",
+        "label": "Front Apron",
+        "origin": { "x": 0, "y": 0.404, "z": -0.2315 },
+        "dimensions": { "width": 0.44, "height": 0.06, "depth": 0.027 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_left_leg", "front_right_leg", "seat"],
+        "material": "beech timber, clear lacquer",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "back_apron",
+        "label": "Back Apron",
+        "origin": { "x": 0, "y": 0.404, "z": 0.2315 },
+        "dimensions": { "width": 0.44, "height": 0.06, "depth": 0.027 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["back_left_leg", "back_right_leg", "seat"],
+        "material": "beech timber, clear lacquer",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "left_side_apron",
+        "label": "Left Side Apron",
+        "origin": { "x": -0.2065, "y": 0.404, "z": 0 },
+        "dimensions": { "width": 0.027, "height": 0.06, "depth": 0.436 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_left_leg", "back_left_leg", "seat"],
+        "material": "beech timber, clear lacquer",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "right_side_apron",
+        "label": "Right Side Apron",
+        "origin": { "x": 0.2065, "y": 0.404, "z": 0 },
+        "dimensions": { "width": 0.027, "height": 0.06, "depth": 0.436 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_right_leg", "back_right_leg", "seat"],
+        "material": "beech timber, clear lacquer",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "seat",
+        "label": "Seat Panel",
+        "origin": { "x": 0, "y": 0.437, "z": 0 },
+        "dimensions": { "width": 0.44, "height": 0.006, "depth": 0.49 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_left_leg", "front_right_leg", "back_left_leg", "back_right_leg", "front_apron", "back_apron", "left_side_apron", "right_side_apron"],
+        "material": "beech plywood, clear lacquer",
+        "status": "defective",
+        "notes": "Scuffing along front edge, dark stain cluster, and a long scratch on the top surface."
+      },
+      {
+        "id": "backrest",
+        "label": "Backrest",
+        "origin": { "x": 0, "y": 0.705, "z": 0.225 },
+        "dimensions": { "width": 0.44, "height": 0.11, "depth": 0.05 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["back_left_leg", "back_right_leg"],
+        "material": "beech timber, clear lacquer",
+        "status": "defective",
+        "notes": "Small circular dent on the front face, top right."
+      },
+      {
+        "id": "front_left_glider",
+        "label": "Front Left Glider",
+        "origin": { "x": -0.235, "y": 0.004, "z": -0.2225 },
+        "dimensions": { "width": 0.025, "height": 0.008, "depth": 0.04 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_left_leg"],
+        "material": "plastic",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "front_right_glider",
+        "label": "Front Right Glider",
+        "origin": { "x": 0.235, "y": 0.004, "z": -0.2225 },
+        "dimensions": { "width": 0.025, "height": 0.008, "depth": 0.04 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["front_right_leg"],
+        "material": "plastic",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "back_left_glider",
+        "label": "Back Left Glider",
+        "origin": { "x": -0.235, "y": 0.004, "z": 0.2225 },
+        "dimensions": { "width": 0.025, "height": 0.008, "depth": 0.04 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["back_left_leg"],
+        "material": "plastic",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "back_right_glider",
+        "label": "Back Right Glider",
+        "origin": { "x": 0.235, "y": 0.004, "z": 0.2225 },
+        "dimensions": { "width": 0.025, "height": 0.008, "depth": 0.04 },
+        "rotation": { "x": 0, "y": 0, "z": 0 },
+        "connections": ["back_right_leg"],
+        "material": "plastic",
+        "status": "intact",
+        "notes": ""
+      }
+    ],
+    "location": "Workshop, ground floor",
+    "provenance": "Stacking chair, c. 1970s Central European industrial design. Light beech with clear lacquer.",
+    "notes": "Owner wants the chair repaired with an eye to the long term — durable materials, modular fasteners where possible, and finishes that will outlast the originals.",
+    "createdAt": "2026-05-14T10:00:00.000Z",
+    "sourcePhotoEvidenceId": "ev_mp63iqa301d"
+  },
+  "evidence": [
+    {
+      "id": "ev_initial_inspection",
+      "kind": "note",
+      "attachedTo": null,
+      "capturedAt": "2026-05-14T09:30:00.000Z",
+      "capturedBy": null,
+      "url": null,
+      "text": "Walk-around inspection. Chair frame is sound. Hairline crack at the front right leg's top, near the seat joint — could propagate. Seat surface shows scuffing, staining, and a long scratch — finish is worn. Minor dent on the backrest, scuff marks on the front left leg. Plastic gliders are intact but disposable.",
+      "measurement": null,
+      "confirmsHypothesisRef": null,
+      "refutesHypothesisRef": null
+    },
+    {
+      "id": "ev_mp63iqa301d",
+      "kind": "photo",
+      "attachedTo": null,
+      "capturedAt": "2026-05-14T23:04:38.283Z",
+      "capturedBy": null,
+      "url": "idb://ev_mp63iqa301d",
+      "text": null,
+      "measurement": null,
+      "confirmsHypothesisRef": null,
+      "refutesHypothesisRef": null,
+      "fileName": "santo_04.jpg",
+      "byteSize": 160327
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "hyp_front_right_crack",
+      "type": "Crack",
+      "description": "Hairline crack on the top surface of the front right leg, near the front. Moderate severity — could propagate under load if not stabilized.",
+      "partRef": "front_right_leg",
+      "coordinates": { "x": 0.235, "y": 0.434, "z": -0.235 },
+      "status": "confirmed",
+      "confidence": 0.9,
+      "evidenceRefs": ["ev_initial_inspection"],
+      "createdAt": "2026-05-14T09:35:00.000Z",
+      "updatedAt": "2026-05-14T09:35:00.000Z"
+    },
+    {
+      "id": "hyp_seat_scuff",
+      "type": "Scuff Mark",
+      "description": "Noticeable scuffing and discoloration along the front edge of the seat.",
+      "partRef": "seat",
+      "coordinates": { "x": -0.1, "y": 0.438, "z": -0.245 },
+      "status": "confirmed",
+      "confidence": 0.95,
+      "evidenceRefs": ["ev_initial_inspection"],
+      "createdAt": "2026-05-14T09:36:00.000Z",
+      "updatedAt": "2026-05-14T09:36:00.000Z"
+    },
+    {
+      "id": "hyp_seat_stain",
+      "type": "Stain",
+      "description": "Cluster of small, dark stains on the top surface of the seat.",
+      "partRef": "seat",
+      "coordinates": { "x": 0, "y": 0.44, "z": 0.15 },
+      "status": "confirmed",
+      "confidence": 0.85,
+      "evidenceRefs": ["ev_initial_inspection"],
+      "createdAt": "2026-05-14T09:37:00.000Z",
+      "updatedAt": "2026-05-14T09:37:00.000Z"
+    },
+    {
+      "id": "hyp_seat_scratch",
+      "type": "Scratch",
+      "description": "Long, light-coloured scratch on the seat's top surface toward the left side.",
+      "partRef": "seat",
+      "coordinates": { "x": -0.15, "y": 0.44, "z": 0.05 },
+      "status": "confirmed",
+      "confidence": 0.9,
+      "evidenceRefs": ["ev_initial_inspection"],
+      "createdAt": "2026-05-14T09:38:00.000Z",
+      "updatedAt": "2026-05-14T09:38:00.000Z"
+    },
+    {
+      "id": "hyp_backrest_dent",
+      "type": "Dent",
+      "description": "Small circular dent on the front face of the backrest, near the top right corner.",
+      "partRef": "backrest",
+      "coordinates": { "x": 0.18, "y": 0.75, "z": 0.2 },
+      "status": "confirmed",
+      "confidence": 0.8,
+      "evidenceRefs": ["ev_initial_inspection"],
+      "createdAt": "2026-05-14T09:39:00.000Z",
+      "updatedAt": "2026-05-14T09:39:00.000Z"
+    },
+    {
+      "id": "hyp_front_left_scuff",
+      "type": "Scuff Mark",
+      "description": "Multiple horizontal scuff marks on the front face of the front left leg.",
+      "partRef": "front_left_leg",
+      "coordinates": { "x": -0.235, "y": 0.2, "z": -0.245 },
+      "status": "confirmed",
+      "confidence": 0.8,
+      "evidenceRefs": ["ev_initial_inspection"],
+      "createdAt": "2026-05-14T09:40:00.000Z",
+      "updatedAt": "2026-05-14T09:40:00.000Z"
+    }
+  ],
+  "intent": {
+    "axes": [
+      { "id": "axis_1", "label": "Material Authenticity", "value": 0.35 },
+      { "id": "axis_2", "label": "Structural Performance", "value": 0.9 },
+      { "id": "axis_3", "label": "Economic Viability", "value": 0.5 },
+      { "id": "axis_4", "label": "Cultural Continuity", "value": 0.3 },
+      { "id": "axis_5", "label": "Ecological Sustainability", "value": 0.7 },
+      { "id": "axis_6", "label": "Aesthetic Intervention", "value": 0.45 }
+    ],
+    "summary": "Long-term thinker approach: repair the chair with durability and future maintainability in mind. Use high-strength materials (epoxy on the crack, polyurethane on the seat) and prefer modular, reversible fasteners (e.g. threaded inserts in place of glued dowels where the joint must be opened). Upgrade weak components — replace the plastic gliders with screw-on oak. The goal is a piece that lasts longer than the original and is easier to service the next time something fails."
+  },
+  "constraints": {
+    "tools_available": "workbench, heat gun, rubber mallet, bar clamps, power drill, drill press, orbital sander, dental pick, syringe, natural bristle brush, Allen key, screwdriver, sandpaper assortment",
+    "materials_available": "wood epoxy, oak stock, M6 stainless steel threaded inserts, M6 stainless steel bolts, stainless steel screws, polyurethane varnish, felt cushion, tack cloth",
+    "time_budget_minutes": 600,
+    "budget_limit": "moderate — quality fasteners and finishes preferred over the cheapest option",
+    "skill_level": "advanced",
+    "safety_level": "normal",
+    "allowed_operations": "disassemble, drill, sand, glue (epoxy), fasten, varnish",
+    "avoid_operations": "no irreversible joints where a mechanical alternative is reasonable",
+    "additional_constraints": "Where the original joint must be opened for repair, replace it with a serviceable mechanical fastener rather than re-gluing. Document the upgrade so the next intervention is straightforward."
+  },
+  "plans": [],
+  "currentPlanId": null,
+  "executionLog": [],
+  "conversations": [
+    {
+      "id": "thread_seed_global",
+      "scope": "global",
+      "ref": null,
+      "messages": [
+        {
+          "id": "msg_seed_1",
+          "role": "user",
+          "content": "Beech stacking chair, mostly sound but with a hairline crack at the top of the front right leg, a worn seat (scuffs, stains, a scratch), a small dent in the backrest, and scuffs on the front left leg. I want to repair it in a way that lasts — and ideally makes the next repair easier too. Modern materials are fine if they're more durable.",
+          "createdAt": "2026-05-14T09:45:00.000Z"
+        },
+        {
+          "id": "msg_seed_2",
+          "role": "assistant",
+          "content": "Good framing. The crack is the only structural concern — a low-viscosity wood epoxy will bond it back stronger than the surrounding fibres, and it lets us avoid removing material. The seat damage is all surface: a sand-back and a polyurethane finish will last far longer than the original lacquer. The dent and scuffs are minor, handled with steam and light sanding. One thing to flag: if we need to open the front right leg joint to clamp the crack properly, we could replace the glued dowels with M6 threaded inserts on reassembly — same strength, but the joint becomes serviceable. Worth doing on this chair?",
+          "createdAt": "2026-05-14T09:45:30.000Z"
+        },
+        {
+          "id": "msg_seed_3",
+          "role": "user",
+          "content": "Yes — do the threaded inserts. And while we're at it, the plastic gliders are due for replacement; let's go with screw-on oak ones so they're user-replaceable in future.",
+          "createdAt": "2026-05-14T09:46:00.000Z"
+        },
+        {
+          "id": "msg_seed_4",
+          "role": "assistant",
+          "content": "Understood. Threaded inserts on the front right leg joint and oak screw-on gliders on all four legs. With those upgrades plus the crack repair, seat refinish, dent steaming, and leg sanding, I have what I need. Ready to generate the plan when you are.",
+          "createdAt": "2026-05-14T09:46:30.000Z"
+        }
+      ],
+      "createdAt": "2026-05-14T09:45:00.000Z"
+    }
+  ],
+  "createdAt": "2026-05-14T09:00:00.000Z",
+  "updatedAt": "2026-05-14T09:46:30.000Z"
+}
