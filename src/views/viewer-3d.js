@@ -118,8 +118,10 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z, 0.5);
     const fov = camera.fov * Math.PI / 180;
-    let distance = maxDim / (2 * Math.tan(fov / 1.2));
-    distance *= 1.8;
+    // Standard "fit-to-view" distance, then back off so the object sits
+    // comfortably in the frame rather than touching the edges.
+    let distance = maxDim / (2 * Math.tan(fov / 2));
+    distance *= 2.4;
     const lookDir = new THREE.Vector3(-1, 0.5, -1).normalize();
     camera.position.copy(lookDir.multiplyScalar(distance).add(center));
     controls.target.copy(center);
