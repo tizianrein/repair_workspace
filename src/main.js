@@ -65,6 +65,9 @@ actionGraph = createActionGraph($('action-graph-canvas'), {
       chatSheet.setScope('step', stepId);
     } else {
       justificationPanel.clear();
+      // Full reset matching the 3D background-click behaviour
+      entityList.setSelection({ partId: null, hypothesisId: null });
+      if (viewer3D) viewer3D.select({ partId: null, hypothesisId: null });
       chatSheet.setScope('global');
     }
     quickActions.render();
@@ -73,7 +76,15 @@ actionGraph = createActionGraph($('action-graph-canvas'), {
 });
 
 spatialGraph = createSpatialGraph($('spatial-graph-canvas'), {
-  onDetail: target => openDetail(target)
+  onDetail: target => openDetail(target),
+  onBackgroundTap: () => {
+    entityList.setSelection({ partId: null, hypothesisId: null });
+    if (viewer3D) viewer3D.select({ partId: null, hypothesisId: null });
+    selectedStepId = null;
+    justificationPanel.clear();
+    chatSheet.setScope('global');
+    quickActions.render();
+  }
 });
 
 radar = createRadar($('radar-canvas'), $('axis-list'), $('intent-summary'), {

@@ -20,7 +20,7 @@ cytoscape.use(dagre);
 
 const NUM_COLUMNS = 8;
 
-export function createSpatialGraph(container, { onDetail }) {
+export function createSpatialGraph(container, { onDetail, onBackgroundTap }) {
   let cy = null;
 
   function render(workspace) {
@@ -196,6 +196,12 @@ export function createSpatialGraph(container, { onDetail }) {
       const id = evt.target.id();
       if (id.startsWith('part:'))      onDetail?.({ type: 'part',       id: id.slice(5) });
       else if (id.startsWith('hyp:'))  onDetail?.({ type: 'hypothesis', id: id.slice(4) });
+    });
+
+    // Tapping empty graph background → clear selection (caller decides what
+    // that means — typically reset chat scope to global).
+    cy.on('tap', evt => {
+      if (evt.target === cy) onBackgroundTap?.();
     });
   }
 

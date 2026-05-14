@@ -95,18 +95,44 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
           <input type="text" value="${escapeHtml(axis.label)}" data-kind="label" data-idx="${idx}">
           <input type="range" min="0" max="1" step="0.01" value="${axis.value}" data-kind="value" data-idx="${idx}">
         </div>
-        <div class="axis-value">${Math.round(axis.value * 100)}%</div>
+        <div class="axis-value" data-idx="${idx}">${Math.round(axis.value * 100)}%</div>
         <button class="mini-btn x" data-kind="remove" data-idx="${idx}">×</button>
       `;
       listContainer.appendChild(row);
     });
-    listContainer.querySelectorAll('input, button').forEach(n => {
-      n.addEventListener('input', onListInput);
-      n.addEventListener('click', onListInput);
+    // For sliders and text inputs, "input" fires continuously while the user
+    // is interacting. We update the underlying intent model and the radar
+    // canvas live, but DO NOT rebuild the DOM list — that would destroy the
+    // very element the user is dragging or typing in. Only "change" (fired
+    // when the user lets go / blurs / commits) triggers a full re-render.
+    listContainer.querySelectorAll('input').forEach(n => {
+      n.addEventListener('input', onListInputLive);
+      n.addEventListener('change', onListInputCommit);
+    });
+    listContainer.querySelectorAll('button').forEach(n => {
+      n.addEventListener('click', onListInputCommit);
     });
   }
 
-  function onListInput(e) {
+  function onListInputLive(e) {
+    const idx = Number(e.target.dataset.idx);
+    const kind = e.target.dataset.kind;
+    if (!Number.isFinite(idx)) return;
+    if (kind === 'label') {
+      intent.axes[idx].label = e.target.value;
+    } else if (kind === 'value') {
+      const v = Number(e.target.value);
+      intent.axes[idx].value = v;
+      // Live-update the percentage display next to the slider without
+      // re-rendering the entire list.
+      const valueEl = listContainer.querySelector(`.axis-value[data-idx="${idx}"]`);
+      if (valueEl) valueEl.textContent = `${Math.round(v * 100)}%`;
+    }
+    renderCanvas();
+    onChange?.(intent);
+  }
+
+  function onListInputCommit(e) {
     const idx = Number(e.target.dataset.idx);
     const kind = e.target.dataset.kind;
     if (!Number.isFinite(idx)) return;
