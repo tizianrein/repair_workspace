@@ -8,7 +8,7 @@
 }
 
 @media (min-width: 1100px) {
-  .app { grid-template-columns: 300px 1fr 340px; }
+  .app { grid-template-columns: 340px 1fr 340px; }
 }
 
 .drawer-left, .drawer-right {
@@ -241,7 +241,7 @@
   .fab-chat {
     display: grid;
     /* Position roughly centered between the two drawers. */
-    left: calc(300px + (100vw - 300px - 340px) / 2);
+    left: calc(340px + (100vw - 340px - 340px) / 2);
     transform: translateX(-50%);
   }
 }
@@ -409,7 +409,7 @@ body.chat-open .chat-sheet { transform: translateY(0); }
 
 @media (min-width: 1100px) {
   .chat-sheet {
-    left: 300px;
+    left: 340px;
     right: 340px;
     border-radius: 14px 14px 0 0;
     max-height: 65vh;
@@ -435,5 +435,5 @@ body.chat-open .chat-sheet { transform: translateY(0); }
 }
 
 @media (min-width: 1100px) {
-  .console { left: 308px; }
+  .console { left: 348px; }
 }

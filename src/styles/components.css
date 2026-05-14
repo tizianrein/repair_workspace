@@ -163,6 +163,9 @@
   border-radius: var(--radius);
   padding: 6px 8px;
   font-size: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;     /* allow shrinking inside flex/grid */
 }
 .field input:focus, .field select:focus, .field textarea:focus {
   outline: none; border-color: var(--ink);

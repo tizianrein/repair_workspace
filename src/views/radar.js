@@ -11,12 +11,16 @@
 export function createRadar(canvas, listContainer, summaryTextarea, { onChange }) {
   let intent = null;
   let dragging = false;
+  let interacting = false;   // true while user is mid-drag / mid-type
 
   function render(workspace) {
     intent = JSON.parse(JSON.stringify(workspace.intent));
-    summaryTextarea.value = intent.summary || '';
+    // Don't clobber the user's input while they're using it.
+    if (!interacting) {
+      summaryTextarea.value = intent.summary || '';
+    }
     renderCanvas();
-    renderList();
+    if (!interacting) renderList();
   }
 
   function renderCanvas() {
@@ -24,9 +28,10 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    // Polygon takes ~28% of canvas; labels need room outside (offset 38px
-    // + up to 130px wrap width / 2 on each side).
-    const cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.28;
+    // Polygon is small (24% of canvas); labels need room outside (offset
+    // ~38px + label width). We clamp label x positions so multi-line wrapped
+    // labels can't extend past the canvas edges regardless of alignment.
+    const cx = w / 2, cy = h / 2, r = Math.min(w, h) * 0.24;
     const axes = intent.axes;
     const n = Math.max(axes.length, 3);
 
@@ -44,6 +49,9 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
       ctx.stroke();
     }
 
+    const LABEL_W = 150;        // wrap width in canvas px
+    const LABEL_MARGIN = 6;     // keep this far from canvas edge
+
     axes.forEach((axis, i) => {
       const a = -Math.PI / 2 + i * (Math.PI * 2 / n);
       ctx.beginPath();
@@ -53,11 +61,17 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
 
       ctx.fillStyle = '#1a1a1a';
       ctx.font = '20px "JetBrains Mono", monospace';
-      const lx = cx + Math.cos(a) * (r + 42);
-      const ly = cy + Math.sin(a) * (r + 42);
-      ctx.textAlign = lx > cx + 6 ? 'left' : lx < cx - 6 ? 'right' : 'center';
+      let lx = cx + Math.cos(a) * (r + 40);
+      const ly = cy + Math.sin(a) * (r + 40);
+      const align = lx > cx + 6 ? 'left' : lx < cx - 6 ? 'right' : 'center';
+      // Clamp so the wrapped label can't extend past the canvas:
+      //   left-aligned text grows rightward from lx → cap lx at (w - LABEL_W - margin)
+      //   right-aligned text grows leftward from lx → keep lx at >= (LABEL_W + margin)
+      if (align === 'left')  lx = Math.min(lx, w - LABEL_W - LABEL_MARGIN);
+      if (align === 'right') lx = Math.max(lx, LABEL_W + LABEL_MARGIN);
+      ctx.textAlign = align;
       ctx.textBaseline = ly > cy + 6 ? 'top' : ly < cy - 6 ? 'bottom' : 'middle';
-      wrap(ctx, axis.label, lx, ly, 130, 22);
+      wrap(ctx, axis.label, lx, ly, LABEL_W, 22);
     });
 
     ctx.fillStyle = 'rgba(193,39,45,.18)';
@@ -108,6 +122,19 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
     listContainer.querySelectorAll('input').forEach(n => {
       n.addEventListener('input', onListInputLive);
       n.addEventListener('change', onListInputCommit);
+      if (n.type === 'range') {
+        // Sliders capture pointer during drag. The interaction starts on
+        // pointerdown and ends on pointerup (caught either on the slider
+        // or via the window-level failsafe).
+        n.addEventListener('pointerdown', () => { interacting = true; });
+        n.addEventListener('pointerup',   () => { interacting = false; renderList(); });
+      } else {
+        // Text inputs: interaction starts on focus and ends on blur.
+        // Don't use pointerdown/up — releasing the mouse inside a text
+        // field doesn't mean typing is finished.
+        n.addEventListener('focus', () => { interacting = true; });
+        n.addEventListener('blur',  () => { interacting = false; renderList(); });
+      }
     });
     listContainer.querySelectorAll('button').forEach(n => {
       n.addEventListener('click', onListInputCommit);
@@ -153,7 +180,7 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
     const normalized = (angle + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2);
     const n = intent.axes.length;
     const idx = Math.round(normalized / (Math.PI * 2 / n)) % n;
-    const r = Math.min(canvas.width, canvas.height) * 0.32;
+    const r = Math.min(canvas.width, canvas.height) * 0.24;
     const dist = Math.min(1, Math.hypot(x - cx, y - cy) / r);
     return { idx, value: Math.max(0, Math.min(1, dist)) };
   }
@@ -178,6 +205,8 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
   });
   window.addEventListener('pointerup', () => { dragging = false; });
 
+  summaryTextarea.addEventListener('focus', () => { interacting = true; });
+  summaryTextarea.addEventListener('blur',  () => { interacting = false; });
   summaryTextarea.addEventListener('input', () => {
     intent.summary = summaryTextarea.value;
     onChange?.(intent);
@@ -189,6 +218,18 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
     renderList();
     onChange?.(intent);
   }
+
+  // Failsafe (bound once per radar instance): if the pointer is released
+  // anywhere on the page, release the interacting flag — UNLESS the user
+  // currently has a text input focused (typing isn't a pointer interaction).
+  window.addEventListener('pointerup', () => {
+    if (!interacting) return;
+    const active = document.activeElement;
+    if (active && active.tagName === 'INPUT' && active.type === 'text') return;
+    if (active && active.tagName === 'TEXTAREA') return;
+    interacting = false;
+    renderList();
+  });
 
   return { render, addAxis };
 }
