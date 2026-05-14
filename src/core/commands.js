@@ -232,7 +232,7 @@ defineCommand('set-plan-status', (ws, { planId, status }) => {
 
 defineCommand('upsert-step', (ws, { planId, step }) => {
   const idx = ws.plans.findIndex(p => p.id === planId);
-  if (idx < 0) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
+  if (idx < 0) throw new Error(`upsert-step: no plan with id "${planId}" — make sure add-plan created it first, and that the planId matches`);
   const plan = ws.plans[idx];
   const stepIdx = plan.steps.findIndex(s => s.id === step.id);
   const prev = stepIdx >= 0 ? plan.steps[stepIdx] : null;
@@ -270,7 +270,7 @@ defineCommand('remove-step', (ws, { planId, stepId }) => {
 
 defineCommand('add-edge', (ws, { planId, source, target }) => {
   const idx = ws.plans.findIndex(p => p.id === planId);
-  if (idx < 0) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
+  if (idx < 0) throw new Error(`add-edge: no plan with id "${planId}"`);
   const plan = ws.plans[idx];
   if (plan.edges.find(e => e.source === source && e.target === target)) {
     return { workspace: ws, inverse: { type: 'noop', payload: {} } };
@@ -298,7 +298,7 @@ defineCommand('remove-edge', (ws, { planId, edgeId }) => {
 
 defineCommand('add-mutex-group', (ws, { planId, stepIds, label }) => {
   const idx = ws.plans.findIndex(p => p.id === planId);
-  if (idx < 0) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
+  if (idx < 0) throw new Error(`add-mutex-group: no plan with id "${planId}"`);
   const plan = ws.plans[idx];
   if (!Array.isArray(stepIds) || stepIds.length < 2) {
     throw new Error(`add-mutex-group: stepIds must be an array of at least 2 step IDs (got ${JSON.stringify(stepIds)})`);

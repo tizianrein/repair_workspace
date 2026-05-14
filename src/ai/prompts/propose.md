@@ -50,10 +50,11 @@ Each command in `commands` is one of the types listed below. Pick the most speci
 
 ### When scope is "interventions" or "all"
 
-- `add-plan` — create a new plan. Set `status: "draft"`. Steps and edges go inside the plan object.
+- `add-plan` — create a new plan. Set `status: "draft"`. **Always inline all steps, edges, and mutex groups in the plan object itself.** Do not split a plan into add-plan + many upsert-step + add-edge follow-ups — that pattern frequently breaks. One self-contained `add-plan` command is correct.
   ```json
-  { "type": "add-plan", "payload": { "plan": { "label": "Conservative repair", "status": "draft", "steps": [...], "edges": [...], "mutexGroups": [...] } } }
+  { "type": "add-plan", "payload": { "plan": { "id": "plan_main", "label": "Conservative repair", "status": "draft", "steps": [...], "edges": [...], "mutexGroups": [...] } } }
   ```
+  Always set an explicit `id` field on the plan (any unique string like `plan_main` or `plan_2`). When you reference this plan in later commands (e.g. `select-mutex-branch`, `upsert-step`), use that same id. Steps inside the plan also need explicit `id` fields — these are referenced by edges and mutex groups.
 
   Each step:
   ```json
