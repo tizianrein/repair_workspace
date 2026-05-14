@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Repair Workspace</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛠️</text></svg>">
+  <meta name="theme-color" content="#1a1a1a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="stylesheet" href="./styles/tokens.css" />
+  <link rel="stylesheet" href="./styles/shell.css" />
+  <link rel="stylesheet" href="./styles/components.css" />
+</head>
+<body>
+
+<div class="app">
+
+  <aside class="drawer-left" id="drawer-left">
+    <header class="brand">
+      <div class="brand-mark">◐</div>
+      <div class="brand-text">
+        <div class="brand-title">Repair Workspace</div>
+        <div class="brand-sub" id="brand-sub">v2 · graph-driven</div>
+      </div>
+      <button class="drawer-close" data-close="left" title="Close">✕</button>
+    </header>
+
+    <div class="drawer-body">
+      <div class="section">
+        <div class="section-label">Object</div>
+        <input id="object-name" class="object-input" type="text" placeholder="Enter object name…" />
+        <div class="section-mini-stats" id="object-stats">— parts · — hypotheses</div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Data</div>
+        <div class="data-grid">
+          <button class="data-btn" id="load-workspace-btn"><span>📂</span> Load JSON</button>
+          <button class="data-btn" id="download-state-btn"><span>💾</span> Save JSON</button>
+          <button class="data-btn" id="load-example-btn"><span>🪑</span> Load example</button>
+          <button class="data-btn" id="reset-btn"><span>↺</span> Reset</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Repair intent</div>
+        <div class="radar-wrap">
+          <canvas id="radar-canvas" width="540" height="540"></canvas>
+        </div>
+        <div class="intent-summary-card">
+          <textarea id="intent-summary" placeholder="Intent summary appears here…"></textarea>
+        </div>
+        <div class="intent-actions">
+          <button class="mini-btn" id="add-axis-btn">+ axis</button>
+          <button class="mini-btn" id="reset-intent-btn">↺ reset</button>
+        </div>
+        <div class="axis-list" id="axis-list"></div>
+      </div>
+
+      <div class="section collapsed" id="constraints-section">
+        <div class="section-label" data-toggle="constraints-section">Constraints <span class="chev">▾</span></div>
+        <div class="section-content">
+          <div class="field"><label>Tools available</label><input id="tools-available" type="text"></div>
+          <div class="field"><label>Materials available</label><input id="materials-available" type="text"></div>
+          <div class="field-row">
+            <div class="field"><label>Time (min)</label><input id="time-budget" type="number" min="0" step="5" value="60"></div>
+            <div class="field"><label>Budget</label><input id="budget-limit" type="text"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><label>Skill</label><select id="skill-level"><option>basic</option><option selected>intermediate</option><option>advanced</option></select></div>
+            <div class="field"><label>Safety</label><select id="safety-level"><option>low</option><option selected>normal</option><option>strict</option></select></div>
+          </div>
+          <div class="field"><label>Allowed operations</label><input id="allowed-ops" type="text"></div>
+          <div class="field"><label>Avoid operations</label><input id="avoid-ops" type="text"></div>
+          <div class="field"><label>Additional constraints</label><textarea id="additional-constraints"></textarea></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Plan versions</div>
+        <div class="versions-list" id="versions-list">
+          <div class="entity-empty">No plans yet.</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="viewer-area">
+    <div class="tab-bar" role="tablist">
+      <div class="tab-bar-inner">
+        <button class="tab active" data-pane="pane-3d">Proxy</button>
+        <button class="tab" data-pane="pane-spatial">Spatial</button>
+        <button class="tab" data-pane="pane-action">Action</button>
+      </div>
+    </div>
+
+    <div class="tab-content">
+      <div class="pane" id="pane-action">
+        <div id="action-graph-canvas"></div>
+        <div class="hud-tr">
+          <button class="hud-btn" id="action-fit" title="Fit to view">⤢</button>
+        </div>
+        <aside class="justification-panel" id="justification-panel"></aside>
+      </div>
+
+      <div class="pane" id="pane-spatial">
+        <div id="spatial-graph-canvas"></div>
+        <div class="hud-tr">
+          <button class="hud-btn" id="spatial-fit" title="Fit to view">⤢</button>
+        </div>
+      </div>
+
+      <div class="pane active" id="pane-3d">
+        <div id="viewer-3d">
+          <canvas id="viewer-canvas"></canvas>
+          <div id="info-box"></div>
+          <div class="hud-tr">
+            <button class="hud-btn" id="explode-btn" title="Explode view">💥</button>
+            <button class="hud-btn" id="restore-btn" title="Restore">↩️</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="drawer-right" id="drawer-right">
+    <header class="list-head">
+      <h2>Parts &amp; hypotheses</h2>
+      <span class="list-count" id="entity-count">0</span>
+      <button class="drawer-close" data-close="right" title="Close">✕</button>
+    </header>
+
+    <div class="list-tools">
+      <input id="entity-search" type="search" placeholder="Search parts and hypotheses…" />
+      <select id="entity-filter">
+        <option value="all">All</option>
+        <option value="parts">Parts only</option>
+        <option value="hypotheses">Hypotheses only</option>
+        <option value="defective">Defective parts</option>
+        <option value="missing">Missing parts</option>
+        <option value="suspected">Suspected hypotheses</option>
+        <option value="confirmed">Confirmed hypotheses</option>
+      </select>
+    </div>
+
+    <div class="entity-list" id="entity-list">
+      <div class="entity-empty">Load an example or workspace JSON.</div>
+    </div>
+
+    <div class="list-footer" id="list-footer">— · — · —</div>
+  </aside>
+
+</div>
+
+<button class="fab fab-left" id="fab-left" aria-label="Open workspace">☰</button>
+<button class="fab fab-chat" id="fab-chat" aria-label="Open chat" title="Chat (pass 2b)">💬<span class="fab-badge" id="fab-chat-badge" hidden></span></button>
+<button class="fab fab-right" id="fab-right" aria-label="Open parts list">📋<span class="fab-badge" id="fab-right-badge" hidden>0</span></button>
+
+<div class="backdrop" id="backdrop"></div>
+
+<div class="chat-sheet" id="chat-sheet">
+  <div class="chat-handle" id="chat-handle"></div>
+  <div class="chat-head">
+    <div class="scope-pill global" id="chat-scope">GLOBAL</div>
+    <div class="chat-title" id="chat-title">Discuss the repair</div>
+    <button class="chat-close" id="chat-close">✕</button>
+  </div>
+  <div class="chat-history" id="chat-history">
+    <div class="chat-system">Type a message or attach a photo to begin</div>
+  </div>
+  <div class="chat-input-row">
+    <button class="chat-camera-btn" id="chat-camera-btn" title="Attach photo">📷</button>
+    <input id="chat-input" type="text" placeholder="Ask, instruct, or describe what you see…" />
+    <button class="chat-send" id="chat-send">↑</button>
+  </div>
+  <div class="quick-actions" id="quick-actions"></div>
+</div>
+
+<div class="modal" id="detail-modal">
+  <div class="modal-card">
+    <div class="modal-head"><h3 id="detail-title">Detail</h3><button class="icon-btn" data-close-modal="detail-modal">✕</button></div>
+    <div class="modal-body">
+      <div class="detail-grid" id="detail-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="console" id="console-output">Repair Workspace ready.</div>
+
+<input type="file" id="workspace-file" accept=".json" hidden>
+<input type="file" id="chat-photo-file" accept="image/*" multiple hidden>
+
+<script type="module" src="./main.js"></script>
+
+</body>
+</html>

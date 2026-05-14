@@ -1,0 +1,477 @@
+{
+  "schemaVersion": "2.0.0",
+  "template": null,
+  "instance": {
+    "id": "inst_mp5aeov3002",
+    "name": "santo_04",
+    "templateRef": null,
+    "parts": [
+      {
+        "id": "front_left_leg",
+        "label": "Front Left Leg",
+        "origin": {
+          "x": -0.235,
+          "y": 0.221,
+          "z": -0.2225
+        },
+        "dimensions": {
+          "width": 0.03,
+          "height": 0.426,
+          "depth": 0.045
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "front_apron",
+          "left_side_apron",
+          "seat",
+          "front_left_glider_new"
+        ],
+        "material": "timber",
+        "status": "defective",
+        "notes": ""
+      },
+      {
+        "id": "front_right_leg",
+        "label": "Front Right Leg",
+        "origin": {
+          "x": 0.235,
+          "y": 0.221,
+          "z": -0.2225
+        },
+        "dimensions": {
+          "width": 0.03,
+          "height": 0.426,
+          "depth": 0.045
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "front_apron",
+          "right_side_apron",
+          "seat",
+          "front_right_glider_new"
+        ],
+        "material": "timber",
+        "status": "defective",
+        "notes": ""
+      },
+      {
+        "id": "back_left_leg",
+        "label": "Back Left Leg",
+        "origin": {
+          "x": -0.235,
+          "y": 0.384,
+          "z": 0.2225
+        },
+        "dimensions": {
+          "width": 0.03,
+          "height": 0.752,
+          "depth": 0.045
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "back_apron",
+          "left_side_apron",
+          "seat",
+          "backrest",
+          "back_left_glider_new"
+        ],
+        "material": "timber",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "back_right_leg",
+        "label": "Back Right Leg",
+        "origin": {
+          "x": 0.235,
+          "y": 0.384,
+          "z": 0.2225
+        },
+        "dimensions": {
+          "width": 0.03,
+          "height": 0.752,
+          "depth": 0.045
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "back_apron",
+          "right_side_apron",
+          "seat",
+          "backrest",
+          "back_right_glider_new"
+        ],
+        "material": "timber",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "front_apron",
+        "label": "Front Apron",
+        "origin": {
+          "x": 0,
+          "y": 0.404,
+          "z": -0.2315
+        },
+        "dimensions": {
+          "width": 0.44,
+          "height": 0.06,
+          "depth": 0.027
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "front_left_leg",
+          "front_right_leg",
+          "seat"
+        ],
+        "material": "timber",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "back_apron",
+        "label": "Back Apron",
+        "origin": {
+          "x": 0,
+          "y": 0.404,
+          "z": 0.2315
+        },
+        "dimensions": {
+          "width": 0.44,
+          "height": 0.06,
+          "depth": 0.027
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "back_left_leg",
+          "back_right_leg",
+          "seat"
+        ],
+        "material": "timber",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "left_side_apron",
+        "label": "Left Side Apron",
+        "origin": {
+          "x": -0.2065,
+          "y": 0.404,
+          "z": 0
+        },
+        "dimensions": {
+          "width": 0.027,
+          "height": 0.06,
+          "depth": 0.436
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "front_left_leg",
+          "back_left_leg",
+          "seat"
+        ],
+        "material": "timber",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "right_side_apron",
+        "label": "Right Side Apron",
+        "origin": {
+          "x": 0.2065,
+          "y": 0.404,
+          "z": 0
+        },
+        "dimensions": {
+          "width": 0.027,
+          "height": 0.06,
+          "depth": 0.436
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "front_right_leg",
+          "back_right_leg",
+          "seat"
+        ],
+        "material": "timber",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "seat",
+        "label": "Seat",
+        "origin": {
+          "x": 0,
+          "y": 0.437,
+          "z": 0
+        },
+        "dimensions": {
+          "width": 0.44,
+          "height": 0.006,
+          "depth": 0.49
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "front_left_leg",
+          "front_right_leg",
+          "back_left_leg",
+          "back_right_leg",
+          "front_apron",
+          "back_apron",
+          "left_side_apron",
+          "right_side_apron",
+          "seat_cushion"
+        ],
+        "material": "timber",
+        "status": "defective",
+        "notes": ""
+      },
+      {
+        "id": "backrest",
+        "label": "Backrest",
+        "origin": {
+          "x": 0,
+          "y": 0.705,
+          "z": 0.225
+        },
+        "dimensions": {
+          "width": 0.44,
+          "height": 0.11,
+          "depth": 0.05
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "back_left_leg",
+          "back_right_leg"
+        ],
+        "material": "timber",
+        "status": "defective",
+        "notes": ""
+      },
+      {
+        "id": "front_left_glider_new",
+        "label": "Front Left Glider New",
+        "origin": {
+          "x": -0.235,
+          "y": 0.004,
+          "z": -0.2225
+        },
+        "dimensions": {
+          "width": 0.025,
+          "height": 0.008,
+          "depth": 0.04
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "front_left_leg"
+        ],
+        "material": "oak",
+        "status": "new",
+        "notes": ""
+      },
+      {
+        "id": "front_right_glider_new",
+        "label": "Front Right Glider New",
+        "origin": {
+          "x": 0.235,
+          "y": 0.004,
+          "z": -0.2225
+        },
+        "dimensions": {
+          "width": 0.025,
+          "height": 0.008,
+          "depth": 0.04
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "front_right_leg"
+        ],
+        "material": "oak",
+        "status": "new",
+        "notes": ""
+      },
+      {
+        "id": "back_left_glider_new",
+        "label": "Back Left Glider New",
+        "origin": {
+          "x": -0.235,
+          "y": 0.004,
+          "z": 0.2225
+        },
+        "dimensions": {
+          "width": 0.025,
+          "height": 0.008,
+          "depth": 0.04
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "back_left_leg"
+        ],
+        "material": "oak",
+        "status": "new",
+        "notes": ""
+      },
+      {
+        "id": "back_right_glider_new",
+        "label": "Back Right Glider New",
+        "origin": {
+          "x": 0.235,
+          "y": 0.004,
+          "z": 0.2225
+        },
+        "dimensions": {
+          "width": 0.025,
+          "height": 0.008,
+          "depth": 0.04
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "back_right_leg"
+        ],
+        "material": "oak",
+        "status": "new",
+        "notes": ""
+      },
+      {
+        "id": "seat_cushion",
+        "label": "Seat Cushion",
+        "origin": {
+          "x": 0,
+          "y": 0.445,
+          "z": 0
+        },
+        "dimensions": {
+          "width": 0.3,
+          "height": 0.01,
+          "depth": 0.3
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "seat"
+        ],
+        "material": "felt",
+        "status": "new",
+        "notes": ""
+      }
+    ],
+    "location": null,
+    "provenance": null,
+    "notes": "",
+    "createdAt": "2026-05-14T09:29:40.959Z"
+  },
+  "evidence": [],
+  "hypotheses": [
+    {
+      "id": "hyp_mp5aeov3003",
+      "type": "Scratch",
+      "description": "Default scratch on the top surface.",
+      "partRef": "cube",
+      "coordinates": {
+        "x": 0,
+        "y": 0.5,
+        "z": 0
+      },
+      "status": "suspected",
+      "confidence": 0.6,
+      "evidenceRefs": [],
+      "createdAt": "2026-05-14T09:29:40.959Z",
+      "updatedAt": "2026-05-14T09:29:40.959Z"
+    }
+  ],
+  "intent": {
+    "axes": [
+      {
+        "id": "axis_1",
+        "label": "Material Authenticity",
+        "value": 0.28710358897477417
+      },
+      {
+        "id": "axis_2",
+        "label": "Structural Performance",
+        "value": 0.24824889665601646
+      },
+      {
+        "id": "axis_3",
+        "label": "Economic Viability",
+        "value": 0.3904921728781302
+      }
+    ],
+    "summary": "Balanced repair with moderate emphasis on structural performance and reasonable reversibility."
+  },
+  "constraints": {
+    "tools_available": "",
+    "materials_available": "",
+    "time_budget_minutes": 60,
+    "budget_limit": "",
+    "skill_level": "intermediate",
+    "safety_level": "normal",
+    "allowed_operations": "",
+    "avoid_operations": "",
+    "additional_constraints": ""
+  },
+  "plans": [],
+  "currentPlanId": null,
+  "executionLog": [],
+  "conversations": [],
+  "createdAt": "2026-05-14T09:29:40.959Z",
+  "updatedAt": "2026-05-14T09:29:40.959Z"
+}

@@ -1,0 +1,75 @@
+:root {
+  --bg:        #f4f3ef;
+  --bg-panel:  #ffffff;
+  --bg-soft:   #ecebe6;
+  --ink:       #1a1a1a;
+  --ink-soft:  #5a5a55;
+  --ink-mute:  #8a8a83;
+  --line:      #1a1a1a;
+  --line-soft: #d6d4cc;
+
+  --accent:        #c1272d;
+  --accent-soft:   #f4d2d4;
+  --accent-deep:   #7a1418;
+
+  --info:          #1f4e79;
+  --info-soft:     #cfe0ee;
+  --warn:          #b87a00;
+
+  --intact:    #d0d0d0;
+  --defective: #ff4d4d;
+  --missing:   #ffde59;
+  --newpart:   #c000ff;
+
+  --shadow-fab: 0 6px 16px rgba(26,26,26,.25);
+  --shadow-card: 0 12px 28px -16px rgba(26,26,26,.35);
+
+  --radius: 4px;
+  --radius-lg: 8px;
+
+  --mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --sans: "Inter Tight", "Helvetica Neue", system-ui, -apple-system, sans-serif;
+  --display: "Fraunces", "Times New Roman", Georgia, serif;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("https://cdn.jsdelivr.net/gh/JetBrains/JetBrainsMono@v2.304/fonts/webfonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Fraunces";
+  src: url("https://cdn.jsdelivr.net/fontsource/fonts/fraunces@latest/latin-500-normal.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter Tight";
+  src: url("https://cdn.jsdelivr.net/fontsource/fonts/inter-tight@latest/latin-400-normal.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter Tight";
+  src: url("https://cdn.jsdelivr.net/fontsource/fonts/inter-tight@latest/latin-500-normal.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+button { font-family: inherit; }
+input, select, textarea { font-family: inherit; color: var(--ink); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--line-soft); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ink-mute); }
+::-webkit-scrollbar-track { background: transparent; }
