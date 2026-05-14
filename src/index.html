@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Repair Workspace</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛠️</text></svg>">
   <meta name="theme-color" content="#1a1a1a" />
@@ -123,6 +123,20 @@
           <div id="info-box"></div>
           <div class="hud-tr">
             <button class="hud-btn" id="explode-btn" title="Explode view">💥</button>
+          </div>
+          <div class="viewer-empty" id="viewer-empty" hidden>
+            <div class="viewer-empty-inner">
+              <div class="viewer-empty-title">No artefact loaded</div>
+              <div class="viewer-empty-text">
+                Load an example from the left drawer, upload a workspace JSON,
+                or describe an artefact in the chat to extract its assembly.
+              </div>
+              <div class="viewer-empty-hints">
+                <span class="viewer-empty-hint">← Load example</span>
+                <span class="viewer-empty-hint">← Load JSON</span>
+                <span class="viewer-empty-hint">↘ Chat: "extract assembly"</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

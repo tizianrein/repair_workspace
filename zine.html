@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Repair Workspace — Zine Export</title>
+<style>
+  /* ============================================================
+     Fonts — same family as the main app for consistency
+     ============================================================ */
+  @import url('https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --ink: #1a1a1a;
+    --ink-soft: #444;
+    --ink-mute: #888;
+    --bg: #f4f3ef;
+    --bg-panel: #fff;
+    --line: #d6d4cc;
+    --line-soft: #e8e6df;
+    --accent: #c1272d;
+    --info: #1f4e79;
+    --display: 'Fraunces', Georgia, serif;
+    --sans: 'Inter Tight', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink); font-family: var(--sans); }
+
+  /* ============================================================
+     Setup form — shown only when no workspace loaded yet
+     ============================================================ */
+  .setup {
+    max-width: 720px;
+    margin: 60px auto;
+    padding: 40px;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  .setup h1 { font-family: var(--display); font-size: 28px; margin-bottom: 8px; }
+  .setup .sub { color: var(--ink-soft); margin-bottom: 24px; }
+  .setup label { display: block; margin-bottom: 14px; font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-mute); }
+  .setup input[type=text], .setup textarea {
+    width: 100%; padding: 8px 10px; margin-top: 4px;
+    border: 1px solid var(--line); border-radius: 4px;
+    font-family: var(--sans); font-size: 14px;
+  }
+  .setup textarea { min-height: 60px; resize: vertical; }
+  .setup input[type=file] {
+    display: block; margin-top: 4px;
+    font-family: var(--mono); font-size: 12px;
+  }
+  .setup .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .setup button {
+    background: var(--ink); color: white; border: 0;
+    padding: 10px 20px; border-radius: 4px;
+    font-family: var(--mono); font-size: 12px; cursor: pointer;
+    letter-spacing: 0.05em; margin-top: 20px;
+  }
+  .setup button:hover { background: var(--accent); }
+  .setup .hint { font-size: 12px; color: var(--ink-mute); margin-top: 6px; font-family: var(--sans); text-transform: none; letter-spacing: 0; }
+  .setup .info-box {
+    background: var(--bg); padding: 12px 14px; border-radius: 4px;
+    font-size: 13px; line-height: 1.5; color: var(--ink-soft);
+    margin-bottom: 20px;
+  }
+  .setup .info-box strong { color: var(--ink); }
+
+  /* ============================================================
+     Print button (visible only after loaded)
+     ============================================================ */
+  .top-bar {
+    position: fixed; top: 12px; right: 12px; z-index: 100;
+    display: flex; gap: 8px;
+  }
+  .top-bar button {
+    background: var(--ink); color: white; border: 0;
+    padding: 10px 16px; border-radius: 4px;
+    font-family: var(--mono); font-size: 11px; cursor: pointer;
+    letter-spacing: 0.05em;
+  }
+  .top-bar button:hover { background: var(--accent); }
+  .top-bar button.secondary { background: white; color: var(--ink); border: 1px solid var(--line); }
+
+  /* ============================================================
+     ZINE SHEET — A4 landscape, 2×4 grid of panels
+     -----------------------------------------------------------
+     One sheet of A4 paper, landscape orientation, printed
+     single-sided. After printing, fold and cut to make an
+     8-panel booklet:
+        1. Fold the sheet in half along the long edge (landscape
+           becomes a smaller landscape).
+        2. Fold again in half along the long edge.
+        3. Fold again along the short edge.
+        4. Unfold. Cut the central horizontal crease ONLY in the
+           middle section (between top and bottom rows).
+        5. Fold the sheet in half along the long edge again.
+        6. Push the ends together to form a + shape, then collapse
+           into a booklet.
+
+     The panel positions on the flat sheet must be in a specific
+     "scrambled" order so they end up in reading order in the
+     folded booklet. Standard 8-page mini zine layout:
+
+        +---------+---------+---------+---------+
+        |  P5     |  P4     |  P3     |  P2     |   (top row, UPSIDE DOWN)
+        | (upside)|         |         |         |
+        +---------+---------+---------+---------+
+        |  COVER  |  P1     |  P6     |  P7     |   (bottom row, RIGHT WAY UP)
+        | (back)  |         |         |         |
+        +---------+---------+---------+---------+
+
+     Hmm actually: standard layout puts back-cover-top-left,
+     front-cover-bottom-left (both flipped/normal accordingly).
+     For simplicity in this MVP we render everything right-way-up.
+     The participant can fold and we add fold/cut guide lines.
+     ============================================================ */
+
+  .zine-sheet {
+    /* A4 landscape: 297mm × 210mm */
+    width: 297mm;
+    height: 210mm;
+    background: white;
+    margin: 20px auto;
+    box-shadow: 0 4px 30px rgba(0,0,0,0.15);
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: 1fr 1fr;
+    position: relative;
+    page-break-after: always;
+    overflow: hidden;
+  }
+
+  /* Faint guide lines on screen for the fold + cut */
+  .fold-lines {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 50;
+  }
+  .fold-lines .fold-v {
+    position: absolute; top: 0; bottom: 0; width: 0;
+    border-left: 1px dashed #b8b4a8;
+  }
+  .fold-lines .fold-h {
+    position: absolute; left: 0; right: 0; height: 0;
+    border-top: 1px dashed #b8b4a8;
+  }
+  .fold-lines .cut {
+    position: absolute; height: 0;
+    border-top: 1.5px solid var(--accent);
+    top: 50%;
+  }
+  .fold-lines .label {
+    position: absolute; font-family: var(--mono); font-size: 9px;
+    color: var(--ink-mute); background: white; padding: 0 4px;
+  }
+
+  /* Panel base styles */
+  .panel {
+    padding: 10mm 9mm;
+    border: 0.25mm dotted #ddd;     /* very faint cell boundary for layout sanity */
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: white;
+  }
+  .panel-num {
+    position: absolute;
+    top: 4mm; right: 5mm;
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--ink-mute);
+    letter-spacing: 0.1em;
+  }
+
+  /* ============ Panel-specific layouts ============ */
+
+  /* Cover */
+  .panel.cover { background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%); color: white; }
+  .panel.cover .panel-num { color: rgba(255,255,255,0.5); }
+  .panel.cover h1 {
+    font-family: var(--display);
+    font-size: 22pt;
+    font-weight: 500;
+    line-height: 1.05;
+    margin-bottom: 8mm;
+  }
+  .panel.cover .object-name {
+    font-family: var(--mono);
+    font-size: 11pt;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 4mm;
+  }
+  .panel.cover .participant {
+    font-family: var(--display);
+    font-size: 14pt;
+    margin-top: auto;
+    margin-bottom: 2mm;
+  }
+  .panel.cover .meta {
+    font-family: var(--mono);
+    font-size: 8pt;
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 0.05em;
+  }
+  .panel.cover .workshop-title {
+    font-family: var(--mono);
+    font-size: 9pt;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: rgba(255,255,255,0.7);
+    margin-bottom: 6mm;
+  }
+
+  /* Section header style for inner panels */
+  .panel h2 {
+    font-family: var(--mono);
+    font-size: 9pt;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    margin-bottom: 5mm;
+    padding-bottom: 2mm;
+    border-bottom: 0.4mm solid var(--line);
+  }
+  .panel h3 {
+    font-family: var(--display);
+    font-size: 13pt;
+    font-weight: 500;
+    line-height: 1.2;
+    margin-bottom: 4mm;
+  }
+  .panel p { font-size: 9.5pt; line-height: 1.4; color: var(--ink); margin-bottom: 3mm; }
+  .panel .small { font-size: 8pt; color: var(--ink-soft); line-height: 1.35; }
+
+  /* Conditions list panel */
+  .conditions-list { list-style: none; padding: 0; margin: 0; }
+  .conditions-list li {
+    font-size: 9pt;
+    line-height: 1.35;
+    padding: 2mm 0;
+    border-bottom: 0.2mm solid var(--line-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5mm;
+  }
+  .conditions-list .c-head { display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; }
+  .conditions-list .c-type { font-family: var(--display); font-weight: 500; font-size: 10pt; }
+  .conditions-list .c-status {
+    font-family: var(--mono); font-size: 7.5pt; text-transform: uppercase;
+    letter-spacing: 0.05em; padding: 0.5mm 2mm; border-radius: 1mm;
+    background: var(--bg); color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  .conditions-list .c-status.confirmed { background: var(--accent); color: white; }
+  .conditions-list .c-part { font-family: var(--mono); font-size: 7.5pt; color: var(--ink-mute); }
+  .conditions-list .c-desc { font-size: 8.5pt; color: var(--ink-soft); }
+
+  /* Radar panel */
+  .radar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .radar-wrap svg { max-width: 100%; max-height: 100%; }
+
+  /* Intent summary panel */
+  .intent-summary-text {
+    font-family: var(--display);
+    font-size: 10pt;
+    line-height: 1.45;
+    color: var(--ink);
+  }
+  .intent-axes-mini {
+    margin-top: auto;
+    padding-top: 5mm;
+    border-top: 0.3mm solid var(--line);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1mm 4mm;
+    font-family: var(--mono);
+    font-size: 7pt;
+    color: var(--ink-soft);
+  }
+  .intent-axes-mini .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .intent-axes-mini .value { text-align: right; color: var(--ink); }
+
+  /* Plan panel */
+  .plan-empty {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; flex: 1;
+    color: var(--ink-mute);
+    font-style: italic;
+    padding: 0 6mm;
+  }
+  .plan-steps { list-style: none; padding: 0; margin: 0; counter-reset: step; }
+  .plan-steps li {
+    font-size: 8.5pt;
+    line-height: 1.35;
+    padding: 1.5mm 0 1.5mm 7mm;
+    border-bottom: 0.2mm dotted var(--line-soft);
+    position: relative;
+    counter-increment: step;
+  }
+  .plan-steps li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 1.5mm;
+    font-family: var(--mono); font-size: 8pt; font-weight: 500;
+    color: var(--accent);
+    width: 5mm; text-align: center;
+  }
+  .plan-steps .step-title { font-family: var(--display); font-weight: 500; font-size: 9.5pt; }
+  .plan-steps .step-meta { font-family: var(--mono); font-size: 7pt; color: var(--ink-mute); margin-top: 0.5mm; }
+
+  /* Reflection panel */
+  .reflection-text {
+    font-family: var(--display);
+    font-size: 11pt;
+    line-height: 1.5;
+    font-style: italic;
+    color: var(--ink);
+  }
+  .reflection-text::before { content: "" "; font-family: var(--display); font-size: 28pt; color: var(--accent); line-height: 0; vertical-align: -10pt; margin-right: 2mm; }
+  .reflection-text::after { content: " ""; font-family: var(--display); font-size: 28pt; color: var(--accent); line-height: 0; vertical-align: -10pt; }
+
+  /* Back cover */
+  .panel.back {
+    background: var(--bg);
+    align-items: center;
+    text-align: center;
+    justify-content: center;
+  }
+  .panel.back .closing-line {
+    font-family: var(--display);
+    font-style: italic;
+    font-size: 14pt;
+    line-height: 1.3;
+    max-width: 70mm;
+    color: var(--ink);
+    margin-bottom: 8mm;
+  }
+  .panel.back .closing-meta {
+    font-family: var(--mono);
+    font-size: 8pt;
+    color: var(--ink-mute);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ============================================================
+     Print styles
+     ============================================================ */
+  @media print {
+    @page {
+      size: A4 landscape;
+      margin: 0;
+    }
+    body { background: white; }
+    .setup, .top-bar { display: none !important; }
+    .zine-sheet {
+      margin: 0;
+      box-shadow: none;
+      width: 100%;
+      height: 100%;
+      page-break-after: always;
+    }
+    .panel { border: 0; }
+    /* Hide on-screen-only guide labels but keep cut/fold lines very faint */
+    .fold-lines .label { display: none; }
+    .fold-lines .fold-v, .fold-lines .fold-h {
+      border-color: #d8d8d8;
+    }
+    .fold-lines .cut { border-color: #999; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SETUP FORM — shown until a workspace is loaded
+     ============================================================ -->
+<div class="setup" id="setup">
+  <h1>Workshop Zine Generator</h1>
+  <div class="sub">Turn a repair workspace into a foldable 8-panel zine.</div>
+
+  <div class="info-box">
+    <strong>How it works:</strong> Load a workspace JSON file below, fill in the participant's name and a short reflection, click <em>Generate</em>, then print the result on a single sheet of A4 paper (landscape). The fold and cut guides on the printed sheet show participants how to turn it into a small booklet.
+  </div>
+
+  <label>Workshop title
+    <input type="text" id="workshop-title" value="Repair Workspace">
+    <div class="hint">Appears on the front cover. Override per workshop.</div>
+  </label>
+
+  <label>Workshop date
+    <input type="text" id="workshop-date" value="">
+    <div class="hint">Free-form, e.g. "Munich · May 2026".</div>
+  </label>
+
+  <div class="row">
+    <label>Participant name
+      <input type="text" id="participant-name" placeholder="e.g. Tizian">
+    </label>
+    <label>Workspace file
+      <input type="file" id="workspace-file" accept=".json,.zip,application/json,application/zip">
+      <div class="hint">A .json saved from Repair Workspace.</div>
+    </label>
+  </div>
+
+  <label>Reflection on intent
+    <textarea id="reflection-intent" placeholder="What did this intent mean to you? (1–2 sentences)"></textarea>
+  </label>
+
+  <label>Reflection on the plan
+    <textarea id="reflection-plan" placeholder="What surprised you about the plan? What did you learn?"></textarea>
+  </label>
+
+  <label>Closing line (back cover)
+    <input type="text" id="closing-line" value="Every repair is a position.">
+    <div class="hint">A short phrase the participant leaves with.</div>
+  </label>
+
+  <button id="generate-btn">Generate zine</button>
+  <button id="example-btn" style="background:white;color:var(--ink);border:1px solid var(--line);margin-left:8px;">Load example</button>
+</div>
+
+<!-- ============================================================
+     TOP BAR — shown after zine is rendered
+     ============================================================ -->
+<div class="top-bar" id="top-bar" style="display:none">
+  <button class="secondary" id="back-btn">← Edit</button>
+  <button id="print-btn">Print</button>
+</div>
+
+<!-- ============================================================
+     ZINE SHEET — rendered into here
+     ============================================================ -->
+<div id="zine-container"></div>
+
+<script>
+'use strict';
+
+const $ = id => document.getElementById(id);
+
+let currentWorkspace = null;
+
+// ---------------------------------------------------------
+// Setup form wiring
+// ---------------------------------------------------------
+
+$('workspace-file').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    currentWorkspace = JSON.parse(text);
+    // Pre-fill workshop date with the workspace's update date
+    if (!$('workshop-date').value && currentWorkspace.updatedAt) {
+      const d = new Date(currentWorkspace.updatedAt);
+      $('workshop-date').value = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+  } catch (err) {
+    alert('Failed to read workspace: ' + err.message);
+  }
+});
+
+$('example-btn').onclick = () => {
+  currentWorkspace = EXAMPLE_WORKSPACE;
+  $('participant-name').value = $('participant-name').value || 'Sample Participant';
+  $('reflection-intent').value = $('reflection-intent').value || 'I wanted this chair to keep its history visible — chips, scratches, and worn finish as a record of past use rather than damage to be erased.';
+  $('reflection-plan').value = $('reflection-plan').value || 'The plan felt right but cautious — I would have removed the backrest sooner and worried less about stabilising the legs.';
+  $('workshop-date').value = $('workshop-date').value || 'May 2026';
+  alert('Example workspace loaded. You can now click Generate zine.');
+};
+
+$('generate-btn').onclick = () => {
+  if (!currentWorkspace) { alert('Please load a workspace file first.'); return; }
+  renderZine();
+};
+
+$('back-btn').onclick = () => {
+  $('setup').style.display = 'block';
+  $('top-bar').style.display = 'none';
+  $('zine-container').innerHTML = '';
+};
+
+$('print-btn').onclick = () => window.print();
+
+// ---------------------------------------------------------
+// Zine rendering
+// ---------------------------------------------------------
+
+function renderZine() {
+  const ws = currentWorkspace;
+  const workshopTitle = $('workshop-title').value || 'Repair Workspace';
+  const workshopDate = $('workshop-date').value || '';
+  const participantName = $('participant-name').value || 'Anonymous';
+  const reflectionIntent = $('reflection-intent').value || '';
+  const reflectionPlan = $('reflection-plan').value || '';
+  const closingLine = $('closing-line').value || 'Every repair is a position.';
+
+  const artefactName = ws.instance?.name || 'Unnamed artefact';
+  const description = ws.instance?.provenance || ws.instance?.description || '';
+  const conditions = ws.hypotheses || [];
+  const intent = ws.intent || { axes: [], summary: '' };
+  const constraints = ws.constraints || {};
+  const plan = (ws.plans || []).find(p => p.id === ws.currentPlanId) || (ws.plans || [])[0] || null;
+
+  const sheet = document.createElement('div');
+  sheet.className = 'zine-sheet';
+
+  // Panels in reading order — for MVP we display in a simple 2×4 grid where
+  // top-left is the cover and you read left-to-right, top-to-bottom. A more
+  // sophisticated layout that supports actual fold-and-cut into 8-page
+  // booklet is a future improvement; the current arrangement prints as a
+  // 8-panel sheet you can also use unfolded as a poster.
+  sheet.innerHTML = `
+    <div class="panel cover">
+      <div class="panel-num">01</div>
+      <div class="workshop-title">${escapeHtml(workshopTitle)}</div>
+      <h1>${escapeHtml(artefactName)}</h1>
+      <div class="object-name">→ a repair in eight panels</div>
+      <div class="participant">${escapeHtml(participantName)}</div>
+      <div class="meta">${escapeHtml(workshopDate)}</div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-num">02</div>
+      <h2>The artefact</h2>
+      <h3>${escapeHtml(artefactName)}</h3>
+      <p>${escapeHtml(truncate(description, 480))}</p>
+      <div class="small" style="margin-top: auto;">
+        ${(ws.instance?.parts || []).length} parts catalogued
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-num">03</div>
+      <h2>Conditions</h2>
+      <ul class="conditions-list">
+        ${conditions.slice(0, 6).map(h => `
+          <li>
+            <div class="c-head">
+              <span class="c-type">${escapeHtml(h.type || 'Condition')}</span>
+              <span class="c-status ${h.status}">${escapeHtml(h.status)} · ${Math.round((h.confidence ?? 0) * 100)}%</span>
+            </div>
+            <div class="c-part">on ${escapeHtml(h.partRef || '—')}</div>
+            <div class="c-desc">${escapeHtml(truncate(h.description || '', 110))}</div>
+          </li>
+        `).join('')}
+        ${conditions.length === 0 ? `<li class="small" style="font-style:italic;color:var(--ink-mute);">No conditions catalogued yet.</li>` : ''}
+        ${conditions.length > 6 ? `<li class="small" style="text-align:center;color:var(--ink-mute);font-style:italic;">+${conditions.length - 6} more</li>` : ''}
+      </ul>
+    </div>
+
+    <div class="panel">
+      <div class="panel-num">04</div>
+      <h2>Repair intent</h2>
+      <div class="radar-wrap">
+        ${renderRadarSvg(intent.axes, 200)}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-num">05</div>
+      <h2>Position</h2>
+      <p class="intent-summary-text">${escapeHtml(truncate(intent.summary || 'No intent summary set.', 480))}</p>
+      <div class="intent-axes-mini">
+        ${(intent.axes || []).map(a => `
+          <div class="label">${escapeHtml(a.label)}</div>
+          <div class="value">${Math.round(a.value * 100)}%</div>
+        `).join('')}
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-num">06</div>
+      <h2>Plan</h2>
+      ${plan && plan.steps?.length ? `
+        <h3 style="font-size: 11pt; margin-bottom: 4mm;">${escapeHtml(plan.label || 'Repair plan')}</h3>
+        <ol class="plan-steps">
+          ${plan.steps.slice(0, 7).map(s => `
+            <li>
+              <div class="step-title">${escapeHtml(s.title || s.id)}</div>
+              <div class="step-meta">${s.estimatedMinutes ? s.estimatedMinutes + ' min · ' : ''}${escapeHtml(s.status || 'pending')}</div>
+            </li>
+          `).join('')}
+          ${plan.steps.length > 7 ? `<li class="small" style="font-style:italic;color:var(--ink-mute);text-align:center;">+${plan.steps.length - 7} more steps</li>` : ''}
+        </ol>
+      ` : `<div class="plan-empty">No plan generated yet.<br><br><span class="small">Use the workspace to generate a plan, then re-export this zine.</span></div>`}
+    </div>
+
+    <div class="panel">
+      <div class="panel-num">07</div>
+      <h2>Reflection</h2>
+      ${reflectionIntent ? `<p class="reflection-text">${escapeHtml(truncate(reflectionIntent, 280))}</p>` : ''}
+      ${reflectionPlan ? `<p class="reflection-text" style="margin-top: 5mm;">${escapeHtml(truncate(reflectionPlan, 280))}</p>` : ''}
+      ${!reflectionIntent && !reflectionPlan ? `<p class="small" style="font-style:italic;">No reflections captured.</p>` : ''}
+    </div>
+
+    <div class="panel back">
+      <div class="panel-num">08</div>
+      <div class="closing-line">${escapeHtml(closingLine)}</div>
+      <div class="closing-meta">${escapeHtml(participantName)} · ${escapeHtml(workshopDate)}</div>
+    </div>
+  `;
+
+  // Fold/cut guides
+  const guides = document.createElement('div');
+  guides.className = 'fold-lines';
+  guides.innerHTML = `
+    <div class="fold-v" style="left: 25%;"></div>
+    <div class="fold-v" style="left: 50%;"></div>
+    <div class="fold-v" style="left: 75%;"></div>
+    <div class="fold-h" style="top: 50%;"></div>
+    <div class="cut" style="left: 25%; right: 25%;"></div>
+    <div class="label" style="left: 50%; top: 50%; transform: translate(-50%, -50%);">cut along red line · fold along dashed lines</div>
+  `;
+  sheet.appendChild(guides);
+
+  const container = $('zine-container');
+  container.innerHTML = '';
+  container.appendChild(sheet);
+
+  $('setup').style.display = 'none';
+  $('top-bar').style.display = 'flex';
+}
+
+// ---------------------------------------------------------
+// Radar SVG — simple polygon, no axes labels (room is limited)
+// ---------------------------------------------------------
+
+function renderRadarSvg(axes, size) {
+  if (!axes || axes.length < 3) {
+    return `<div class="small" style="text-align:center;color:var(--ink-mute);font-style:italic;">Not enough axes to render.</div>`;
+  }
+  const cx = size / 2, cy = size / 2, r = size * 0.32;
+  const n = axes.length;
+  const points = axes.map((a, i) => {
+    const angle = -Math.PI / 2 + i * (Math.PI * 2 / n);
+    const x = cx + Math.cos(angle) * r * a.value;
+    const y = cy + Math.sin(angle) * r * a.value;
+    return [x, y];
+  });
+  const polyStr = points.map(p => p.join(',')).join(' ');
+
+  let rings = '';
+  for (let ring = 1; ring <= 4; ring++) {
+    const ringPoints = axes.map((_, i) => {
+      const angle = -Math.PI / 2 + i * (Math.PI * 2 / n);
+      const x = cx + Math.cos(angle) * r * (ring / 4);
+      const y = cy + Math.sin(angle) * r * (ring / 4);
+      return [x, y];
+    });
+    rings += `<polygon points="${ringPoints.map(p => p.join(',')).join(' ')}" fill="none" stroke="#d6d4cc" stroke-width="0.5"/>`;
+  }
+
+  let axisLines = '';
+  axes.forEach((_, i) => {
+    const angle = -Math.PI / 2 + i * (Math.PI * 2 / n);
+    const x = cx + Math.cos(angle) * r;
+    const y = cy + Math.sin(angle) * r;
+    axisLines += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#d6d4cc" stroke-width="0.5"/>`;
+  });
+
+  // Axis labels (abbreviated)
+  let labels = '';
+  axes.forEach((a, i) => {
+    const angle = -Math.PI / 2 + i * (Math.PI * 2 / n);
+    const lx = cx + Math.cos(angle) * (r + 12);
+    const ly = cy + Math.sin(angle) * (r + 12);
+    const align = Math.abs(Math.cos(angle)) < 0.2 ? 'middle' : (Math.cos(angle) > 0 ? 'start' : 'end');
+    const dy = Math.sin(angle) > 0.3 ? '0.8em' : (Math.sin(angle) < -0.3 ? '0em' : '0.35em');
+    const short = abbreviate(a.label, 12);
+    labels += `<text x="${lx}" y="${ly}" font-family="'JetBrains Mono',monospace" font-size="6" fill="#666" text-anchor="${align}" dy="${dy}">${escapeXml(short)}</text>`;
+  });
+
+  return `
+    <svg viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" style="width:100%; height:auto; max-height: 60mm;">
+      ${rings}
+      ${axisLines}
+      ${labels}
+      <polygon points="${polyStr}" fill="rgba(193,39,45,0.18)" stroke="#c1272d" stroke-width="1"/>
+      ${points.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.5" fill="#c1272d"/>`).join('')}
+    </svg>
+  `;
+}
+
+function abbreviate(label, max) {
+  if (!label) return '';
+  if (label.length <= max) return label;
+  // Try first letters of each word if it's multi-word
+  const words = label.split(/\s+/);
+  if (words.length > 1) {
+    const initials = words.map(w => w[0]).join('');
+    if (initials.length <= max) return initials.toUpperCase();
+  }
+  return label.slice(0, max - 1) + '…';
+}
+
+function truncate(s, n) {
+  if (!s) return '';
+  if (s.length <= n) return s;
+  return s.slice(0, n - 1).trim() + '…';
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+  );
+}
+function escapeXml(s) { return escapeHtml(s); }
+
+// ---------------------------------------------------------
+// Embedded example workspace (lightweight version of santo_02)
+// Lets you preview the zine without uploading a file.
+// ---------------------------------------------------------
+
+const EXAMPLE_WORKSPACE = {
+  schemaVersion: '2.0.0',
+  instance: {
+    name: 'santo_02',
+    provenance: 'A minimalist wooden stacking chair from c.1970s Central European industrial design, made of beech with a clear lacquer finish. Sentimental to its owner but no longer comfortable as a chair.',
+    parts: Array(14).fill().map((_, i) => ({ id: 'p' + i }))
+  },
+  hypotheses: [
+    { id: 'h1', type: 'Chipping',     status: 'confirmed', confidence: 0.95, partRef: 'back_right_leg', description: 'Large wood chip on the top surface of the back right leg.' },
+    { id: 'h2', type: 'Breakout',     status: 'confirmed', confidence: 0.9,  partRef: 'front_left_leg', description: 'Severe wood breakout mid-shaft on the front left leg.' },
+    { id: 'h3', type: 'Crack',        status: 'suspected', confidence: 0.65, partRef: 'front_right_leg', description: '~8 cm crack running from the top edge of the front right leg.' },
+    { id: 'h4', type: 'Worn Finish',  status: 'suspected', confidence: 0.8,  partRef: 'seat',           description: 'Lacquer worn through across the central seat area.' },
+    { id: 'h5', type: 'Scratches',    status: 'suspected', confidence: 0.7,  partRef: 'back_left_leg',  description: 'Surface scratches on the outer face of the back left leg.' }
+  ],
+  intent: {
+    axes: [
+      { id: 'a1', label: 'Material Authenticity',     value: 0.25 },
+      { id: 'a2', label: 'Structural Performance',    value: 0.45 },
+      { id: 'a3', label: 'Economic Viability',        value: 0.60 },
+      { id: 'a4', label: 'Cultural Continuity',       value: 0.35 },
+      { id: 'a5', label: 'Ecological Sustainability', value: 0.80 },
+      { id: 'a6', label: 'Aesthetic Intervention',    value: 0.75 }
+    ],
+    summary: 'Adaptive reuse: convert this damaged chair into a planter or low side-table. Accept existing chips, scratches, and worn finish as visible patina rather than concealing them. Remove the backrest to free the form.'
+  },
+  plans: [{
+    id: 'plan_demo',
+    label: 'Adaptive reuse — side-table',
+    steps: [
+      { id: 's1', title: 'Assess damage and document', status: 'completed', estimatedMinutes: 15 },
+      { id: 's2', title: 'Remove backrest', status: 'pending', estimatedMinutes: 25 },
+      { id: 's3', title: 'Stabilise front-leg crack', status: 'pending', estimatedMinutes: 30 },
+      { id: 's4', title: 'Sand seat surface lightly', status: 'pending', estimatedMinutes: 20 },
+      { id: 's5', title: 'Apply linseed oil + beeswax finish', status: 'pending', estimatedMinutes: 30 },
+      { id: 's6', title: 'Install watertight liner or leave open', status: 'pending', estimatedMinutes: 20 }
+    ]
+  }],
+  currentPlanId: 'plan_demo'
+};
+
+</script>
+</body>
+</html>

@@ -108,7 +108,7 @@
 }
 .intent-summary-card textarea:focus { outline: none; }
 
-.intent-actions { display: flex; gap: 4px; }
+.intent-actions { display: flex; gap: 4px; margin-top: 10px; }
 .mini-btn {
   flex: 1;
   background: var(--bg-panel);
@@ -1076,4 +1076,74 @@ select.detail-input { cursor: pointer; }
   border-color: var(--line-soft);
   color: var(--ink);
   background: var(--bg-panel);
+}
+
+/* =========================================================
+   iOS input-zoom prevention
+   Safari auto-zooms when focusing an input with font-size < 16px.
+   We bump all interactive inputs to 16px on touch devices so the
+   user-controlled viewport meta (no pinch zoom) isn't undermined
+   by Safari's "helpful" autozoom.
+   ========================================================= */
+@media (hover: none) and (pointer: coarse) {
+  input[type="text"],
+  input[type="number"],
+  input[type="search"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="password"],
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
+/* =========================================================
+   3D viewer empty-state overlay (shown when no parts)
+   ========================================================= */
+.viewer-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  z-index: 4;
+  pointer-events: none;     /* Don't block canvas interaction underneath */
+  padding: 24px;
+}
+.viewer-empty[hidden] { display: none; }
+.viewer-empty-inner {
+  max-width: 360px;
+  text-align: center;
+  pointer-events: auto;
+}
+.viewer-empty-title {
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+.viewer-empty-text {
+  font-family: var(--display);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin-bottom: 20px;
+}
+.viewer-empty-hints {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  letter-spacing: 0.04em;
+}
+.viewer-empty-hint {
+  padding: 6px 10px;
+  background: var(--bg-soft);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
 }

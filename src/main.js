@@ -200,6 +200,12 @@ function renderAll() {
   const hypCount = (ws.hypotheses || []).length;
   $('fab-right-badge').hidden = hypCount === 0;
   $('fab-right-badge').textContent = hypCount;
+
+  // 3D empty-state hint: shown when no parts at all (fresh workspace
+  // before example is loaded or assembly is extracted).
+  const partsCount = ws.instance?.parts?.length || 0;
+  const emptyEl = document.getElementById('viewer-empty');
+  if (emptyEl) emptyEl.hidden = partsCount > 0;
 }
 
 function renderVersions(ws) {

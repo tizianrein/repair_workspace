@@ -269,6 +269,15 @@
   body.left-open .drawer-left { transform: translateX(0); }
   body.right-open .drawer-right { transform: translateX(0); }
   .drawer-close { display: flex; }
+
+  /* Tab bar (the pill at the top) sits at top: 12px and is ~44px tall.
+     Push the in-viewport HUD elements down so they don't sit under it. */
+  #info-box {
+    top: 64px;
+  }
+  .hud-tr {
+    top: 64px;
+  }
 }
 
 .backdrop {

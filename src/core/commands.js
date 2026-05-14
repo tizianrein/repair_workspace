@@ -74,7 +74,7 @@ defineCommand('set-object-name', (ws, { name }) => {
 });
 
 defineCommand('upsert-part', (ws, { part }) => {
-  const parts = ws.instance.parts;
+  const parts = ws.instance?.parts || [];
   const idx = parts.findIndex(p => p.id === part.id);
   const prev = idx >= 0 ? parts[idx] : null;
   const next = idx >= 0
@@ -98,10 +98,14 @@ defineCommand('remove-part', (ws, { partId }) => {
 });
 
 defineCommand('replace-assembly', (ws, { parts, objectName }) => {
-  const prevParts = ws.instance.parts;
-  const prevName = ws.instance.name;
+  const instance = ws.instance || { parts: [] };
+  const prevParts = instance.parts || [];
+  const prevName = instance.name;
+  if (!Array.isArray(parts)) {
+    throw new Error(`replace-assembly: parts must be an array (got ${typeof parts})`);
+  }
   return {
-    workspace: { ...ws, instance: { ...ws.instance, parts, name: objectName || ws.instance.name } },
+    workspace: { ...ws, instance: { ...instance, parts, name: objectName || instance.name } },
     inverse: { type: 'replace-assembly', payload: { parts: prevParts, objectName: prevName } }
   };
 });
@@ -109,7 +113,7 @@ defineCommand('replace-assembly', (ws, { parts, objectName }) => {
 defineCommand('add-hypothesis', (ws, { hypothesis }) => {
   const h = { ...newHypothesis(), ...hypothesis };
   return {
-    workspace: { ...ws, hypotheses: [...ws.hypotheses, h] },
+    workspace: { ...ws, hypotheses: [...(ws.hypotheses || []), h] },
     inverse: { type: 'remove-hypothesis', payload: { hypothesisId: h.id } }
   };
 });
@@ -164,7 +168,7 @@ defineCommand('refute-hypothesis', (ws, { hypothesisId, evidenceId, note }) => {
 defineCommand('add-evidence', (ws, { evidence }) => {
   const e = { ...newEvidence(evidence.kind), ...evidence };
   return {
-    workspace: { ...ws, evidence: [...ws.evidence, e] },
+    workspace: { ...ws, evidence: [...(ws.evidence || []), e] },
     inverse: { type: 'remove-evidence', payload: { evidenceId: e.id } }
   };
 });
@@ -197,7 +201,7 @@ defineCommand('set-constraints', (ws, { constraints }) => {
 defineCommand('add-plan', (ws, { plan }) => {
   const p = { ...newPlan(), ...plan };
   return {
-    workspace: { ...ws, plans: [...ws.plans, p], currentPlanId: p.id },
+    workspace: { ...ws, plans: [...(ws.plans || []), p], currentPlanId: p.id },
     inverse: { type: 'remove-plan', payload: { planId: p.id } }
   };
 });
@@ -234,12 +238,13 @@ defineCommand('upsert-step', (ws, { planId, step }) => {
   const idx = ws.plans.findIndex(p => p.id === planId);
   if (idx < 0) throw new Error(`upsert-step: no plan with id "${planId}" — make sure add-plan created it first, and that the planId matches`);
   const plan = ws.plans[idx];
-  const stepIdx = plan.steps.findIndex(s => s.id === step.id);
-  const prev = stepIdx >= 0 ? plan.steps[stepIdx] : null;
+  const planSteps = plan.steps || [];
+  const stepIdx = planSteps.findIndex(s => s.id === step.id);
+  const prev = stepIdx >= 0 ? planSteps[stepIdx] : null;
   const fullStep = { ...newStep(), ...step };
   const newSteps = stepIdx >= 0
-    ? plan.steps.map((s, i) => i === stepIdx ? fullStep : s)
-    : [...plan.steps, fullStep];
+    ? planSteps.map((s, i) => i === stepIdx ? fullStep : s)
+    : [...planSteps, fullStep];
   const newPlan = { ...plan, steps: newSteps, updatedAt: new Date().toISOString() };
   return {
     workspace: { ...ws, plans: ws.plans.map((p, i) => i === idx ? newPlan : p) },
@@ -272,11 +277,22 @@ defineCommand('add-edge', (ws, { planId, source, target }) => {
   const idx = ws.plans.findIndex(p => p.id === planId);
   if (idx < 0) throw new Error(`add-edge: no plan with id "${planId}"`);
   const plan = ws.plans[idx];
-  if (plan.edges.find(e => e.source === source && e.target === target)) {
+  if (!source || !target) {
+    throw new Error(`add-edge: source and target are required (got source="${source}", target="${target}")`);
+  }
+  const steps = plan.steps || [];
+  if (!steps.some(s => s.id === source)) {
+    throw new Error(`add-edge: source step "${source}" not found in plan (available: ${steps.map(s => s.id).join(', ')})`);
+  }
+  if (!steps.some(s => s.id === target)) {
+    throw new Error(`add-edge: target step "${target}" not found in plan`);
+  }
+  const edges = plan.edges || [];
+  if (edges.find(e => e.source === source && e.target === target)) {
     return { workspace: ws, inverse: { type: 'noop', payload: {} } };
   }
   const edge = newEdge(source, target);
-  const newPlan = { ...plan, edges: [...plan.edges, edge], updatedAt: new Date().toISOString() };
+  const newPlan = { ...plan, edges: [...edges, edge], updatedAt: new Date().toISOString() };
   return {
     workspace: { ...ws, plans: ws.plans.map((p, i) => i === idx ? newPlan : p) },
     inverse: { type: 'remove-edge', payload: { planId, edgeId: edge.id } }
@@ -347,13 +363,13 @@ defineCommand('select-mutex-branch', (ws, { planId, groupId, stepId }) => {
 defineCommand('log-execution', (ws, { entry }) => {
   const e = { ...newExecutionEntry(entry.stepRef), ...entry };
   return {
-    workspace: { ...ws, executionLog: [...ws.executionLog, e] },
+    workspace: { ...ws, executionLog: [...(ws.executionLog || []), e] },
     inverse: { type: 'remove-execution', payload: { entryId: e.id } }
   };
 });
 
 defineCommand('remove-execution', (ws, { entryId }) => {
-  const removed = ws.executionLog.find(e => e.id === entryId);
+  const removed = (ws.executionLog || []).find(e => e.id === entryId);
   if (!removed) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
   return {
     workspace: { ...ws, executionLog: ws.executionLog.filter(e => e.id !== entryId) },
@@ -364,13 +380,13 @@ defineCommand('remove-execution', (ws, { entryId }) => {
 defineCommand('start-conversation', (ws, { scope, ref }) => {
   const t = newConversation(scope, ref);
   return {
-    workspace: { ...ws, conversations: [...ws.conversations, t] },
+    workspace: { ...ws, conversations: [...(ws.conversations || []), t] },
     inverse: { type: 'remove-conversation', payload: { threadId: t.id } }
   };
 });
 
 defineCommand('remove-conversation', (ws, { threadId }) => {
-  const removed = ws.conversations.find(t => t.id === threadId);
+  const removed = (ws.conversations || []).find(t => t.id === threadId);
   if (!removed) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
   return {
     workspace: { ...ws, conversations: ws.conversations.filter(t => t.id !== threadId) },
@@ -379,11 +395,11 @@ defineCommand('remove-conversation', (ws, { threadId }) => {
 });
 
 defineCommand('append-message', (ws, { threadId, message }) => {
-  const idx = ws.conversations.findIndex(t => t.id === threadId);
+  const idx = (ws.conversations || []).findIndex(t => t.id === threadId);
   if (idx < 0) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
   const m = { ...newMessage(message.role, message.content), ...message };
   const thread = ws.conversations[idx];
-  const newThread = { ...thread, messages: [...thread.messages, m] };
+  const newThread = { ...thread, messages: [...(thread.messages || []), m] };
   return {
     workspace: { ...ws, conversations: ws.conversations.map((t, i) => i === idx ? newThread : t) },
     inverse: { type: 'pop-message', payload: { threadId } }
