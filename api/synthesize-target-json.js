@@ -26,36 +26,50 @@ import { callGemini } from './_shared/gemini.js';
 
 export const config = { maxDuration: 45 };
 
-const SYSTEM_PROMPT = `You are a repair planner translating a structured description of an artefact's CURRENT state into a structured description of its TARGET state after a repair plan is executed.
+const SYSTEM_PROMPT = `You are translating a structured description of an artefact's CURRENT state into a structured description of its TARGET state after a repair plan has been executed.
 
 You will be given:
   - "ist": a JSON description of what the artefact looks like NOW (from a photo)
   - "workspace": the repair workspace including intent, conditions, plan steps, mutex choices
 
-Your job is to produce a "soll" JSON with the SAME SHAPE as the ist, but with fields modified to reflect what the artefact will look like AFTER the repair plan is completed.
+Your job is to produce a "soll" JSON with the SAME SHAPE as the ist, but with fields modified to reflect the target state described by the workspace.
+
+CORE PRINCIPLE — TRANSLATE, DO NOT INTERPRET
+
+The workspace specifies what the repair should do. The intent specifies the values that shape those choices. Your job is to FAITHFULLY translate this specification into the soll JSON. You do NOT pick a repair philosophy.
+
+A workspace can call for any outcome the user wants — from invisible restoration to deliberate transformation to creative reinterpretation. Read what the workspace actually says and translate THAT. Do not default to any approach. Do not assume what "a good repair" looks like.
+
+For each part touched by a step, the new condition string should describe what that step's expectedOutcome implies for that part's visual appearance — using the step's own words and the intent's framing.
 
 Rules for producing the soll:
 
 1. COPY UNCHANGED FIELDS VERBATIM
-   - "scene" object (background, lighting, angle, framing, style) is ALWAYS copied unchanged from ist to soll. The same photo perspective must remain.
-   - "subject.material" stays the same unless the plan explicitly changes the finish.
-   - Parts that are not touched by any step keep their condition string identical.
+   - "scene" (background, lighting, angle, framing, style): ALWAYS unchanged.
+   - Parts not touched by any step: condition string unchanged.
 
-2. MODIFY PARTS PER PLAN
-   - A part removed by a plan step gets "present": false. Add a brief "removed_note" explaining how the cut/joint looks.
-   - A part repaired by a step has its "condition" updated to reflect the new state (e.g. "lightly sanded, finished with linseed oil and beeswax — visible patina preserved on damage").
-   - Damage that the intent says to PRESERVE (e.g. low Material Authenticity + high Aesthetic Intervention + plan's expectedOutcome mentions "patina") should remain in the condition string with a note: "preserved as visible patina".
-   - Damage that the plan eliminates should be removed from the condition string.
+2. MODIFY PARTS PER PLAN STEP
+   - Find the plan step(s) that address this part (via affectedPartRefs or addressesHypothesisRefs).
+   - Read the step's title, description, and expectedOutcome.
+   - Translate that into a new condition string describing how this part LOOKS after the step is complete. Use concrete visual language (texture, color, surface state) — not procedural language.
+   - If the step removes the part: present: false, removed_note describes the cut/joint based on the step's expectedOutcome.
 
-3. MODIFY SUBJECT.TYPE IF FUNCTION CHANGES
-   - If the chosen plan converts the artefact (e.g. chair → side-table via a mutex group), update subject.type accordingly. The image must show the NEW function.
-   - Update overall_condition to a 1-2 sentence summary of the new state.
+3. PART NOT TOUCHED BUT WORKSPACE SAYS SOMETHING ABOUT IT
+   - If the intent.summary or a step.expectedOutcome explicitly mentions a part that has no dedicated step (e.g. "preserve the original patina across all legs"), apply that intent to the part's condition.
+   - Otherwise, leave the part's condition unchanged.
 
-4. MUTEX BRANCHES
-   - If a plan has mutex groups, ONLY apply the selected branch. If no branch is selected, use the first step in the group (and mention this in the rationale).
+4. SUBJECT-LEVEL CHANGES
+   - subject.type: if the plan converts the artefact's function (e.g. via a selected mutex branch like "convert to side-table"), update the type.
+   - subject.material: if the plan applies a new finish or material treatment, update to reflect it. Otherwise unchanged.
+   - subject.overall_condition: a 1-2 sentence summary describing the artefact's COMPLETED state — in the voice that the intent suggests (e.g. a conservation-focused intent → conservator's voice; an adaptive-reuse intent → designer's voice; a sustainability-focused intent → sustainability advocate's voice).
 
-5. CONSERVATIVE BIAS
-   - When uncertain, prefer keeping things the same. Do not invent details. Do not invent new parts that aren't in the ist.
+5. MUTEX BRANCHES
+   - Apply ONLY the selected branch. If no selection, use the first step in the group and mention in rationale.
+
+6. DO NOT INVENT
+   - Don't add parts not in the ist.
+   - Don't change parts the workspace doesn't address.
+   - Don't supply repair philosophies the workspace doesn't specify.
 
 OUTPUT FORMAT — STRICT JSON:
 
@@ -71,7 +85,7 @@ OUTPUT FORMAT — STRICT JSON:
     },
     "scene": { ... copied unchanged from ist ... }
   },
-  "rationale": "2-4 sentences explaining the key transformations and what was preserved/changed and why, referring to specific plan steps and intent axes."
+  "rationale": "2-4 sentences explaining what you translated and from where (which steps, which intent axes, which mutex selections drove the changes). Quote the workspace's own language where helpful."
 }
 
 Do not include any text outside the JSON.`;

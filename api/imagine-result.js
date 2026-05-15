@@ -56,36 +56,53 @@ export default async function handler(req, res) {
 /**
  * Build the prompt for Nano Banana from the Soll-JSON.
  *
- * We give the model the source image as visual reference and then describe
- * exactly what the OUTPUT image should show, using the Soll-JSON as the
- * specification. We emphasize preservation of scene elements explicitly,
- * since the model's natural tendency is to re-render everything.
+ * The Soll-JSON is the canonical specification of the target state. The
+ * prompt translates it into descriptive prose that the image model can
+ * follow. We do not embed any repair strategy or interpretation — the
+ * Soll already encodes those decisions. The prompt's only opinion is that
+ * scene-level fields (lighting, angle, background) should match the
+ * source photo, since those are explicitly marked as preserved.
  */
 function buildPrompt(soll) {
   const { subject, scene } = soll;
-  const partsList = (subject.parts || []).map(p => {
-    if (p.present === false) {
-      return `- ${p.name} (${p.id}): REMOVED. ${p.removed_note || 'No longer present in the image.'}`;
-    }
-    return `- ${p.name} (${p.id}): ${p.condition}${p.geometry ? ` — ${p.geometry}` : ''}`;
-  }).join('\n');
 
-  return `Generate a photograph that shows the artefact in the provided source image AFTER the following modifications have been made. The source image is the visual anchor for everything that has NOT changed.
+  // Parts present in the target — describe them as the Soll says.
+  const presentParts = (subject.parts || []).filter(p => p.present !== false);
+  const removedParts = (subject.parts || []).filter(p => p.present === false);
 
-TARGET STATE:
-Subject: ${subject.type}
-Material: ${subject.material}
+  const presentList = presentParts.length
+    ? presentParts.map(p => {
+        const bits = [];
+        if (p.geometry) bits.push(p.geometry);
+        if (p.condition) bits.push(p.condition);
+        return `- ${p.name}: ${bits.join('; ') || 'as in source'}`;
+      }).join('\n')
+    : '(no parts listed)';
+
+  const removedList = removedParts.length
+    ? removedParts.map(p => `- ${p.name}${p.removed_note ? ` — ${p.removed_note}` : ''}`).join('\n')
+    : '';
+
+  const removedSection = removedList
+    ? `\n\nPARTS THAT ARE NO LONGER PRESENT IN THE OUTPUT IMAGE:\n${removedList}`
+    : '';
+
+  return `Generate a photograph showing the artefact described below. The provided source image is a visual reference for the artefact's identity, materials, and the photographic setting; render the artefact in the state described here.
+
+THE ARTEFACT TO SHOW:
+${subject.type}
+Material and finish: ${subject.material}
 Overall: ${subject.overall_condition}
 
-Parts:
-${partsList}
+PARTS AND THEIR APPEARANCE:
+${presentList}${removedSection}
 
-PRESERVE FROM THE SOURCE IMAGE (these must remain visually identical):
+PHOTOGRAPHIC SETTING (match the source image):
 - Background: ${scene.background}
 - Lighting: ${scene.lighting}
 - Camera angle: ${scene.angle}
 - Framing: ${scene.framing}
-- Photographic style: ${scene.style}
+- Style: ${scene.style}
 
-Render this as a single high-quality photograph at the same angle, lighting, and background as the source. Show only the final result, no captions, no diagrams, no before/after split — just the artefact in its repaired state.`;
+Render a single photograph. No captions, no diagrams, no before/after split, no labels.`;
 }
