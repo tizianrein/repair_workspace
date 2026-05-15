@@ -16,8 +16,40 @@
  */
 
 import { PART_STATUS, HYPOTHESIS_STATUS, STEP_STATUS } from '../core/schema.js';
+import { createMiniViewer3D } from './mini-viewer-3d.js';
 
 export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, getPhotoBlob, dispatch, onAttachPhoto }) {
+
+  // The mini-3D-viewer is created on demand inside the modal body. We
+  // destroy and recreate it each time the modal opens to avoid context
+  // leaks; Three.js WebGL contexts are expensive to keep around.
+  let miniViewer = null;
+
+  function destroyMiniViewer() {
+    if (miniViewer) {
+      miniViewer.destroy();
+      miniViewer = null;
+    }
+  }
+
+  // Hook modal close so we always tear down the WebGL context
+  if (modalEl) {
+    const observer = new MutationObserver(() => {
+      if (!modalEl.classList.contains('on')) destroyMiniViewer();
+    });
+    observer.observe(modalEl, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  function buildMiniViewer3D(parentEl, highlightPartIds, highlightHypIds) {
+    destroyMiniViewer();
+    const wrap = el('div', 'detail-3d-mini');
+    parentEl.appendChild(wrap);
+    // Defer to next frame so the wrap has its size before WebGL initializes
+    requestAnimationFrame(() => {
+      miniViewer = createMiniViewer3D(wrap);
+      miniViewer.render(getWorkspace(), { highlightPartIds, highlightHypIds });
+    });
+  }
 
   function escapeHtml(s) {
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -45,6 +77,10 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     if (!p) return;
     titleEl.textContent = `Part: ${p.id}`;
     bodyEl.innerHTML = '';
+
+    // Mini 3D-Preview: highlight this part, plus any condition markers on it
+    const relatedHypIds = (ws.hypotheses || []).filter(h => h.partRef === id).map(h => h.id);
+    buildMiniViewer3D(bodyEl, [id], relatedHypIds);
 
     const form = el('div', 'detail-form');
     form.appendChild(field('Label', input(p.label || '', v => patchPart(id, { label: v }))));
@@ -106,6 +142,9 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     if (!h) return;
     titleEl.textContent = `Condition: ${h.type || h.id}`;
     bodyEl.innerHTML = '';
+
+    // Mini 3D-Preview: highlight the affected part + this condition's marker
+    buildMiniViewer3D(bodyEl, h.partRef ? [h.partRef] : [], [id]);
 
     const form = el('div', 'detail-form');
     form.appendChild(field('Type', input(h.type || '', v => patchHypothesis(id, { type: v }))));
@@ -183,6 +222,10 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
       enr.innerHTML = `<span class="enriching-dot"></span> AI is enriching this step with tools, time estimate, rationale… The fields below will update in a moment.`;
       bodyEl.appendChild(enr);
     }
+
+    // Mini 3D-Preview: highlight affected parts + condition markers for
+    // conditions this step addresses. Gives spatial context at a glance.
+    buildMiniViewer3D(bodyEl, s.affectedPartRefs || [], s.addressesHypothesisRefs || []);
 
     // If this step is inside a mutex group (i.e. one of several alternatives),
     // show a banner at the top with a button to commit to this branch.

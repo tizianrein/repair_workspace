@@ -32,7 +32,6 @@ import { createRadar } from './views/radar.js';
 import { createEntityList } from './views/entity-list.js';
 import { createChatSheet } from './views/chat-sheet.js';
 import { createQuickActions } from './views/quick-actions.js';
-import { createJustificationPanel } from './views/justification-panel.js';
 import { showProposeReview } from './views/propose-review.js';
 import { showExecutionEntry } from './views/execution-log.js';
 import { createDetailEditor } from './views/detail-editor.js';
@@ -41,7 +40,7 @@ import { payloadForPropose } from './ai/ai-payload.js';
 const state = createState();
 let viewer3D = null, actionGraph = null, spatialGraph = null;
 let radar = null, entityList = null, chatSheet = null;
-let quickActions = null, justificationPanel = null;
+let quickActions = null;
 let activeTab = 'pane-3d';
 let selectedStepId = null;
 let proposeInFlight = false;
@@ -61,10 +60,12 @@ actionGraph = createActionGraph($('action-graph-canvas'), {
   onSelect: stepId => {
     selectedStepId = stepId;
     if (stepId) {
-      justificationPanel.show(stepId);
       chatSheet.setScope('step', stepId);
+      // Single tap opens the detail modal directly — replaces the older
+      // "click for justification panel, double-click for full detail"
+      // discovery problem with one consistent action.
+      openDetail({ type: 'step', id: stepId });
     } else {
-      justificationPanel.clear();
       // Full reset matching the 3D background-click behaviour
       entityList.setSelection({ partId: null, hypothesisId: null });
       if (viewer3D) viewer3D.select({ partId: null, hypothesisId: null });
@@ -81,7 +82,6 @@ spatialGraph = createSpatialGraph($('spatial-graph-canvas'), {
     entityList.setSelection({ partId: null, hypothesisId: null });
     if (viewer3D) viewer3D.select({ partId: null, hypothesisId: null });
     selectedStepId = null;
-    justificationPanel.clear();
     chatSheet.setScope('global');
     quickActions.render();
   }
@@ -121,16 +121,6 @@ quickActions = createQuickActions($('quick-actions'), {
   getCurrentMessage: () => chatSheet.getCurrentMessage(),
   onPropose: ({ scope, userMessage }) => runPropose({ scope, userMessage }),
   onMarkComplete: stepId => markStepComplete(stepId)
-});
-
-justificationPanel = createJustificationPanel($('justification-panel'), {
-  getWorkspace: () => state.workspace,
-  onJumpToHypothesis: hypId => {
-    chatSheet.setScope('hypothesis', hypId);
-    chatSheet.open();
-    entityList.setSelection({ hypothesisId: hypId, partId: null });
-    openDetail({ type: 'hypothesis', id: hypId });
-  }
 });
 
 viewer3D = createViewer3D(
@@ -256,9 +246,6 @@ function renderAll() {
     const plan = (ws.plans || []).find(p => p.id === ws.currentPlanId);
     if (!plan?.steps?.find(s => s.id === selectedStepId)) {
       selectedStepId = null;
-      justificationPanel.clear();
-    } else {
-      justificationPanel.show(selectedStepId);
     }
   }
 
@@ -687,7 +674,6 @@ function openDetail(target) {
   } else if (target.type === 'step') {
     selectedStepId = target.id;
     actionGraph.setCurrentStep(target.id);
-    justificationPanel.show(target.id);
     chatSheet.setScope('step', target.id);
   }
   detailEditor.open(target);
