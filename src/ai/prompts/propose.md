@@ -94,7 +94,12 @@ Each command in `commands` is one of the types listed below. Pick the most speci
 
 - `upsert-step` — add or update a step within an existing plan. Provide `planId` and `step`.
 - `remove-step` — remove a step. Provide `planId` and `stepId`.
-- `add-edge` / `remove-edge` — modify prerequisite ordering.
+- `add-edge` — add a prerequisite ordering between two existing steps in a plan.
+  ```json
+  { "type": "add-edge", "payload": { "planId": "plan_xyz", "source": "step_abc", "target": "step_def" } }
+  ```
+  **Required fields:** `planId`, `source` (the step that must happen first), `target` (the step that depends on it). Both step IDs must reference steps that exist in the plan. Never emit `add-edge` without both `source` and `target` — a missing endpoint is the single most common malformed command and your batch will be partially rejected if you do this.
+- `remove-edge` — remove an edge. Provide `planId` and `edgeId`.
 - `add-mutex-group` / `remove-mutex-group` / `select-mutex-branch` — manage alternatives.
   ```json
   { "type": "add-mutex-group", "payload": { "planId": "plan_xyz", "stepIds": ["step_3a", "step_3b"], "label": "Choose final form" } }

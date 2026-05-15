@@ -79,19 +79,51 @@ export default async function handler(req, res) {
     // (and we, in logs) can see what the AI tried.
     const known = [];
     const rejected = [];
+    const malformed = [];
     for (const cmd of result.commands) {
-      if (cmd && typeof cmd === 'object' && KNOWN_COMMAND_TYPES.has(cmd.type)) {
-        known.push(cmd);
-      } else {
+      if (!cmd || typeof cmd !== 'object' || !KNOWN_COMMAND_TYPES.has(cmd.type)) {
         rejected.push(cmd?.type || '(missing type)');
+        continue;
       }
+      // Validate command payloads that frequently come back malformed from
+      // the model. We drop the bad command but keep the rest of the batch,
+      // surfacing the issue in the summary so the user knows the result is
+      // partial. This is far better than killing the whole batch and
+      // forcing the user to retry the entire propose.
+      if (cmd.type === 'add-edge') {
+        const p = cmd.payload || {};
+        if (!p.source || !p.target || !p.planId) {
+          malformed.push(`add-edge (source="${p.source}", target="${p.target}")`);
+          continue;
+        }
+      }
+      if (cmd.type === 'add-mutex-group') {
+        const p = cmd.payload || {};
+        if (!Array.isArray(p.stepIds) || p.stepIds.length < 2 || !p.planId) {
+          malformed.push(`add-mutex-group (stepIds=${JSON.stringify(p.stepIds)})`);
+          continue;
+        }
+      }
+      if (cmd.type === 'upsert-step') {
+        const p = cmd.payload || {};
+        if (!p.planId || !p.step || !p.step.id) {
+          malformed.push(`upsert-step (planId="${p.planId}", step.id="${p.step?.id}")`);
+          continue;
+        }
+      }
+      known.push(cmd);
     }
     if (rejected.length) {
       console.warn('[propose] Filtered unknown command types:', rejected);
       const note = ` (Skipped ${rejected.length} unsupported command${rejected.length === 1 ? '' : 's'}: ${rejected.join(', ')}.)`;
       result.summary = (result.summary || '') + note;
-      result.commands = known;
     }
+    if (malformed.length) {
+      console.warn('[propose] Filtered malformed commands:', malformed);
+      const note = ` (Skipped ${malformed.length} malformed command${malformed.length === 1 ? '' : 's'}: ${malformed.join('; ')}.)`;
+      result.summary = (result.summary || '') + note;
+    }
+    result.commands = known;
 
     return res.status(200).json(result);
   } catch (err) {
