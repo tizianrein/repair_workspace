@@ -77,9 +77,13 @@ defineCommand('upsert-part', (ws, { part }) => {
   const parts = ws.instance?.parts || [];
   const idx = parts.findIndex(p => p.id === part.id);
   const prev = idx >= 0 ? parts[idx] : null;
+  // Same logic as upsert-step: if the part exists, treat the payload as a
+  // partial update and preserve fields not explicitly overridden. Otherwise
+  // accept the payload as-is.
+  const merged = prev ? { ...prev, ...part } : part;
   const next = idx >= 0
-    ? parts.map((p, i) => i === idx ? part : p)
-    : [...parts, part];
+    ? parts.map((p, i) => i === idx ? merged : p)
+    : [...parts, merged];
   return {
     workspace: { ...ws, instance: { ...ws.instance, parts: next } },
     inverse: prev
@@ -241,7 +245,14 @@ defineCommand('upsert-step', (ws, { planId, step }) => {
   const planSteps = plan.steps || [];
   const stepIdx = planSteps.findIndex(s => s.id === step.id);
   const prev = stepIdx >= 0 ? planSteps[stepIdx] : null;
-  const fullStep = { ...newStep(), ...step };
+  // When updating an existing step, preserve all its current fields and only
+  // overlay the ones explicitly present in the payload. Otherwise a partial
+  // payload (e.g. AI sends only { id, description }) would wipe out every
+  // other field — including tools, materials, justification — by re-applying
+  // newStep() defaults. When creating a new step, use the defaults as the
+  // base.
+  const base = prev || newStep();
+  const fullStep = { ...base, ...step };
   const newSteps = stepIdx >= 0
     ? planSteps.map((s, i) => i === stepIdx ? fullStep : s)
     : [...planSteps, fullStep];
