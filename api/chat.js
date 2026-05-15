@@ -90,6 +90,39 @@ function buildScopedContext(ws, thread) {
     ctx.suspectedCount = (ws.hypotheses || []).filter(h => h.status === 'suspected').length;
     ctx.intent = ws.intent;
     ctx.constraints = ws.constraints;
+    // Include the current plan (steps + edges + mutex selections) so the
+    // model can discuss it concretely without asking the user to recite it.
+    const plan = (ws.plans || []).find(p => p.id === ws.currentPlanId);
+    if (plan) {
+      ctx.currentPlan = {
+        id: plan.id,
+        label: plan.label,
+        status: plan.status,
+        steps: (plan.steps || []).map(s => ({
+          id: s.id,
+          title: s.title,
+          description: s.description,
+          expectedOutcome: s.expectedOutcome,
+          status: s.status,
+          affectedPartRefs: s.affectedPartRefs,
+          addressesHypothesisRefs: s.addressesHypothesisRefs
+        })),
+        edges: (plan.edges || []).map(e => ({ source: e.source, target: e.target })),
+        mutexGroups: (plan.mutexGroups || []).map(g => ({
+          label: g.label,
+          stepIds: g.stepIds,
+          selectedStepId: g.selectedStepId
+        }))
+      };
+    }
+    // Include a flat condition list so the model can reference conditions by name
+    ctx.conditions = (ws.hypotheses || []).map(h => ({
+      id: h.id,
+      type: h.type,
+      partRef: h.partRef,
+      status: h.status,
+      description: h.description
+    }));
   }
   return ctx;
 }

@@ -676,6 +676,44 @@ function escapeHtml(s) {
 // PROPOSE — the AI-state-change flow
 // -------------------------------------------------------------------------
 
+/**
+ * Determines whether an interventions-scope propose request should be
+ * routed to the dedicated /api/generate-plan endpoint.
+ *
+ * Returns true for messages that ask the AI to produce a new plan or
+ * rebuild an existing one from scratch (where the dedicated planner's
+ * specialized prompt and stronger model genuinely help). Returns false
+ * for small surgical edits to an existing plan (e.g. "replace step 3 with
+ * a different action") where the generic propose endpoint is more
+ * appropriate because the model only needs to emit a few small commands.
+ */
+function isPlanGenerationIntent(userMessage, workspace) {
+  if (!userMessage) return false;
+  const msg = userMessage.toLowerCase();
+
+  // Strong positive signals that the user wants a full plan (re)generation
+  const fullPlanPhrases = [
+    'generate plan', 'generate a plan', 'generate the plan',
+    'create plan', 'create a plan', 'create the plan',
+    'replan', 're-plan', 're plan',
+    'new plan',
+    'rebuild plan', 'rebuild the plan',
+    'plan variant', 'alternative plan'
+  ];
+  if (fullPlanPhrases.some(p => msg.includes(p))) return true;
+
+  // The quick-action chips emit these literal strings when the user has no
+  // typed message. Recognize them too.
+  if (msg.startsWith('♻️ replan') || msg.startsWith('📝 generate plan')) return true;
+
+  // If we don't have a plan yet and the user says anything plan-shaped,
+  // assume it's plan generation.
+  const hasPlan = (workspace?.plans || []).some(p => p.id === workspace?.currentPlanId && p.steps?.length);
+  if (!hasPlan && (msg.includes('plan') || msg.includes('steps'))) return true;
+
+  return false;
+}
+
 async function runPropose({ scope = 'all', userMessage }) {
   if (proposeInFlight) { log('A proposal is already in progress…'); return; }
   if (!userMessage || !userMessage.trim()) {
@@ -683,9 +721,12 @@ async function runPropose({ scope = 'all', userMessage }) {
     chatSheet.open();
     return;
   }
+  const isPlanGenRequestForUi = scope === 'interventions' && isPlanGenerationIntent(userMessage, state.workspace);
   proposeInFlight = true;
   chatSheet.setBusy(true);
-  log(`Asking the AI to propose changes (${scope})…`);
+  log(isPlanGenRequestForUi
+    ? `Generating a full repair plan (this can take 30–60s)…`
+    : `Asking the AI to propose changes (${scope})…`);
 
   // Record the user-side action in the chat thread so it's findable later
   chatSheet.pushMessage('user', userMessage);
@@ -694,19 +735,26 @@ async function runPropose({ scope = 'all', userMessage }) {
   // Show a thinking placeholder bubble inline
   const thinking = document.createElement('div');
   thinking.className = 'chat-bubble chat-llm chat-thinking';
-  thinking.textContent = `Proposing changes (${scope})…`;
+  thinking.textContent = isPlanGenRequestForUi
+    ? `Generating a full repair plan… (Gemini 2.5 Pro, can take 30–60s)`
+    : `Proposing changes (${scope})…`;
   $('chat-history').appendChild(thinking);
   $('chat-history').scrollTop = $('chat-history').scrollHeight;
 
   try {
-    const res = await fetch('/api/propose', {
+    // Plan-generation requests go to the dedicated /api/generate-plan
+    // endpoint, which uses a specialized prompt and gemini-2.5-pro for
+    // higher-quality results. Other interventions scope requests (small
+    // modifications to an existing plan) still go through /api/propose.
+    const endpoint = isPlanGenRequestForUi ? '/api/generate-plan' : '/api/propose';
+    const body = isPlanGenRequestForUi
+      ? { userMessage, workspace: state.workspace }
+      : { scope, userMessage, workspace: payloadForPropose({ workspace: state.workspace, scope }) };
+
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        scope,
-        userMessage,
-        workspace: payloadForPropose({ workspace: state.workspace, scope })
-      })
+      body: JSON.stringify(body)
     });
     thinking.remove();
     if (!res.ok) {
