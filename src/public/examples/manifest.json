@@ -1,0 +1,16 @@
+{
+  "examples": [
+    {
+      "slug": "santo_02",
+      "name": "Santo 02",
+      "description": "adaptive reuse of a 1960s wooden chair",
+      "order": 10
+    },
+    {
+      "slug": "old-wooden-door",
+      "name": "Old wooden door",
+      "description": "weathered exterior door, frame intact",
+      "order": 20
+    }
+  ]
+}

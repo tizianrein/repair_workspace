@@ -488,6 +488,32 @@ $('load-example-select').onchange = async (e) => {
   }
 };
 
+// Populate the example dropdown from /examples/manifest.json which is
+// auto-generated at dev/build time by the Vite plugin in vite.config.js.
+// Dropping a new folder into src/public/examples/ is enough — no code
+// change needed for it to show up.
+(async function populateExamples() {
+  try {
+    const res = await fetch('/examples/manifest.json');
+    if (!res.ok) {
+      console.warn('No examples manifest found');
+      return;
+    }
+    const { examples } = await res.json();
+    const select = $('load-example-select');
+    for (const ex of (examples || [])) {
+      const opt = document.createElement('option');
+      opt.value = ex.slug;
+      opt.textContent = ex.description
+        ? `${ex.name} — ${ex.description}`
+        : ex.name;
+      select.appendChild(opt);
+    }
+  } catch (err) {
+    console.warn('Examples manifest load failed:', err);
+  }
+})();
+
 $('reset-btn').onclick = () => {
   if (!confirm('Reset workspace? This clears all parts, hypotheses, and plans.')) return;
   state.workspace = newWorkspace();
