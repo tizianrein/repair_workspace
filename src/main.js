@@ -1039,18 +1039,28 @@ function renderImagineSection(ws) {
   renderImagineResult(ws);
 }
 
+// Which rendering the user is currently looking at as "active". When null,
+// we default to the newest rendering. Clicking a thumbnail sets this; a new
+// generation resets it (new renderings become the active one).
+let activeRenderingId = null;
+
 function renderImagineResult(ws) {
   const wrap = $('imagine-result-wrap');
   const renderings = (ws.evidence || []).filter(e => e.kind === 'rendering');
   if (!renderings.length) {
+    activeRenderingId = null;
     wrap.innerHTML = '<div class="imagine-result-empty">No imagined result yet.</div>';
     return;
   }
   // Newest first
   const sorted = [...renderings].sort((a, b) =>
     new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-  const latest = sorted[0];
-  const older = sorted.slice(1);
+
+  // Pick the active one. Falls back to the newest if the selected one is gone.
+  const active = (activeRenderingId && sorted.find(r => r.id === activeRenderingId))
+    || sorted[0];
+  // All others, in newest-first order
+  const others = sorted.filter(r => r.id !== active.id);
 
   wrap.innerHTML = `
     <div class="imagine-result-stack">
@@ -1059,9 +1069,9 @@ function renderImagineResult(ws) {
         <textarea class="imagine-refine-input" id="imagine-refine-input" placeholder="Describe a change to apply (e.g. make the legs darker, swap cushion for green wool)…" rows="2"></textarea>
         <button class="imagine-refine-btn" id="imagine-refine-btn">↻ Refine image</button>
       </div>
-      ${older.length ? `
+      ${others.length ? `
         <div class="imagine-versions">
-          <div class="imagine-versions-label">Earlier versions (${older.length})</div>
+          <div class="imagine-versions-label">Other versions (${others.length}) — click to select</div>
           <div class="imagine-versions-row" id="imagine-versions-row"></div>
         </div>
       ` : ''}
@@ -1069,7 +1079,7 @@ function renderImagineResult(ws) {
   `;
 
   // Load main image
-  PhotoStorage.get(latest.id).then(photo => {
+  PhotoStorage.get(active.id).then(photo => {
     const main = wrap.querySelector('.imagine-main');
     if (!photo) {
       main.innerHTML = '<div class="imagine-result-empty">Image not on device</div>';
@@ -1080,16 +1090,13 @@ function renderImagineResult(ws) {
     main.querySelector('img').onclick = () => openImageLightbox(url);
   });
 
-  // Wire refine button
+  // Wire refine button — always operates on the currently active rendering
   const refineBtn = $('imagine-refine-btn');
   const refineInput = $('imagine-refine-input');
   refineBtn.onclick = () => {
     const text = refineInput.value.trim();
-    if (!text) {
-      refineInput.focus();
-      return;
-    }
-    runRefineImage(latest, text);
+    if (!text) { refineInput.focus(); return; }
+    runRefineImage(active, text);
   };
   refineInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -1098,19 +1105,22 @@ function renderImagineResult(ws) {
     }
   });
 
-  // Load thumbnails of older versions
-  if (older.length) {
+  // Thumbnails: click selects that version as active (no lightbox prompt).
+  if (others.length) {
     const row = $('imagine-versions-row');
-    Promise.all(older.map(r => PhotoStorage.get(r.id))).then(photos => {
+    Promise.all(others.map(r => PhotoStorage.get(r.id))).then(photos => {
       row.innerHTML = '';
       photos.forEach((p, i) => {
         if (!p) return;
         const url = URL.createObjectURL(p.blob);
         const thumb = document.createElement('div');
         thumb.className = 'imagine-version-thumb';
-        thumb.innerHTML = `<img src="${url}" alt="earlier version">`;
-        thumb.title = new Date(older[i].createdAt || 0).toLocaleString();
-        thumb.onclick = () => openImageLightbox(url);
+        thumb.innerHTML = `<img src="${url}" alt="version">`;
+        thumb.title = `Select this version (${new Date(others[i].createdAt || 0).toLocaleString()})`;
+        thumb.onclick = () => {
+          activeRenderingId = others[i].id;
+          renderImagineResult(state.workspace);
+        };
         row.appendChild(thumb);
       });
     });
@@ -1208,6 +1218,7 @@ async function runRefineImage(previousRendering, userInstruction) {
 
     await PhotoStorage.put(rendering.id, imgBlob, rendering.fileName);
     apply(state, { type: 'add-evidence', payload: { evidence: rendering } });
+    activeRenderingId = rendering.id;
     log(`Refined imagined result → ${rendering.id}`);
   } catch (err) {
     console.error('[refine] failed:', err);
@@ -1443,6 +1454,7 @@ $('soll-generate-btn').onclick = async () => {
 
     await PhotoStorage.put(rendering.id, imgBlob, rendering.fileName);
     apply(state, { type: 'add-evidence', payload: { evidence: rendering } });
+    activeRenderingId = rendering.id;
     log(`Generated imagined result → ${rendering.id}`);
 
     $('soll-review-modal').classList.remove('on');
