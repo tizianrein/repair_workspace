@@ -51,24 +51,13 @@ Each step MUST have this exact shape:
 {
   "id": "step_snake_case_unique",
   "title": "Short action title, max 5 words",
-  "description": "Precise, detailed description of the action. Include wait times for curing/drying in this text. Do not mention the intent or rationale here — keep this purely about what is done.",
-  "expectedOutcome": "What the artefact looks like / what is true after this step is complete.",
+  "description": "Precise, detailed step-by-step description of the manual technique. Be specific about HOW the action is performed: which side to start from, which direction to apply pressure, what grit progression, what consistency of glue, etc. This is the most important field — a craftsperson should be able to execute the step from this text alone. Include wait times for curing/drying as part of this text. Do not mention the intent or rationale here — keep this purely about manual technique.",
   "affectedPartRefs": ["part_id_from_workspace"],
-  "addressesHypothesisRefs": ["condition_id_from_workspace"],
-  "toolsRequired": ["specific tool 1", "specific tool 2"],
-  "materialsRequired": ["specific material 1"],
-  "estimatedMinutes": 30,
-  "safetyNotes": "Specific safety concerns for this step. Empty string if none.",
-  "justification": {
-    "drivingIntentAxes": ["axis_id_1"],
-    "drivingHypotheses": ["condition_id_1"],
-    "drivingConstraints": [],
-    "rationale": "Why this step exists, how it aligns with the repair intent. This is the 'why'."
-  },
-  "confidence": 0.8,
-  "optional": false
+  "addressesHypothesisRefs": ["condition_id_from_workspace"]
 }
 ```
+
+Note: fields like `toolsRequired`, `materialsRequired`, `estimatedMinutes`, `expectedOutcome`, `justification`, `safetyNotes`, and `confidence` are NOT part of this generation pass. They will be added in a second enrichment pass right after this one. Focus your output on the five fields above — being thorough on description in particular, since that's the field that captures the manual technique.
 
 # EDGE SCHEMA
 

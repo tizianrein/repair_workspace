@@ -1483,3 +1483,32 @@ select.detail-input { cursor: pointer; }
   background: rgba(31, 78, 121, 0.05);
   border-style: solid;
 }
+
+/* =========================================================
+   Phase B enrichment indicators
+   ========================================================= */
+.enriching-banner {
+  background: rgba(31, 78, 121, 0.06);
+  border: 1px solid rgba(31, 78, 121, 0.2);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--info);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.enriching-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--info);
+  animation: enriching-pulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes enriching-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.2); }
+}

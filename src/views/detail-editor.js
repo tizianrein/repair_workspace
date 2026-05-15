@@ -175,6 +175,15 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     titleEl.textContent = `Step: ${s.title || s.id}`;
     bodyEl.innerHTML = '';
 
+    // If this step is currently being enriched in Phase B, show a dezent
+    // banner so the user knows the details below will fill in soon.
+    const enrichingIds = window.__getEnrichingStepIds?.() || new Set();
+    if (enrichingIds.has(id)) {
+      const enr = el('div', 'enriching-banner');
+      enr.innerHTML = `<span class="enriching-dot"></span> AI is enriching this step with tools, time estimate, rationale… The fields below will update in a moment.`;
+      bodyEl.appendChild(enr);
+    }
+
     // If this step is inside a mutex group (i.e. one of several alternatives),
     // show a banner at the top with a button to commit to this branch.
     const mutexGroup = (plan.mutexGroups || []).find(g => (g.stepIds || []).includes(id));

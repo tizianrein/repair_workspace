@@ -55,6 +55,7 @@ export function createActionGraph(container, { onSelect, onDetail }) {
       const parent = mutexByStep.get(step.id);
       const mutex = parent ? plan.mutexGroups.find(g => g.id === parent) : null;
       const isMutexSelected = mutex?.selectedStepId === step.id;
+      const enrichingIds = window.__getEnrichingStepIds?.() || new Set();
       nodes.push({
         data: {
           id: step.id,
@@ -65,7 +66,8 @@ export function createActionGraph(container, { onSelect, onDetail }) {
           optional: !!step.optional,
           inMutex: !!parent,
           mutexSelected: isMutexSelected,
-          active: step.id === currentStepId
+          active: step.id === currentStepId,
+          enriching: enrichingIds.has(step.id)
         }
       });
     });
@@ -102,6 +104,19 @@ export function createActionGraph(container, { onSelect, onDetail }) {
         },
         { selector: 'node[?inMutex][!mutexSelected]', style: { 'opacity': 0.6 } },
         { selector: 'node[?mutexSelected]', style: { 'border-color': '#c1272d', 'border-width': 2.5 } },
+        // "Being enriched in Phase B" — dotted blue border, subtle, doesn't
+        // overpower other status colors. Cytoscape doesn't animate, so the
+        // pulse happens via a class we toggle (see periodicPulse below).
+        { selector: 'node[?enriching]', style: {
+            'border-style': 'dotted',
+            'border-color': '#1f4e79',
+            'border-width': 2
+          }
+        },
+        { selector: 'node.enrich-pulse', style: {
+            'border-color': '#3a7bb8'
+          }
+        },
         {
           selector: '.mutex-parent',
           style: {
@@ -152,6 +167,24 @@ export function createActionGraph(container, { onSelect, onDetail }) {
       }
     });
     cy.on('dbltap', 'node[!isMutex]', evt => onDetail?.(evt.target.id()));
+    startPulse();
+  }
+
+  // Periodic pulse on enriching nodes — toggles a class every 700ms.
+  // Cleared automatically when no nodes are enriching.
+  let pulseTimer = null;
+  function startPulse() {
+    if (pulseTimer) return;
+    pulseTimer = setInterval(() => {
+      if (!cy) return;
+      const enriching = cy.nodes('[?enriching]');
+      if (!enriching.length) {
+        clearInterval(pulseTimer);
+        pulseTimer = null;
+        return;
+      }
+      enriching.forEach(n => n.toggleClass('enrich-pulse'));
+    }, 700);
   }
 
   return {

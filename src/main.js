@@ -751,7 +751,7 @@ async function runPropose({ scope = 'all', userMessage }) {
   proposeInFlight = true;
   chatSheet.setBusy(true);
   log(isPlanGenRequestForUi
-    ? `Generating a full repair plan (this can take 30–60s)…`
+    ? `Generating a full repair plan (Phase A: structure, ~30s)…`
     : `Asking the AI to propose changes (${scope})…`);
 
   // Record the user-side action in the chat thread so it's findable later
@@ -762,7 +762,7 @@ async function runPropose({ scope = 'all', userMessage }) {
   const thinking = document.createElement('div');
   thinking.className = 'chat-bubble chat-llm chat-thinking';
   thinking.textContent = isPlanGenRequestForUi
-    ? `Generating a full repair plan… (Gemini 2.5 Pro, can take 30–60s)`
+    ? `Generating plan structure (Gemini 2.5 Pro, ~30s). Tools/materials/rationale will fill in afterwards in the background.`
     : `Proposing changes (${scope})…`;
   $('chat-history').appendChild(thinking);
   $('chat-history').scrollTop = $('chat-history').scrollHeight;
@@ -825,12 +825,127 @@ async function runPropose({ scope = 'all', userMessage }) {
     chatSheet.pushActionRecord(tag);
     log(`Applied ${accepted.length} change${accepted.length === 1 ? '' : 's'}.`);
     chatSheet.setMessage('');
+
+    // If this was a plan-generation, kick off Phase B enrichment in the
+    // background. Phase A returned a skeleton with id/title/description/
+    // partRefs only — Phase B fills in tools, materials, time, expected
+    // outcome, justification, safety, confidence.
+    if (isPlanGenRequestForUi) {
+      const acceptedPlanCmd = accepted.find(c => c.type === 'add-plan');
+      const newPlan = acceptedPlanCmd?.payload?.plan;
+      if (newPlan && newPlan.steps?.length) {
+        enrichPlanInBackground(newPlan);
+      }
+    }
   } catch (err) {
     log(`Propose error: ${err.message}`);
     chatSheet.pushMessage('assistant', `Error during proposal: ${err.message}`);
   } finally {
     proposeInFlight = false;
     chatSheet.setBusy(false);
+  }
+}
+
+// -------------------------------------------------------------------------
+// Phase B: plan enrichment (background)
+//
+// After a plan skeleton is generated and accepted, this kicks off a
+// secondary AI call that fills in operational + reflective fields per
+// step. Runs entirely in the background — UI shows a small spinner on
+// each step until the enrichment arrives.
+// -------------------------------------------------------------------------
+
+// Set of step IDs that currently have an enrichment in flight. Views read
+// this via getEnrichingStepIds() to render the "thinking" indicator.
+const enrichingStepIds = new Set();
+let enrichmentSeq = 0;
+
+export function getEnrichingStepIds() { return enrichingStepIds; }
+// Expose globally so view files that don't import main.js can still query.
+window.__getEnrichingStepIds = () => enrichingStepIds;
+
+async function enrichPlanInBackground(plan) {
+  const stepIds = plan.steps.map(s => s.id);
+  stepIds.forEach(id => enrichingStepIds.add(id));
+  enrichmentSeq++;
+  const mySeq = enrichmentSeq;
+
+  // Trigger a re-render so the indicator appears
+  state.listeners.forEach(fn => fn(state.workspace, { type: 'enrich-start' }));
+  log(`Enriching plan in background (${stepIds.length} steps)…`);
+
+  try {
+    const res = await fetch('/api/enrich-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        workspace: state.workspace,
+        plan: {
+          id: plan.id,
+          label: plan.label,
+          steps: plan.steps
+        }
+      })
+    });
+
+    // If another enrichment has started since we began, this one is stale
+    if (mySeq !== enrichmentSeq) return;
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      log(`Enrichment failed: ${err.error || res.status} (plan is usable, just less detailed)`);
+      return;
+    }
+    const { enrichments } = await res.json();
+    if (!Array.isArray(enrichments) || !enrichments.length) {
+      log('Enrichment returned nothing.');
+      return;
+    }
+
+    // Find the currently-active plan in state. The user may have edited
+    // since Phase A — we only update steps that still exist.
+    const ws = state.workspace;
+    const currentPlan = (ws.plans || []).find(p => p.id === plan.id);
+    if (!currentPlan) {
+      log('Plan no longer present, skipping enrichment.');
+      return;
+    }
+
+    // Build upsert-step commands for each enrichment that matches an
+    // existing step in the current plan.
+    const commands = [];
+    for (const e of enrichments) {
+      const existing = (currentPlan.steps || []).find(s => s.id === e.id);
+      if (!existing) continue;
+      const updatedStep = {
+        ...existing,
+        toolsRequired: e.toolsRequired || existing.toolsRequired || [],
+        materialsRequired: e.materialsRequired || existing.materialsRequired || [],
+        estimatedMinutes: e.estimatedMinutes ?? existing.estimatedMinutes,
+        expectedOutcome: e.expectedOutcome || existing.expectedOutcome || '',
+        safetyNotes: e.safetyNotes || existing.safetyNotes || '',
+        justification: e.justification || existing.justification,
+        confidence: typeof e.confidence === 'number' ? e.confidence : existing.confidence
+      };
+      commands.push({ type: 'upsert-step', payload: { planId: plan.id, step: updatedStep } });
+    }
+
+    if (commands.length) {
+      apply(state, {
+        type: 'batch',
+        payload: { label: 'AI: enrich plan steps', commands }
+      });
+      log(`Plan enriched: ${commands.length} step${commands.length === 1 ? '' : 's'} updated.`);
+    }
+  } catch (err) {
+    if (mySeq !== enrichmentSeq) return;
+    console.error('[enrich] failed:', err);
+    log(`Enrichment failed: ${err.message} (plan is usable, just less detailed)`);
+  } finally {
+    if (mySeq === enrichmentSeq) {
+      enrichingStepIds.clear();
+      state.listeners.forEach(fn => fn(state.workspace, { type: 'enrich-end' }));
+    }
   }
 }
 
