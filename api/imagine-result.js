@@ -43,19 +43,19 @@ export default async function handler(req, res) {
 
     const isRefinement = !!(previousRendering?.data && previousRendering?.mimeType);
 
-    // Build the prompt — slightly different copy when we have a previous
-    // rendering, to make the model's two-reference task explicit.
+    // Build the prompt
     const prompt = buildPrompt(soll, isRefinement);
 
-    // Order matters: primary reference first, current state second.
-    const files = [file];
-    if (isRefinement) {
-      files.push({
-        name: 'previous_rendering',
-        mimeType: previousRendering.mimeType,
-        data: previousRendering.data
-      });
-    }
+    // Refinement passes use ONLY the previous rendering as the reference.
+    // Sending both the original source photo and the previous rendering
+    // produced confusing outputs (the model couldn't tell which to anchor
+    // on and would interpolate between them). Single-reference is clearer:
+    // the user iteratively works on the latest state, and if they want to
+    // revisit an earlier version they can re-select it via the thumbnail
+    // strip.
+    const files = isRefinement
+      ? [{ name: 'previous_rendering', mimeType: previousRendering.mimeType, data: previousRendering.data }]
+      : [file];
 
     const result = await callGeminiImage({
       prompt,
@@ -107,7 +107,7 @@ function buildPrompt(soll, isRefinement = false) {
     : '';
 
   const intro = isRefinement
-    ? `Generate a photograph showing the artefact described below. You are given two reference images: the first is the ORIGINAL PHOTOGRAPH of the artefact (use this for true material, identity, and photographic setting). The second is the PREVIOUS GENERATED VERSION (use this as the visual starting point — preserve its composition and stable details, then apply only the changes described below). Render the artefact in the new target state.`
+    ? `The provided reference image shows the CURRENT version of the artefact. Generate a new photograph that preserves this image's composition, background, lighting, angle, materials, and overall character — but applies the changes described below. Only modify what is explicitly different in the description; everything else should remain as in the reference.`
     : `Generate a photograph showing the artefact described below. The provided source image is a visual reference for the artefact's identity, materials, and the photographic setting; render the artefact in the state described here.`;
 
   return `${intro}
