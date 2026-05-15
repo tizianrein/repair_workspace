@@ -1531,3 +1531,106 @@ select.detail-input { cursor: pointer; }
   width: 100% !important;
   height: 100% !important;
 }
+
+/* =========================================================
+   Imagined Result — refine + version stack
+   ========================================================= */
+.imagine-result-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.imagine-main {
+  width: 100%;
+  background: var(--bg);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.imagine-main img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  cursor: zoom-in;
+}
+.imagine-refine {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.imagine-refine-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  resize: vertical;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+.imagine-refine-input:focus {
+  outline: 1px solid var(--info);
+  border-color: var(--info);
+}
+.imagine-refine-input:disabled {
+  opacity: 0.55;
+}
+.imagine-refine-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: opacity 120ms;
+}
+.imagine-refine-btn:hover { opacity: 0.85; }
+.imagine-refine-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.imagine-versions {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.imagine-versions-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+.imagine-versions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.imagine-version-thumb {
+  width: 60px;
+  height: 60px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: zoom-in;
+  position: relative;
+  background: var(--bg);
+}
+.imagine-version-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.imagine-version-thumb:hover {
+  border-color: var(--info);
+}

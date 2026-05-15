@@ -1046,17 +1046,178 @@ function renderImagineResult(ws) {
     wrap.innerHTML = '<div class="imagine-result-empty">No imagined result yet.</div>';
     return;
   }
-  const latest = renderings[renderings.length - 1];
-  wrap.innerHTML = '<div class="imagine-result-empty">Loading…</div>';
+  // Newest first
+  const sorted = [...renderings].sort((a, b) =>
+    new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  const latest = sorted[0];
+  const older = sorted.slice(1);
+
+  wrap.innerHTML = `
+    <div class="imagine-result-stack">
+      <div class="imagine-main"><div class="imagine-result-empty">Loading…</div></div>
+      <div class="imagine-refine">
+        <textarea class="imagine-refine-input" id="imagine-refine-input" placeholder="Describe a change to apply (e.g. make the legs darker, swap cushion for green wool)…" rows="2"></textarea>
+        <button class="imagine-refine-btn" id="imagine-refine-btn">↻ Refine image</button>
+      </div>
+      ${older.length ? `
+        <div class="imagine-versions">
+          <div class="imagine-versions-label">Earlier versions (${older.length})</div>
+          <div class="imagine-versions-row" id="imagine-versions-row"></div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+
+  // Load main image
   PhotoStorage.get(latest.id).then(photo => {
+    const main = wrap.querySelector('.imagine-main');
     if (!photo) {
-      wrap.innerHTML = '<div class="imagine-result-empty">Image not on device</div>';
+      main.innerHTML = '<div class="imagine-result-empty">Image not on device</div>';
       return;
     }
     const url = URL.createObjectURL(photo.blob);
-    wrap.innerHTML = `<img src="${url}" alt="imagined result">`;
-    wrap.querySelector('img').onclick = () => openImageLightbox(url);
+    main.innerHTML = `<img src="${url}" alt="imagined result">`;
+    main.querySelector('img').onclick = () => openImageLightbox(url);
   });
+
+  // Wire refine button
+  const refineBtn = $('imagine-refine-btn');
+  const refineInput = $('imagine-refine-input');
+  refineBtn.onclick = () => {
+    const text = refineInput.value.trim();
+    if (!text) {
+      refineInput.focus();
+      return;
+    }
+    runRefineImage(latest, text);
+  };
+  refineInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      refineBtn.click();
+    }
+  });
+
+  // Load thumbnails of older versions
+  if (older.length) {
+    const row = $('imagine-versions-row');
+    Promise.all(older.map(r => PhotoStorage.get(r.id))).then(photos => {
+      row.innerHTML = '';
+      photos.forEach((p, i) => {
+        if (!p) return;
+        const url = URL.createObjectURL(p.blob);
+        const thumb = document.createElement('div');
+        thumb.className = 'imagine-version-thumb';
+        thumb.innerHTML = `<img src="${url}" alt="earlier version">`;
+        thumb.title = new Date(older[i].createdAt || 0).toLocaleString();
+        thumb.onclick = () => openImageLightbox(url);
+        row.appendChild(thumb);
+      });
+    });
+  }
+}
+
+/**
+ * Refine an existing imagined result based on a short user instruction.
+ *
+ * Calls /api/modify-target-json to mutate the previous rendering's Soll-JSON,
+ * then /api/imagine-result with BOTH the original source photo and the
+ * previous rendering as references, so the model preserves visual stability
+ * across iterations while applying only the requested change.
+ *
+ * The new rendering is added as a new evidence item (versioning is implicit
+ * via createdAt ordering and the basedOnPreviousRenderingId field).
+ */
+async function runRefineImage(previousRendering, userInstruction) {
+  const ws = state.workspace;
+  const sourceId = previousRendering.basedOnSourceEvidenceId
+    || ws.instance?.sourcePhotoEvidenceId;
+  const sourceEv = (ws.evidence || []).find(e => e.id === sourceId);
+  if (!sourceEv) { alert('Original source photo missing.'); return; }
+  if (!previousRendering.sollJson) { alert('Previous rendering has no Soll-JSON.'); return; }
+
+  const sourcePhoto = await PhotoStorage.get(sourceId);
+  if (!sourcePhoto) { alert('Source photo file not on this device.'); return; }
+  const prevImage = await PhotoStorage.get(previousRendering.id);
+  if (!prevImage) { alert('Previous rendering file not on this device.'); return; }
+
+  const btn = $('imagine-refine-btn');
+  const input = $('imagine-refine-input');
+  btn.disabled = true;
+  input.disabled = true;
+  btn.textContent = '⏳ Modifying target…';
+  log(`Refining imagined result: "${userInstruction}"`);
+
+  try {
+    // Stage 1: modify Soll-JSON based on the user's instruction
+    const modResp = await fetch('/api/modify-target-json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        currentSoll: previousRendering.sollJson,
+        userInstruction,
+        workspace: ws
+      })
+    });
+    if (!modResp.ok) {
+      throw new Error('modify-target-json failed: ' + (await modResp.text()));
+    }
+    const { soll: newSoll, rationale } = await modResp.json();
+    log(`Soll-JSON updated: ${rationale || '(no rationale)'}`);
+
+    // Stage 2: generate new image, passing the previous rendering as the
+    // second reference image to preserve visual stability
+    btn.textContent = '⏳ Generating image…';
+    const sourceBase64 = await blobToBase64(sourcePhoto.blob);
+    const prevBase64 = await blobToBase64(prevImage.blob);
+
+    const genResp = await fetch('/api/imagine-result', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file: {
+          name: sourceEv.fileName || 'source.jpg',
+          mimeType: sourcePhoto.blob.type || 'image/jpeg',
+          data: sourceBase64
+        },
+        soll: newSoll,
+        previousRendering: {
+          mimeType: prevImage.blob.type || 'image/png',
+          data: prevBase64
+        }
+      })
+    });
+    if (!genResp.ok) throw new Error('imagine-result failed: ' + (await genResp.text()));
+    const { image } = await genResp.json();
+
+    // Persist as a new rendering evidence
+    const imgBlob = await dataUrlToBlob(image);
+    const rendering = newEvidence('rendering', {
+      attachedTo: null,
+      url: 'idb://placeholder'
+    });
+    rendering.url = `idb://${rendering.id}`;
+    rendering.fileName = `imagined-refined-${Date.now()}.png`;
+    rendering.byteSize = imgBlob.size;
+    rendering.basedOnSourceEvidenceId = sourceId;
+    rendering.basedOnPreviousRenderingId = previousRendering.id;
+    rendering.sollJson = newSoll;
+    rendering.istJson = previousRendering.istJson;
+    rendering.refinementInstruction = userInstruction;
+    rendering.refinementRationale = rationale;
+
+    await PhotoStorage.put(rendering.id, imgBlob, rendering.fileName);
+    apply(state, { type: 'add-evidence', payload: { evidence: rendering } });
+    log(`Refined imagined result → ${rendering.id}`);
+  } catch (err) {
+    console.error('[refine] failed:', err);
+    alert('Refinement failed: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    input.disabled = false;
+    btn.textContent = '↻ Refine image';
+    input.value = '';
+  }
 }
 
 function openImageLightbox(url) {

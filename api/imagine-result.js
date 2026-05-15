@@ -5,18 +5,24 @@
  *
  * Body:
  *   {
- *     file: { name, mimeType, data },   // base64 source image
- *     soll: <target-state structured description>
+ *     file: { name, mimeType, data },              // base64 source image (the real photo)
+ *     soll: <target-state structured description>,
+ *     previousRendering?: { mimeType, data }       // optional: previous generated image for refinement passes
  *   }
  *
  * Returns:
  *   { image: 'data:image/png;base64,...', text: string }
  *
- * Calls Gemini 2.5 Flash Image (Nano Banana) with the source image as
- * visual anchor and the Soll-JSON as the structural target spec. The
- * model produces a new image that follows the Soll-JSON description
- * while staying visually consistent with the source for everything
- * that hasn't changed.
+ * Calls Gemini 2.5 Flash Image (Nano Banana). The source photo is always
+ * passed as the primary visual anchor — the real artefact's identity,
+ * materials, and photographic setting come from there. The Soll-JSON
+ * describes the target state.
+ *
+ * When `previousRendering` is supplied (i.e. this is a refinement of an
+ * earlier generation rather than a fresh render), it goes in as a second
+ * reference image so the model can preserve the stable visual elements of
+ * the previous version while applying the change described in the
+ * (modified) Soll-JSON.
  */
 
 import { callGeminiImage } from './_shared/gemini.js';
@@ -27,7 +33,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { file, soll } = req.body || {};
+    const { file, soll, previousRendering } = req.body || {};
     if (!file?.data || !file?.mimeType) {
       return res.status(400).json({ error: 'file with data and mimeType is required' });
     }
@@ -35,12 +41,25 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'soll must include subject and scene' });
     }
 
-    // Format the Soll-JSON as a clear edit instruction
-    const prompt = buildPrompt(soll);
+    const isRefinement = !!(previousRendering?.data && previousRendering?.mimeType);
+
+    // Build the prompt — slightly different copy when we have a previous
+    // rendering, to make the model's two-reference task explicit.
+    const prompt = buildPrompt(soll, isRefinement);
+
+    // Order matters: primary reference first, current state second.
+    const files = [file];
+    if (isRefinement) {
+      files.push({
+        name: 'previous_rendering',
+        mimeType: previousRendering.mimeType,
+        data: previousRendering.data
+      });
+    }
 
     const result = await callGeminiImage({
       prompt,
-      files: [file]
+      files
     });
 
     return res.status(200).json({
@@ -63,7 +82,7 @@ export default async function handler(req, res) {
  * scene-level fields (lighting, angle, background) should match the
  * source photo, since those are explicitly marked as preserved.
  */
-function buildPrompt(soll) {
+function buildPrompt(soll, isRefinement = false) {
   const { subject, scene } = soll;
 
   // Parts present in the target — describe them as the Soll says.
@@ -87,7 +106,11 @@ function buildPrompt(soll) {
     ? `\n\nPARTS THAT ARE NO LONGER PRESENT IN THE OUTPUT IMAGE:\n${removedList}`
     : '';
 
-  return `Generate a photograph showing the artefact described below. The provided source image is a visual reference for the artefact's identity, materials, and the photographic setting; render the artefact in the state described here.
+  const intro = isRefinement
+    ? `Generate a photograph showing the artefact described below. You are given two reference images: the first is the ORIGINAL PHOTOGRAPH of the artefact (use this for true material, identity, and photographic setting). The second is the PREVIOUS GENERATED VERSION (use this as the visual starting point — preserve its composition and stable details, then apply only the changes described below). Render the artefact in the new target state.`
+    : `Generate a photograph showing the artefact described below. The provided source image is a visual reference for the artefact's identity, materials, and the photographic setting; render the artefact in the state described here.`;
+
+  return `${intro}
 
 THE ARTEFACT TO SHOW:
 ${subject.type}
