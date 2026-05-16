@@ -102,7 +102,11 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
           msg.uncertainty.map(u => `<li>${escapeHtml(u)}</li>`).join('') + '</ul>';
         div.appendChild(un);
       }
-      if (msg.suggestedAction) {
+      if (msg.suggestedAction && typeof msg.suggestedAction === 'string') {
+        // Only render the suggested-action affordance when the server gave
+        // us a proper string. If a non-string slips through (model bug,
+        // schema drift), drop it silently rather than render [object Object]
+        // and a Propose button that points at garbage.
         const sa = document.createElement('div');
         sa.className = 'chat-suggested';
         sa.innerHTML = `<span class="csa-label">Suggested action:</span> ${escapeHtml(msg.suggestedAction)}`;

@@ -53,9 +53,37 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: 'Model returned malformed reply', raw: result });
     }
 
+    // The contract says suggestedAction is string|null. Models occasionally
+    // disregard that and return a structured object (e.g. {command:"...",
+    // payload:{...}}) when the prompt's "use entity IDs" pull bleeds into
+    // structured-output territory. Coerce defensively:
+    //  - string → keep as-is (the happy path)
+    //  - object with a recognisable text field → use that field
+    //  - anything else → null, and log so we can tighten the prompt
+    let suggestedAction = result.suggestedAction ?? null;
+    if (suggestedAction != null && typeof suggestedAction !== 'string') {
+      if (typeof suggestedAction === 'object') {
+        const candidate =
+          suggestedAction.text ||
+          suggestedAction.userMessage ||
+          suggestedAction.instruction ||
+          suggestedAction.description ||
+          null;
+        if (typeof candidate === 'string' && candidate.length) {
+          suggestedAction = candidate;
+        } else {
+          console.warn('[chat] dropped non-string suggestedAction:', suggestedAction);
+          suggestedAction = null;
+        }
+      } else {
+        // numbers, booleans, etc — just stringify
+        suggestedAction = String(suggestedAction);
+      }
+    }
+
     return res.status(200).json({
       reply: result.reply,
-      suggestedAction: result.suggestedAction ?? null,
+      suggestedAction,
       uncertainty: Array.isArray(result.uncertainty) ? result.uncertainty : []
     });
   } catch (err) {
