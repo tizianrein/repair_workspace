@@ -468,10 +468,39 @@ export function createViewer3D(canvas, infoBox, onSelect) {
 
   // Apply the current displayMode to the two groups. Toggling visibility
   // is enough — the raycast lookups gate themselves on meshIsHittable()
-  // so invisible objects don't grab clicks.
+  // so invisible objects don't grab clicks. We also tune the mesh
+  // material opacity here so that "Both" mode lets the colored box
+  // parts read through, while "Mesh" mode shows the scan at full
+  // opacity for an undisturbed look.
   function applyDisplayMode() {
     objectGroup.visible = displayMode !== 'mesh';
     meshGroup.visible = displayMode !== 'boxes';
+    const opacity = displayMode === 'both' ? 0.45 : 1.0;
+    setMeshOpacity(opacity);
+  }
+
+  // Walk the loaded glTF scene and set each mesh material's opacity.
+  // We mutate the existing materials in place rather than swapping them
+  // out — that preserves all the textures, normal maps, and PBR
+  // settings GLTFLoader configured. transparent must be toggled too;
+  // a MeshStandardMaterial ignores opacity unless transparent is true.
+  function setMeshOpacity(opacity) {
+    if (!loadedMesh) return;
+    const isTranslucent = opacity < 1.0;
+    loadedMesh.traverse(obj => {
+      if (!obj.isMesh) return;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach(m => {
+        if (!m) return;
+        m.transparent = isTranslucent;
+        m.opacity = opacity;
+        // depthWrite off when translucent so the boxes behind the
+        // mesh aren't z-fought into invisibility by mesh-front fragments.
+        // Re-enable in opaque mode so the mesh occludes itself properly.
+        m.depthWrite = !isTranslucent;
+        m.needsUpdate = true;
+      });
+    });
   }
 
   // Disposes anything currently in meshGroup. We recurse because a glTF
