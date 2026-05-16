@@ -14,18 +14,37 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const materials = {
-  intact: new THREE.MeshBasicMaterial({ color: 0xd0d0d0, transparent: true, opacity: 0.75, depthWrite: false, side: THREE.FrontSide }),
-  defective: new THREE.MeshBasicMaterial({ color: 0xff4d4d, transparent: true, opacity: 0.75, depthWrite: false, side: THREE.FrontSide }),
-  missing: new THREE.MeshBasicMaterial({ color: 0xffde59, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.FrontSide }),
-  new: new THREE.MeshBasicMaterial({ color: 0xc000ff, transparent: true, opacity: 0.75, depthWrite: false, side: THREE.FrontSide }),
-  repaired: new THREE.MeshBasicMaterial({ color: 0x97c459, transparent: true, opacity: 0.75, depthWrite: false, side: THREE.FrontSide }),
-  discarded: new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.FrontSide }),
-  selected: new THREE.MeshBasicMaterial({ color: 0x2f6bff, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.FrontSide }),
+  // Box-part materials. depthWrite stays ON so that hypothesis spheres
+  // sitting behind a part are correctly occluded — the previous
+  // depthWrite:false meant the box did not contribute to the Z buffer,
+  // and the marker would arbitrarily appear in front of or behind the
+  // box depending on Three.js's sort order. The slight tradeoff:
+  // transparent parts stacked back-to-back may now occlude each other
+  // sharply rather than blending. polygonOffset nudges box surfaces
+  // slightly back in depth so a hypothesis placed AT the box origin
+  // (the new common case after coordinate-rescue) doesn't z-fight with
+  // the surface.
+  intact:    new THREE.MeshBasicMaterial({ color: 0xd0d0d0, transparent: true, opacity: 0.75, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }),
+  defective: new THREE.MeshBasicMaterial({ color: 0xff4d4d, transparent: true, opacity: 0.75, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }),
+  missing:   new THREE.MeshBasicMaterial({ color: 0xffde59, transparent: true, opacity: 0.80, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }),
+  new:       new THREE.MeshBasicMaterial({ color: 0xc000ff, transparent: true, opacity: 0.75, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }),
+  repaired:  new THREE.MeshBasicMaterial({ color: 0x97c459, transparent: true, opacity: 0.75, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }),
+  discarded: new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.18, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }),
+  selected:  new THREE.MeshBasicMaterial({ color: 0x2f6bff, transparent: true, opacity: 0.85, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }),
   outline: new THREE.LineBasicMaterial({ color: 0x1a1a1a }),
+  // Hypothesis main sphere: opaque-feeling marker that participates in
+  // depth testing. When in front of a part, the user sees this kräftig
+  // red dot. When behind, this gets occluded — and the ghost (below)
+  // is what shows through.
   hypothesis: new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.95 }),
-  hypothesisGhost: new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.25, depthTest: false, depthWrite: false }),
+  // Ghost overlay: same geometry, drawn last (renderOrder 999) with
+  // depthTest off so it's ALWAYS visible. Opacity is just high enough
+  // to be clearly visible through a translucent box but low enough
+  // that it visibly differs from the main sphere — that contrast is
+  // how the user reads "this marker is currently occluded".
+  hypothesisGhost: new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.35, depthTest: false, depthWrite: false }),
   selectedHypothesis: new THREE.MeshBasicMaterial({ color: 0x2f6bff, transparent: true, opacity: 0.95 }),
-  selectedHypothesisGhost: new THREE.MeshBasicMaterial({ color: 0x2f6bff, transparent: true, opacity: 0.25, depthTest: false, depthWrite: false })
+  selectedHypothesisGhost: new THREE.MeshBasicMaterial({ color: 0x2f6bff, transparent: true, opacity: 0.35, depthTest: false, depthWrite: false })
 };
 
 export function createViewer3D(canvas, infoBox, onSelect) {
