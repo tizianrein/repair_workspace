@@ -46,7 +46,9 @@ export function createMiniViewer3D(container) {
   scene.add(markerGroup);
 
   let animationId = null;
+  let disposed = false;
   function tick() {
+    if (disposed) return;
     animationId = requestAnimationFrame(tick);
     controls.update();
     renderer.render(scene, camera);
@@ -260,11 +262,32 @@ export function createMiniViewer3D(container) {
   }
 
   function destroy() {
+    if (disposed) return;
+    disposed = true;
     if (animationId) cancelAnimationFrame(animationId);
+    animationId = null;
     renderer.domElement.removeEventListener('pointerdown', onPointerDown);
     renderer.domElement.removeEventListener('pointerup', onPointerUp);
+    currentClickCallback = null;
     clear();
+    // Dispose shared materials owned by this viewer instance — they live
+    // in the closure, so once the viewer goes away they would otherwise
+    // leak GPU resources.
+    matDim.dispose();
+    matHighlight.dispose();
+    matConnected.dispose();
+    matEdge.dispose();
+    matEdgeHighlight.dispose();
+    matEdgeConnected.dispose();
     controls.dispose();
+    // Critical: renderer.dispose() alone does NOT release the WebGL
+    // context — Chrome holds onto it until GC, and the per-tab limit is
+    // ~16 live contexts. Without forceContextLoss(), opening/closing the
+    // modal 16 times tips the tab into a WebGL crash (the ":(" page).
+    const gl = renderer.getContext();
+    const loseExt = gl && gl.getExtension('WEBGL_lose_context');
+    if (loseExt) loseExt.loseContext();
+    renderer.forceContextLoss?.();
     renderer.dispose();
     if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
   }

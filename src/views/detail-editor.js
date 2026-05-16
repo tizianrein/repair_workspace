@@ -24,8 +24,15 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
   // destroy and recreate it each time the modal opens to avoid context
   // leaks; Three.js WebGL contexts are expensive to keep around.
   let miniViewer = null;
+  // Tracks a queued rAF that will create a viewer next frame. Set when
+  // build is called, cleared when the callback fires or the modal closes.
+  let pendingViewerRaf = null;
 
   function destroyMiniViewer() {
+    if (pendingViewerRaf) {
+      cancelAnimationFrame(pendingViewerRaf);
+      pendingViewerRaf = null;
+    }
     if (miniViewer) {
       miniViewer.destroy();
       miniViewer = null;
@@ -64,8 +71,16 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     const wrap = el('div', 'detail-3d-mini');
     parentEl.appendChild(wrap);
     lastViewerTargetKey = targetKey;
-    // Defer to next frame so the wrap has its size before WebGL initializes
-    requestAnimationFrame(() => {
+    // Defer to next frame so the wrap has its size before WebGL initializes.
+    // Track the rAF handle so a fast close() can cancel pending creation —
+    // otherwise we leak a brand-new WebGL context the closer can't reach.
+    if (pendingViewerRaf) cancelAnimationFrame(pendingViewerRaf);
+    pendingViewerRaf = requestAnimationFrame(() => {
+      pendingViewerRaf = null;
+      // Modal may have closed between insert and rAF firing. Bail out
+      // rather than spinning up a WebGL context that nobody can dispose.
+      if (!modalEl.classList.contains('on')) return;
+      if (!wrap.isConnected) return;
       miniViewer = createMiniViewer3D(wrap);
       miniViewer.containerEl = wrap;
       miniViewer.render(getWorkspace(), {
