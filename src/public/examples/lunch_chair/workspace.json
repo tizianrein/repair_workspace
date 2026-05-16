@@ -2,8 +2,8 @@
   "schemaVersion": "2.0.0",
   "template": null,
   "instance": {
-    "id": "inst_wooden_chair",
-    "name": "Wooden Chair",
+    "id": "lunch_chair",
+    "name": "Lunch Chair",
     "templateRef": null,
     "parts": [
       {
@@ -21,15 +21,15 @@
         },
         "rotation": {
           "x": -1.570796,
-          "y": -0.0,
-          "z": 0.0
+          "y": 0,
+          "z": 0
         },
         "connections": [
-          "back_left_leg",
-          "back_right_leg"
+          "back_right_leg",
+          "back_left_leg"
         ],
         "material": "Weathered solid timber",
-        "status": "intact",
+        "status": "defective",
         "notes": ""
       },
       {
@@ -51,8 +51,10 @@
           "z": 1.570796
         },
         "connections": [
-          "back_left_leg",
-          "front_apron"
+          "front_apron",
+          "rounded_apron",
+          "front_stretcher",
+          "round_stretcher"
         ],
         "material": "Weathered solid timber",
         "status": "intact",
@@ -77,8 +79,10 @@
           "z": 1.570796
         },
         "connections": [
-          "back_right_leg",
-          "rounded_apron"
+          "rounded_apron",
+          "front_apron",
+          "front_stretcher",
+          "round_stretcher"
         ],
         "material": "Weathered solid timber",
         "status": "intact",
@@ -103,11 +107,11 @@
           "z": 1.635148
         },
         "connections": [
-          "backrest",
-          "front_left_leg",
-          "seat",
           "back_slat_upper",
-          "back_slat_lower"
+          "back_slat_lower",
+          "backrest",
+          "round_stretcher",
+          "rounded_apron"
         ],
         "material": "Weathered solid timber",
         "status": "intact",
@@ -133,13 +137,13 @@
         },
         "connections": [
           "backrest",
-          "front_right_leg",
-          "seat",
           "back_slat_upper",
-          "back_slat_lower"
+          "back_slat_lower",
+          "round_stretcher",
+          "rounded_apron"
         ],
         "material": "Weathered solid timber",
-        "status": "intact",
+        "status": "defective",
         "notes": ""
       },
       {
@@ -156,13 +160,13 @@
           "depth": 0.024037
         },
         "rotation": {
-          "x": -0.0,
+          "x": 0,
           "y": 1.570796,
           "z": 3.141593
         },
         "connections": [
-          "front_apron",
-          "rounded_apron"
+          "front_left_leg",
+          "front_right_leg"
         ],
         "material": "Weathered solid timber",
         "status": "intact",
@@ -184,12 +188,13 @@
         "rotation": {
           "x": 1.568978,
           "y": -1.565416,
-          "z": 0.0
+          "z": 0
         },
         "connections": [
           "front_left_leg",
-          "front_stretcher",
-          "seat"
+          "seat",
+          "front_right_leg",
+          "rounded_apron"
         ],
         "material": "Weathered solid timber",
         "status": "intact",
@@ -211,13 +216,13 @@
         "rotation": {
           "x": -1.56898,
           "y": 0.003274,
-          "z": 0.0
+          "z": 0
         },
         "connections": [
           "seat"
         ],
         "material": "Weathered solid timber",
-        "status": "intact",
+        "status": "defective",
         "notes": ""
       },
       {
@@ -236,17 +241,15 @@
         "rotation": {
           "x": -1.56898,
           "y": 0.003274,
-          "z": 0.0
+          "z": 0
         },
         "connections": [
-          "back_left_leg",
-          "back_right_leg",
           "front_apron",
           "seat_panel",
           "rounded_apron"
         ],
         "material": "Weathered solid timber",
-        "status": "intact",
+        "status": "new",
         "notes": ""
       },
       {
@@ -265,13 +268,15 @@
         "rotation": {
           "x": 1.568952,
           "y": -1.569205,
-          "z": 0.0
+          "z": 0
         },
         "connections": [
           "front_right_leg",
-          "front_stretcher",
           "seat",
-          "round_stretcher"
+          "front_left_leg",
+          "front_apron",
+          "back_right_leg",
+          "back_left_leg"
         ],
         "material": "Weathered solid timber",
         "status": "intact",
@@ -293,10 +298,13 @@
         "rotation": {
           "x": 1.569827,
           "y": -1.569205,
-          "z": 0.0
+          "z": 0
         },
         "connections": [
-          "rounded_apron"
+          "back_left_leg",
+          "back_right_leg",
+          "front_left_leg",
+          "front_right_leg"
         ],
         "material": "Weathered solid timber",
         "status": "intact",
@@ -308,7 +316,7 @@
         "origin": {
           "x": -0.176334,
           "y": 0.631842,
-          "z": 7.4e-05
+          "z": 0.000074
         },
         "dimensions": {
           "width": 0.248498,
@@ -377,9 +385,57 @@
       "byteSize": 2552032
     }
   ],
-  "hypotheses": [],
+  "hypotheses": [
+    {
+      "id": "hyp_mp8i69gu00g",
+      "type": "New condition",
+      "description": "",
+      "partRef": "back_right_leg",
+      "coordinates": {
+        "x": -0.15062202849282036,
+        "y": 0.6151027078132805,
+        "z": 0.1557269970976222
+      },
+      "status": "suspected",
+      "confidence": 0.5,
+      "evidenceRefs": [],
+      "createdAt": "2026-05-16T15:30:23.214Z",
+      "updatedAt": "2026-05-16T15:30:23.214Z"
+    }
+  ],
   "intent": {
-    "axes": [],
+    "axes": [
+      {
+        "id": "axis_1",
+        "label": "Material Authenticity",
+        "value": 0.5
+      },
+      {
+        "id": "axis_2",
+        "label": "Structural Performance",
+        "value": 0.5
+      },
+      {
+        "id": "axis_3",
+        "label": "Economic Viability",
+        "value": 0.5
+      },
+      {
+        "id": "axis_4",
+        "label": "Cultural Continuity",
+        "value": 0.5
+      },
+      {
+        "id": "axis_5",
+        "label": "Ecological Sustainability",
+        "value": 0.5
+      },
+      {
+        "id": "axis_6",
+        "label": "Aesthetic Intervention",
+        "value": 0.5
+      }
+    ],
     "summary": ""
   },
   "constraints": {
@@ -398,5 +454,5 @@
   "executionLog": [],
   "conversations": [],
   "createdAt": "2026-05-16T15:04:11.777Z",
-  "updatedAt": "2026-05-16T15:13:03.667Z"
+  "updatedAt": "2026-05-16T15:44:45.363Z"
 }
