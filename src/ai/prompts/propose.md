@@ -45,6 +45,8 @@ Each command in `commands` is one of the types listed below. Pick the most speci
   { "type": "add-hypothesis", "payload": { "hypothesis": { "type": "Crack", "description": "...", "partRef": "front_right_leg", "coordinates": {"x":0,"y":0,"z":0}, "status": "suspected", "confidence": 0.7 } } }
   ```
   `status` is one of: `suspected`, `confirmed`, `refuted`. New observations default to `suspected`. Set `confirmed` only when the user's text or attached photo provides direct visual evidence. `refuted` means the user looked and the condition is not there.
+
+  **CRITICAL — one hypothesis per part. `partRef` is a SINGLE part id (e.g. `"front_right_leg"`), never a comma-separated list, never an array, never the string `"all"`.** When the user describes a condition that applies to multiple parts (e.g. "weathered grey on all wood", "rust on every leg"), emit one `add-hypothesis` command per affected part. A request that affects 13 parts produces 13 add-hypothesis commands in the same response. Use the same `description` and `type` for each so they read as a coherent set; vary only `partRef` and `coordinates`. Do NOT collapse them into one hypothesis with a multi-part reference — the data model has no such concept and the UI will fail to display them.
 - `update-hypothesis` — modify an existing hypothesis. Provide `hypothesisId` and a `patch` object with only the fields that change.
 - `confirm-hypothesis` / `refute-hypothesis` — promote status with optional `evidenceId`.
 

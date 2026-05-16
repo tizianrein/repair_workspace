@@ -74,12 +74,17 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: 'Model returned no commands array', raw: result });
     }
 
+    // Build a set of valid part ids from the workspace so we can validate
+    // partRef on add-hypothesis. Used by the fan-out logic below.
+    const validPartIds = new Set((workspace.instance?.parts || []).map(p => p.id));
+
     // Filter out commands with unknown types so they never make it to the
     // accept-modal-then-fail path. Surface the rejected types so the user
     // (and we, in logs) can see what the AI tried.
     const known = [];
     const rejected = [];
     const malformed = [];
+    const fannedOut = [];   // Note user-facing: "expanded 1 command into N"
     for (const cmd of result.commands) {
       if (!cmd || typeof cmd !== 'object' || !KNOWN_COMMAND_TYPES.has(cmd.type)) {
         rejected.push(cmd?.type || '(missing type)');
@@ -111,6 +116,43 @@ export default async function handler(req, res) {
           continue;
         }
       }
+      // add-hypothesis: the model occasionally collapses "condition applies
+      // to many parts" into a single command with partRef like
+      // "back_left_leg,back_right_leg,..." or an array, even though the
+      // prompt forbids it. Detect and fan out — one hypothesis per part —
+      // so the UI renders them correctly. Drop unrecognised refs.
+      if (cmd.type === 'add-hypothesis') {
+        const h = cmd.payload?.hypothesis;
+        if (!h) {
+          malformed.push('add-hypothesis (missing hypothesis payload)');
+          continue;
+        }
+        const refs = expandPartRef(h.partRef, validPartIds);
+        if (refs.length === 0) {
+          // The model gave us a partRef that doesn't match any known part.
+          // Don't silently drop — keep the hypothesis with whatever ref it
+          // had so the user can fix it in the detail editor. The existing
+          // behaviour for unmatched refs.
+          known.push(cmd);
+          continue;
+        }
+        if (refs.length === 1 && refs[0] === h.partRef) {
+          // Already well-formed, no fan-out needed.
+          known.push(cmd);
+          continue;
+        }
+        // Fan out: one add-hypothesis per resolved partRef. Each gets its
+        // own hypothesis object so the runtime command (which generates
+        // a fresh id) produces distinct entities.
+        for (const partId of refs) {
+          known.push({
+            type: 'add-hypothesis',
+            payload: { hypothesis: { ...h, partRef: partId } }
+          });
+        }
+        fannedOut.push(`condition "${h.description || h.type}" → ${refs.length} parts`);
+        continue;
+      }
       known.push(cmd);
     }
     if (rejected.length) {
@@ -121,6 +163,11 @@ export default async function handler(req, res) {
     if (malformed.length) {
       console.warn('[propose] Filtered malformed commands:', malformed);
       const note = ` (Skipped ${malformed.length} malformed command${malformed.length === 1 ? '' : 's'}: ${malformed.join('; ')}.)`;
+      result.summary = (result.summary || '') + note;
+    }
+    if (fannedOut.length) {
+      console.info('[propose] Fanned out multi-part hypotheses:', fannedOut);
+      const note = ` (Expanded ${fannedOut.length === 1 ? 'a' : fannedOut.length} multi-part condition${fannedOut.length === 1 ? '' : 's'} into per-part entries: ${fannedOut.join('; ')}.)`;
       result.summary = (result.summary || '') + note;
     }
     result.commands = known;
@@ -149,4 +196,42 @@ function redactWorkspace(ws) {
     })),
     currentPlanId: ws.currentPlanId
   };
+}
+
+/**
+ * Resolve a partRef coming from the model into a list of valid part ids.
+ * Handles three malformations the model commits when collapsing a
+ * many-parts request into one command:
+ *
+ *   - "part_a,part_b,part_c"   (comma-separated string)
+ *   - ["part_a", "part_b"]     (array)
+ *   - "all" / "all_parts" / "*"  (meta-token)
+ *
+ * Plus the well-formed case (a single id matching a known part). Returns
+ * an array of part ids that exist in the workspace; unknown ids are
+ * dropped. Empty array signals "couldn't resolve anything sensible".
+ */
+function expandPartRef(partRef, validPartIds) {
+  if (partRef == null) return [];
+  if (Array.isArray(partRef)) {
+    return partRef.filter(p => typeof p === 'string' && validPartIds.has(p));
+  }
+  if (typeof partRef !== 'string') return [];
+  const trimmed = partRef.trim();
+  if (!trimmed) return [];
+  // "all" / "every part" / "*": fan to every part in the workspace.
+  if (/^(all|all[_-]parts|every[_-]?part|\*)$/i.test(trimmed)) {
+    return [...validPartIds];
+  }
+  // Comma-separated list — most common malformation we observed.
+  if (trimmed.includes(',')) {
+    const parts = trimmed.split(',').map(s => s.trim()).filter(Boolean);
+    const valid = parts.filter(p => validPartIds.has(p));
+    return valid;
+  }
+  // Plain single ref. Return as a single-item array if it matches a
+  // real part; if not, return the original string anyway so the
+  // unmatched-ref path keeps it for the user to fix in the detail editor.
+  if (validPartIds.has(trimmed)) return [trimmed];
+  return [];
 }
