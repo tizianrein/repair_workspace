@@ -10,7 +10,9 @@
  *   - damages                 → hypotheses (each gets status='suspected', evidence=[])
  *   - plan.steps              → plans[currentPlanIdx].steps (prerequisites → edges)
  *   - planVersions            → plans[]
- *   - intent, constraints      → kept as-is
+ *   - intent, constraints      → in v2.0 these lived at workspace root; in
+ *                                v2.1 they were lifted onto each plan
+ *                                (strategy). This script writes v2.1 directly.
  *   - currentStepId            → not preserved; users re-select on load
  *   - photos                   → not migrated; they were never anchored anyway
  *
@@ -21,10 +23,25 @@
 import {
   newWorkspace, newInstance, newPart, newHypothesis,
   newPlan, newStep, newEdge, newIntent, newConstraints,
-  PART_STATUS, SCHEMA_VERSION
+  pickStrategyColor, PART_STATUS, SCHEMA_VERSION
 } from './schema.js';
 
 export function migrateV1ToV2(v1) {
+  // Already on v2.1: nothing to do. This keeps the function idempotent —
+  // any code path that runs migration twice (test, hot-reload, etc.)
+  // gets the same workspace back unchanged.
+  if (v1 && v1.schemaVersion && /^2\.1/.test(v1.schemaVersion)) {
+    return { workspace: v1, warnings: [] };
+  }
+
+  // Detect a v2.0 workspace (already has the v2 shape but with intent +
+  // constraints at the root) and route to the lighter v2.0 → v2.1 fixup.
+  // This is what most existing users will hit — they have v2.0 JSON files
+  // saved from a previous run.
+  if (v1 && v1.schemaVersion && /^2\.0/.test(v1.schemaVersion)) {
+    return upgradeV20ToV21(v1);
+  }
+
   const warnings = [];
   const ws = newWorkspace();
 
@@ -62,10 +79,13 @@ export function migrateV1ToV2(v1) {
     ws.hypotheses.push(h);
   });
 
-  // Intent
+  // Intent — in v1 it lived at the workspace root. In v2.1 it lives on
+  // each plan, so we derive it here and apply it to every migrated plan
+  // below.
+  let intent = newIntent();
   if (v1.intent && Array.isArray(v1.intent.axes) && v1.intent.axes.length) {
-    ws.intent = {
-      ...newIntent(),
+    intent = {
+      ...intent,
       axes: v1.intent.axes.map((a, i) => ({
         id: a.id || `axis_${i + 1}`,
         label: a.label || `Axis ${i + 1}`,
@@ -75,23 +95,48 @@ export function migrateV1ToV2(v1) {
     };
   }
 
-  // Constraints
-  if (v1.constraints) ws.constraints = { ...newConstraints(), ...v1.constraints };
+  // Constraints — same story as intent.
+  let constraints = newConstraints();
+  if (v1.constraints) constraints = { ...constraints, ...v1.constraints };
 
-  // Plan versions become plans[]
+  // Plan versions become plans[]. In v2.0 these were time-ordered edit
+  // history. In v2.1 they're parallel strategies — we still preserve the
+  // count, so a user with multiple versions gets multiple strategies and
+  // can prune the ones they don't want.
   const v1Versions = Array.isArray(v1.planVersions) ? v1.planVersions : [];
   const currentPlanRef = v1.plan || v1Versions[v1Versions.length - 1]?.plan || null;
 
   if (v1Versions.length === 0 && currentPlanRef && currentPlanRef.steps?.length) {
-    const p = migratePlan(currentPlanRef, 'Imported plan', oldToNewHypothesisId, warnings);
+    const p = migratePlan(currentPlanRef, 'Imported strategy', oldToNewHypothesisId, warnings);
+    p.intent = cloneDeep(intent);
+    p.constraints = { ...constraints };
+    p.color = pickStrategyColor(ws.plans);
     ws.plans.push(p);
     ws.currentPlanId = p.id;
   } else if (v1Versions.length) {
     v1Versions.forEach(v => {
-      const p = migratePlan(v.plan, v.label || 'Imported plan', oldToNewHypothesisId, warnings);
+      const p = migratePlan(v.plan, v.label || 'Imported strategy', oldToNewHypothesisId, warnings);
+      // Each migrated strategy gets its own copy of the intent/constraints
+      // so the user can diverge them independently from here on.
+      p.intent = cloneDeep(intent);
+      p.constraints = { ...constraints };
+      p.color = pickStrategyColor(ws.plans);
       ws.plans.push(p);
     });
     ws.currentPlanId = ws.plans[ws.plans.length - 1].id;
+  }
+
+  // If nothing produced a plan at all, seed a single empty strategy that
+  // carries the user's intent/constraints, so they have somewhere to start.
+  if (!ws.plans.length) {
+    const seed = newPlan({
+      label: 'Strategy 1',
+      intent,
+      constraints,
+      color: pickStrategyColor(ws.plans)
+    });
+    ws.plans.push(seed);
+    ws.currentPlanId = seed.id;
   }
 
   if (v1.photos && v1.photos.length) {
@@ -172,3 +217,75 @@ function normalizePartStatus(status, warnings, partId) {
 }
 
 function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+
+function cloneDeep(x) { return JSON.parse(JSON.stringify(x)); }
+
+// ============================================================================
+// v2.0 → v2.1 upgrade
+// ============================================================================
+// v2.0 had intent + constraints at the workspace root and treated
+// `plans[]` as a linear edit history. v2.1 moves both onto each plan and
+// reframes plans as parallel strategies. We can do this in-place:
+//
+//  - copy root intent/constraints onto every existing plan
+//  - assign each plan a color from the palette
+//  - tag any existing renderings (kind='rendering' evidence) with the
+//    current plan so they don't dangle. Best-effort: if there's no
+//    currentPlanId, attach to the first plan.
+//  - bump schemaVersion
+//
+// Idempotent: re-running on an already-upgraded workspace is a no-op.
+function upgradeV20ToV21(v20) {
+  const warnings = [];
+  const ws = cloneDeep(v20);
+
+  const rootIntent = ws.intent || null;
+  const rootConstraints = ws.constraints || null;
+
+  // Ensure at least one plan exists, otherwise we have nowhere to put
+  // intent/constraints. Seed a blank strategy carrying the root values.
+  if (!Array.isArray(ws.plans) || ws.plans.length === 0) {
+    const seed = newPlan({
+      label: 'Strategy 1',
+      intent: rootIntent || newIntent(),
+      constraints: rootConstraints || newConstraints()
+    });
+    seed.color = pickStrategyColor([]);
+    ws.plans = [seed];
+    ws.currentPlanId = seed.id;
+  } else {
+    // Walk every plan and fill in the new fields where missing. We only
+    // overwrite when the plan doesn't already have a value (idempotency).
+    const assigned = [];
+    ws.plans = ws.plans.map(p => {
+      const next = { ...p };
+      if (!next.intent) next.intent = rootIntent ? cloneDeep(rootIntent) : newIntent();
+      if (!next.constraints) next.constraints = rootConstraints ? { ...rootConstraints } : newConstraints();
+      if (!next.color) next.color = pickStrategyColor(assigned);
+      assigned.push(next);
+      return next;
+    });
+    if (!ws.currentPlanId) ws.currentPlanId = ws.plans[0].id;
+  }
+
+  // Tag existing renderings with the current plan. Real provenance is
+  // unrecoverable — we can't know which plan version produced a v2.0
+  // rendering — so we attach all to the current plan. The user can
+  // delete and regenerate per strategy if they care.
+  const renderings = (ws.evidence || []).filter(e => e.kind === 'rendering');
+  if (renderings.length) {
+    const targetPlanId = ws.currentPlanId;
+    ws.evidence = ws.evidence.map(e => {
+      if (e.kind !== 'rendering' || e.planRef) return e;
+      return { ...e, planRef: targetPlanId };
+    });
+    warnings.push(`${renderings.length} imagined-result image(s) were attached to the current strategy. Regenerate per strategy if you want them strategy-specific.`);
+  }
+
+  // Drop root intent/constraints — they're owned by plans now.
+  delete ws.intent;
+  delete ws.constraints;
+
+  ws.schemaVersion = SCHEMA_VERSION;
+  return { workspace: ws, warnings };
+}

@@ -21,7 +21,8 @@
 import { createState, subscribe, autoPersist, restore } from './core/state.js';
 import { apply, undo, redo } from './core/commands.js';
 import { migrateV1ToV2 } from './core/migrate.js';
-import { newWorkspace, validateWorkspace, SCHEMA_VERSION, newEvidence, newHypothesis } from './core/schema.js';
+import { newWorkspace, validateWorkspace, SCHEMA_VERSION, newEvidence, newHypothesis,
+         newIntent, getCurrentPlan, getCurrentIntent, getCurrentConstraints } from './core/schema.js';
 import { PhotoStorage } from './core/photo-storage.js';
 import { compressImage, blobToBase64, formatBytes } from './core/image-compress.js';
 import { exportWorkspaceBundle, importWorkspaceBundle, downloadBlob } from './core/workspace-bundle.js';
@@ -226,19 +227,22 @@ function renderAll() {
   const ws = state.workspace;
   $('object-name').value = ws.instance?.name || '';
   $('object-stats').textContent = `${ws.instance?.parts?.length || 0} parts · ${ws.hypotheses?.length || 0} hypotheses`;
-  $('tools-available').value = ws.constraints?.tools_available || '';
-  $('materials-available').value = ws.constraints?.materials_available || '';
-  $('time-budget').value = ws.constraints?.time_budget_minutes || 0;
-  $('budget-limit').value = ws.constraints?.budget_limit || '';
-  $('skill-level').value = ws.constraints?.skill_level || 'intermediate';
-  $('safety-level').value = ws.constraints?.safety_level || 'normal';
-  $('allowed-ops').value = ws.constraints?.allowed_operations || '';
-  $('avoid-ops').value = ws.constraints?.avoid_operations || '';
-  $('additional-constraints').value = ws.constraints?.additional_constraints || '';
+  // Constraints are per-strategy. Read from the current plan; getCurrentConstraints
+  // falls back to defaults if no plan is current yet (empty workspace).
+  const cons = getCurrentConstraints(ws);
+  $('tools-available').value = cons.tools_available || '';
+  $('materials-available').value = cons.materials_available || '';
+  $('time-budget').value = cons.time_budget_minutes || 0;
+  $('budget-limit').value = cons.budget_limit || '';
+  $('skill-level').value = cons.skill_level || 'intermediate';
+  $('safety-level').value = cons.safety_level || 'normal';
+  $('allowed-ops').value = cons.allowed_operations || '';
+  $('avoid-ops').value = cons.avoid_operations || '';
+  $('additional-constraints').value = cons.additional_constraints || '';
 
   radar.render(ws);
   entityList.render(ws);
-  renderVersions(ws);
+  renderStrategies(ws);
   renderImagineSection(ws);
   quickActions.render();
 
@@ -278,19 +282,85 @@ function renderAll() {
   if (emptyEl) emptyEl.hidden = partsCount > 0;
 }
 
-function renderVersions(ws) {
+function renderStrategies(ws) {
   const c = $('versions-list');
   const plans = ws.plans || [];
-  if (!plans.length) { c.innerHTML = '<div class="entity-empty">No plans yet.</div>'; return; }
+  if (!plans.length) {
+    c.innerHTML = '<div class="entity-empty">No strategies yet. Create one to start planning.</div>';
+    return;
+  }
   c.innerHTML = '';
+  // Newest first, matching the previous behaviour.
   [...plans].reverse().forEach(p => {
     const div = document.createElement('div');
-    div.className = 'version-item' + (p.id === ws.currentPlanId ? ' current' : '');
+    const isCurrent = p.id === ws.currentPlanId;
+    div.className = 'strategy-item' + (isCurrent ? ' current' : '');
+    // Color shows on a left border. Set as a CSS custom property so
+    // hover/current state can shade it consistently.
+    if (p.color) div.style.setProperty('--strategy-color', p.color);
+
     const time = new Date(p.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    div.textContent = `${p.label} · ${p.status} · ${time}`;
-    div.onclick = () => apply(state, { type: 'set-current-plan', payload: { planId: p.id } });
+    const stepCount = (p.steps || []).length;
+    const label = escapeAttr(p.label || 'Untitled strategy');
+
+    div.innerHTML = `
+      <div class="strategy-main">
+        <div class="strategy-label" title="${label}">${label}</div>
+        <div class="strategy-meta">${p.status} · ${stepCount} step${stepCount === 1 ? '' : 's'} · ${time}</div>
+      </div>
+      <div class="strategy-actions">
+        <button class="strategy-action" data-act="export" title="Export this strategy as JSON">⤓</button>
+        <button class="strategy-action" data-act="delete" title="Delete this strategy">✕</button>
+      </div>
+    `;
+
+    // Click the main body → switch strategy. Action buttons handle their
+    // own events and stop propagation so they don't also fire the switch.
+    div.querySelector('.strategy-main').onclick = () => {
+      if (!isCurrent) apply(state, { type: 'set-current-plan', payload: { planId: p.id } });
+    };
+    div.querySelector('[data-act="export"]').onclick = (e) => {
+      e.stopPropagation();
+      exportStrategy(p.id);
+    };
+    div.querySelector('[data-act="delete"]').onclick = (e) => {
+      e.stopPropagation();
+      const ok = confirm(`Delete strategy "${p.label}"?\n\nThis only removes the strategy. The artefact, hypotheses, and evidence are not affected.`);
+      if (ok) apply(state, { type: 'remove-plan', payload: { planId: p.id } });
+    };
     c.appendChild(div);
   });
+}
+
+// Small HTML attribute escaper used in the template above. Strategy
+// labels can contain arbitrary user text.
+function escapeAttr(s) {
+  return String(s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+
+// Build a workspace JSON containing the artefact + just this one
+// strategy, then trigger a download. Renderings attached to other
+// strategies are omitted (smaller file, less leakage). Images stay in
+// IndexedDB on the original device; the receiver would need the
+// bundled-with-photos export for full portability — that's still done
+// via the main Save JSON button.
+function exportStrategy(planId) {
+  const ws = state.workspace;
+  const plan = (ws.plans || []).find(p => p.id === planId);
+  if (!plan) return;
+  const trimmed = {
+    ...ws,
+    plans: [plan],
+    currentPlanId: plan.id,
+    evidence: (ws.evidence || []).filter(e => e.kind !== 'rendering' || e.planRef === planId)
+  };
+  const safeLabel = (plan.label || 'strategy').replace(/[^a-z0-9-_]+/gi, '_');
+  const fileName = `${ws.instance?.name || 'workspace'}__${safeLabel}.json`;
+  const blob = new Blob([JSON.stringify(trimmed, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, fileName);
+  log(`Exported strategy "${plan.label}".`);
 }
 
 subscribe(state, renderAll);
@@ -401,8 +471,33 @@ $('safety-level').addEventListener('change', e => {
 });
 $('add-axis-btn').onclick = () => radar.addAxis();
 $('reset-intent-btn').onclick = () => {
-  const fresh = newWorkspace().intent;
-  apply(state, { type: 'set-intent', payload: { intent: fresh } });
+  apply(state, { type: 'set-intent', payload: { intent: newIntent() } });
+};
+
+// Strategies: + New blank starts an empty plan on the same artefact;
+// + Duplicate current copies the current strategy (intent, constraints,
+// steps, edges, mutex groups, and any imagined-result renderings).
+$('new-strategy-btn').onclick = () => {
+  const ws = state.workspace;
+  const n = (ws.plans || []).length + 1;
+  apply(state, {
+    type: 'add-plan',
+    payload: { plan: { label: `Strategy ${n}` } }
+  });
+};
+
+$('duplicate-strategy-btn').onclick = () => {
+  const ws = state.workspace;
+  const cur = getCurrentPlan(ws);
+  if (!cur) {
+    // Nothing to duplicate yet — behave like + New blank.
+    $('new-strategy-btn').click();
+    return;
+  }
+  apply(state, {
+    type: 'duplicate-plan',
+    payload: { sourcePlanId: cur.id }
+  });
 };
 
 // -------------------------------------------------------------------------
@@ -1053,10 +1148,18 @@ let activeRenderingId = null;
 
 function renderImagineResult(ws) {
   const wrap = $('imagine-result-wrap');
-  const renderings = (ws.evidence || []).filter(e => e.kind === 'rendering');
+  // In v2.1 renderings are strategy-scoped via planRef. Show only the
+  // ones that belong to the current strategy. Renderings with no planRef
+  // (legacy / pre-migration) fall through and are not shown — they were
+  // pinned to a specific plan by migration, so an unassigned one is an
+  // anomaly the user can ignore.
+  const currentPlanId = ws.currentPlanId;
+  const renderings = (ws.evidence || []).filter(e =>
+    e.kind === 'rendering' && e.planRef === currentPlanId
+  );
   if (!renderings.length) {
     activeRenderingId = null;
-    wrap.innerHTML = '<div class="imagine-result-empty">No imagined result yet.</div>';
+    wrap.innerHTML = '<div class="imagine-result-empty">No imagined result yet for this strategy.</div>';
     return;
   }
   // Newest first
@@ -1222,6 +1325,9 @@ async function runRefineImage(previousRendering, userInstruction) {
     rendering.istJson = previousRendering.istJson;
     rendering.refinementInstruction = userInstruction;
     rendering.refinementRationale = rationale;
+    // Anchor this rendering to the current strategy so the imagined-result
+    // panel only shows it for that strategy.
+    rendering.planRef = state.workspace.currentPlanId || null;
 
     await PhotoStorage.put(rendering.id, imgBlob, rendering.fileName);
     apply(state, { type: 'add-evidence', payload: { evidence: rendering } });
@@ -1458,6 +1564,8 @@ $('soll-generate-btn').onclick = async () => {
     rendering.basedOnSourceEvidenceId = sourceId;
     rendering.sollJson = editedSoll;
     rendering.istJson = pendingIstJson;
+    // Anchor to the current strategy.
+    rendering.planRef = state.workspace.currentPlanId || null;
 
     await PhotoStorage.put(rendering.id, imgBlob, rendering.fileName);
     apply(state, { type: 'add-evidence', payload: { evidence: rendering } });

@@ -174,6 +174,90 @@
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
 .versions-list { display: flex; flex-direction: column; gap: 3px; }
+
+/* "+ New blank" / "+ Duplicate current" buttons sit above the list. */
+.strategies-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.strategies-controls .mini-btn {
+  font-size: 10px;
+  padding: 5px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A strategy chip: colored left border + label/meta block + hover actions.
+   --strategy-color is set inline by renderStrategies(). When absent (rare
+   migration edge case) the chip still renders with a neutral border. */
+.strategy-item {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  padding: 6px 8px 6px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--bg-panel);
+  border: 1px solid var(--line-soft);
+  border-left: 4px solid var(--strategy-color, var(--line));
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+.strategy-item:hover { border-color: var(--ink); border-left-color: var(--strategy-color, var(--ink)); }
+.strategy-item.current {
+  background: color-mix(in srgb, var(--strategy-color, var(--info)) 8%, var(--bg-panel));
+  border-color: var(--strategy-color, var(--info));
+  color: var(--ink);
+}
+.strategy-main {
+  flex: 1;
+  min-width: 0;        /* allow ellipsis */
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.strategy-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.strategy-item:not(.current) .strategy-label { color: var(--ink-soft); }
+.strategy-meta {
+  font-size: 10px;
+  color: var(--ink-soft);
+  opacity: 0.75;
+}
+.strategy-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 80ms ease;
+}
+.strategy-item:hover .strategy-actions,
+.strategy-item.current .strategy-actions { opacity: 1; }
+.strategy-action {
+  background: transparent;
+  border: 0;
+  padding: 2px 5px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ink-soft);
+  border-radius: 3px;
+}
+.strategy-action:hover { background: var(--line-soft); color: var(--ink); }
+
+/* Keep the legacy .version-item styles around in case any old templates
+   reference them; the strategies render uses .strategy-item exclusively. */
 .version-item {
   padding: 6px 10px;
   font-family: var(--mono);

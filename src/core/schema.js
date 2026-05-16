@@ -21,7 +21,11 @@
  *      design record.
  */
 
-export const SCHEMA_VERSION = '2.0.0';
+// v2.1.0 — intent + constraints moved from workspace root onto each plan.
+// Plans are now "strategies": parallel alternative approaches to the same
+// artefact, each with its own goals and constraints. See migrate.js for the
+// v2.0 → v2.1 upgrade path.
+export const SCHEMA_VERSION = '2.1.0';
 
 // ============================================================================
 // STATUS ENUMS — single source of truth for every status field in the system
@@ -34,6 +38,31 @@ export const PLAN_STATUS = ['draft', 'active', 'completed', 'archived'];
 export const EVIDENCE_KIND = ['photo', 'measurement', 'note', 'document', 'rendering'];
 export const CHAT_SCOPE = ['global', 'instance', 'part', 'hypothesis', 'step'];
 
+// Fixed palette for strategies. Picked for legibility against the cream
+// panel background, with each color reading clearly at small sizes (the
+// 4px chip border in the sidebar). Round-robin assigned as strategies are
+// created; first unused color wins, then wraps. Order is deliberate so
+// the first few strategies a user creates pick up high-contrast hues.
+export const STRATEGY_COLORS = [
+  '#1f4e79', // deep teal-blue
+  '#b8533a', // terracotta
+  '#3f6b3f', // forest green
+  '#7a4b8a', // plum
+  '#c8932a', // mustard
+  '#5a6b80', // slate blue
+  '#8a4a2a', // rust
+  '#2d4a52'  // charcoal-blue
+];
+
+// Pick a color for a new strategy: first one not already used by an
+// existing plan, falling back to round-robin once the palette is exhausted.
+export function pickStrategyColor(existingPlans = []) {
+  const used = new Set(existingPlans.map(p => p?.color).filter(Boolean));
+  const free = STRATEGY_COLORS.find(c => !used.has(c));
+  if (free) return free;
+  return STRATEGY_COLORS[existingPlans.length % STRATEGY_COLORS.length];
+}
+
 // ============================================================================
 // FACTORIES — build empty entities ready to fill in
 // ============================================================================
@@ -45,8 +74,8 @@ export function newWorkspace() {
     instance: newInstance(),
     evidence: [],
     hypotheses: [],
-    intent: newIntent(),
-    constraints: newConstraints(),
+    // intent + constraints are no longer here — they live on each plan
+    // (strategy). See newPlan().
     plans: [],
     currentPlanId: null,
     executionLog: [],
@@ -145,14 +174,30 @@ export function newConstraints() {
 export function newPlan(opts = {}) {
   return {
     id: uid('plan'),
-    label: opts.label || 'Untitled plan',
+    label: opts.label || 'Untitled strategy',
     status: opts.status || 'draft',
+    // A strategy owns its own intent + constraints. Two strategies on the
+    // same artefact can have completely different goals and limits.
+    intent: opts.intent ? cloneDeep(opts.intent) : newIntent(),
+    constraints: opts.constraints ? { ...opts.constraints } : newConstraints(),
+    // Sidebar chip color. Caller (commands.js) assigns this from the
+    // palette on creation; we don't pick a default here because we don't
+    // know the existing plans.
+    color: opts.color || null,
     steps: opts.steps || [],
     edges: opts.edges || [],
     mutexGroups: opts.mutexGroups || [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
+}
+
+// Small structured-clone helper used when a plan is duplicated and when
+// intent objects are passed into newPlan. Avoids accidental shared refs
+// between strategies (a hand-edit to one's intent would otherwise leak
+// into another).
+function cloneDeep(x) {
+  return JSON.parse(JSON.stringify(x));
 }
 
 export function newStep(opts = {}) {
@@ -231,6 +276,27 @@ export function newMessage(role, content) {
 }
 
 // ============================================================================
+// LOOKUPS — small helpers so callers don't repeat the .find() everywhere.
+// Treat these as the canonical way to read intent + constraints; in v2.1
+// they're scoped to the current plan (strategy), not the workspace root.
+// ============================================================================
+
+export function getCurrentPlan(ws) {
+  if (!ws) return null;
+  return (ws.plans || []).find(p => p.id === ws.currentPlanId) || null;
+}
+
+// Returns a usable intent object even when there's no current plan yet,
+// so views that read it during the initial empty state don't crash.
+export function getCurrentIntent(ws) {
+  return getCurrentPlan(ws)?.intent || newIntent();
+}
+
+export function getCurrentConstraints(ws) {
+  return getCurrentPlan(ws)?.constraints || newConstraints();
+}
+
+// ============================================================================
 // HELPERS
 // ============================================================================
 
@@ -267,6 +333,10 @@ export function validateWorkspace(ws) {
   });
   (ws.plans || []).forEach((p, i) => {
     if (!PLAN_STATUS.includes(p.status)) errors.push(`plans[${i}].status invalid: ${p.status}`);
+    // v2.1 contract: intent + constraints live on every plan. Migration
+    // populates them; new plans go through newPlan() which sets defaults.
+    if (!p.intent) errors.push(`plans[${i}] missing intent`);
+    if (!p.constraints) errors.push(`plans[${i}] missing constraints`);
   });
   return { ok: errors.length === 0, errors };
 }

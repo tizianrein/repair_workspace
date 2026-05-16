@@ -14,13 +14,15 @@ A hypothesis with no evidence and `confidence < 0.5` is a question to investigat
 
 ## Phase 2 · Design and action generation
 
-**Entity work:** set the `intent` (radar of competing values + summary archetype), set `constraints` (tools, materials, time, budget, skill), generate one or more `plans`.
+**Entity work:** create one or more `plans` (strategies) for the same artefact. Each strategy carries its own `intent` (radar of competing values + summary archetype) and its own `constraints` (tools, materials, time, budget, skill), so you can develop a gentle conservation-led approach side-by-side with an aggressive structural one and switch between them.
 
 A plan is a directed graph of `steps`, connected by `edges` of three kinds (`prerequisite`, `alternative-to`, `enables`), grouped into `mutexGroups` where the user must pick one approach.
 
-Every step carries a `justification` linking it back to the driving intent axes, the driving hypotheses, and the constraints that shaped it. Selecting a step in the UI shows that trace. Adjusting the intent and regenerating shows a diff against the previous plan — not a from-scratch replacement.
+Every step carries a `justification` linking it back to the driving intent axes, the driving hypotheses, and the constraints that shaped it. Selecting a step in the UI shows that trace. Adjusting the intent and regenerating updates the current strategy in place — use **+ Duplicate current** in the sidebar to fork into a parallel strategy first if you want to keep the original.
 
-**AI calls used:** `POST /api/propose` with `scope: "interventions"` for the plan. The propose endpoint always returns commands the user can review and accept (or reject) — it never mutates the workspace directly.
+Each strategy has a color (auto-assigned from a fixed palette) shown as a coloured left border in the sidebar list. The strategies pane also exposes per-strategy export (⤓) to download just one strategy as JSON, and per-strategy delete (✕).
+
+**AI calls used:** `POST /api/propose` with `scope: "interventions"` for the plan. Only the current strategy is sent in the payload — other strategies stay local. The propose endpoint always returns commands the user can review and accept (or reject) — it never mutates the workspace directly.
 
 ## Phase 3 · Situated guidance and feedback
 

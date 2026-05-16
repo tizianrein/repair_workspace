@@ -1,22 +1,16 @@
 {
   "examples": [
     {
-      "slug": "craftsman",
-      "name": "Craftsman",
-      "description": "",
-      "order": 1000
+      "slug": "santo_02",
+      "name": "Santo 02",
+      "description": "adaptive reuse of a 1960s wooden chair",
+      "order": 10
     },
     {
-      "slug": "longterm",
-      "name": "Longterm",
-      "description": "",
-      "order": 1000
-    },
-    {
-      "slug": "lunch_chair",
-      "name": "Lunch Chair",
-      "description": "",
-      "order": 1000
+      "slug": "old-wooden-door",
+      "name": "Old wooden door",
+      "description": "weathered exterior door, frame intact",
+      "order": 20
     }
   ]
 }

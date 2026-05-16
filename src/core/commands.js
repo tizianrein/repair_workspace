@@ -18,7 +18,8 @@
 
 import {
   newHypothesis, newEvidence, newPlan, newStep, newEdge, newMutexGroup,
-  newExecutionEntry, newConversation, newMessage
+  newExecutionEntry, newConversation, newMessage,
+  newIntent, newConstraints, pickStrategyColor
 } from './schema.js';
 
 const registry = new Map();
@@ -186,36 +187,98 @@ defineCommand('remove-evidence', (ws, { evidenceId }) => {
   };
 });
 
+// In v2.1, intent and constraints live on the current plan (strategy),
+// not the workspace root. These commands are written in terms of plans
+// but keep their original names so existing callers don't need to change.
+
 defineCommand('set-intent', (ws, { intent }) => {
-  const prev = ws.intent;
+  const idx = (ws.plans || []).findIndex(p => p.id === ws.currentPlanId);
+  if (idx < 0) {
+    // No current strategy to attach intent to. Stash on the workspace
+    // root as a transient "pending intent" so user edits aren't lost; the
+    // next add-plan / duplicate-plan will pick it up if the caller wants.
+    // We don't promise this behaviour publicly — it's a defensive default
+    // for the brief window between fresh workspace and first strategy.
+    const prev = ws._pendingIntent || null;
+    return {
+      workspace: { ...ws, _pendingIntent: { ...(prev || newIntent()), ...intent } },
+      inverse: { type: 'set-intent', payload: { intent: prev || newIntent() } }
+    };
+  }
+  const plan = ws.plans[idx];
+  const prev = plan.intent;
+  const merged = { ...prev, ...intent };
   return {
-    workspace: { ...ws, intent: { ...prev, ...intent } },
+    workspace: {
+      ...ws,
+      plans: ws.plans.map((p, i) => i === idx
+        ? { ...p, intent: merged, updatedAt: new Date().toISOString() }
+        : p)
+    },
     inverse: { type: 'set-intent', payload: { intent: prev } }
   };
 });
 
 defineCommand('set-constraints', (ws, { constraints }) => {
-  const prev = ws.constraints;
+  const idx = (ws.plans || []).findIndex(p => p.id === ws.currentPlanId);
+  if (idx < 0) {
+    const prev = ws._pendingConstraints || null;
+    return {
+      workspace: { ...ws, _pendingConstraints: { ...(prev || newConstraints()), ...constraints } },
+      inverse: { type: 'set-constraints', payload: { constraints: prev || newConstraints() } }
+    };
+  }
+  const plan = ws.plans[idx];
+  const prev = plan.constraints;
+  const merged = { ...prev, ...constraints };
   return {
-    workspace: { ...ws, constraints: { ...prev, ...constraints } },
+    workspace: {
+      ...ws,
+      plans: ws.plans.map((p, i) => i === idx
+        ? { ...p, constraints: merged, updatedAt: new Date().toISOString() }
+        : p)
+    },
     inverse: { type: 'set-constraints', payload: { constraints: prev } }
   };
 });
 
 defineCommand('add-plan', (ws, { plan }) => {
-  const p = { ...newPlan(), ...plan };
+  const base = newPlan();
+  const merged = { ...base, ...plan };
+  // Auto-assign a color from the palette if the caller didn't specify
+  // one. Strategies always have a color in v2.1.
+  if (!merged.color) merged.color = pickStrategyColor(ws.plans || []);
+  // If the user was editing intent/constraints before any plan existed
+  // (the empty-workspace case), promote those _pendingX stashes onto the
+  // first plan so the edits aren't lost.
+  if (!plan?.intent && ws._pendingIntent) merged.intent = { ...merged.intent, ...ws._pendingIntent };
+  if (!plan?.constraints && ws._pendingConstraints) merged.constraints = { ...merged.constraints, ...ws._pendingConstraints };
+  const next = {
+    ...ws,
+    plans: [...(ws.plans || []), merged],
+    currentPlanId: merged.id
+  };
+  delete next._pendingIntent;
+  delete next._pendingConstraints;
   return {
-    workspace: { ...ws, plans: [...(ws.plans || []), p], currentPlanId: p.id },
-    inverse: { type: 'remove-plan', payload: { planId: p.id } }
+    workspace: next,
+    inverse: { type: 'remove-plan', payload: { planId: merged.id } }
   };
 });
 
 defineCommand('remove-plan', (ws, { planId }) => {
   const removed = ws.plans.find(p => p.id === planId);
   if (!removed) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
-  const currentPlanId = ws.currentPlanId === planId ? null : ws.currentPlanId;
+  const remaining = ws.plans.filter(p => p.id !== planId);
+  // If we just removed the current strategy, fall back to the first
+  // remaining one so the user is never left with no active strategy
+  // (which would hide intent + constraints from the UI).
+  let currentPlanId = ws.currentPlanId;
+  if (currentPlanId === planId) {
+    currentPlanId = remaining[0]?.id || null;
+  }
   return {
-    workspace: { ...ws, plans: ws.plans.filter(p => p.id !== planId), currentPlanId },
+    workspace: { ...ws, plans: remaining, currentPlanId },
     inverse: { type: 'add-plan', payload: { plan: removed } }
   };
 });
@@ -225,6 +288,91 @@ defineCommand('set-current-plan', (ws, { planId }) => {
   return {
     workspace: { ...ws, currentPlanId: planId },
     inverse: { type: 'set-current-plan', payload: { planId: prev } }
+  };
+});
+
+// Duplicate an existing plan as a new strategy. Everything plan-scoped
+// comes along: intent (deep-cloned so edits don't leak between
+// strategies), constraints, steps, edges, mutexGroups. Step IDs are
+// remapped to fresh ones so the original and the copy can coexist and
+// be edited independently. Hypotheses, parts, and evidence are
+// artefact-scoped and untouched. Renderings (evidence kind='rendering')
+// that point at the source plan get cloned references so the copy
+// starts with the same imagined results.
+defineCommand('duplicate-plan', (ws, { sourcePlanId, label }) => {
+  const source = (ws.plans || []).find(p => p.id === sourcePlanId);
+  if (!source) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
+
+  // Build the new plan with fresh step IDs. newStep() preserves opts.id
+  // when given one (used by upsert), so we strip the source id before
+  // delegating, forcing a fresh id from the uid() counter.
+  const idMap = new Map();
+  const newSteps = (source.steps || []).map(s => {
+    const { id: _drop, ...rest } = s;
+    const fresh = newStep(rest);
+    idMap.set(s.id, fresh.id);
+    return fresh;
+  });
+  const newEdges = (source.edges || [])
+    .map(e => {
+      const src = idMap.get(e.source);
+      const tgt = idMap.get(e.target);
+      return (src && tgt) ? newEdge(src, tgt) : null;
+    })
+    .filter(Boolean);
+  const newMutex = (source.mutexGroups || []).map(g => {
+    const mappedIds = (g.stepIds || []).map(id => idMap.get(id)).filter(Boolean);
+    if (mappedIds.length < 2) return null;
+    return newMutexGroup(mappedIds, {
+      label: g.label,
+      selectedStepId: g.selectedStepId ? idMap.get(g.selectedStepId) || null : null
+    });
+  }).filter(Boolean);
+
+  const copy = newPlan({
+    label: label || `${source.label} (copy)`,
+    status: 'draft',
+    intent: source.intent,            // newPlan() deep-clones internally
+    constraints: source.constraints,
+    color: pickStrategyColor(ws.plans),
+    steps: newSteps,
+    edges: newEdges,
+    mutexGroups: newMutex
+  });
+
+  // Clone any renderings that belonged to the source strategy. Each gets
+  // a fresh evidence ID so the source's rendering thumbnails aren't
+  // affected by edits to the copy. The image blob in IndexedDB is
+  // referenced by id, so we copy the id reference too — both strategies
+  // now point at the same image bytes, but since renderings are
+  // immutable in this app (you regenerate to change them), that's safe.
+  const clonedRenderings = (ws.evidence || [])
+    .filter(e => e.kind === 'rendering' && e.planRef === sourcePlanId)
+    .map(e => {
+      const fresh = newEvidence('rendering', {
+        attachedTo: e.attachedTo,
+        url: e.url,
+        text: e.text
+      });
+      // Carry the rendering-specific fields the factory doesn't know about
+      // and stamp the new plan reference.
+      fresh.fileName = e.fileName;
+      fresh.byteSize = e.byteSize;
+      fresh.basedOnSourceEvidenceId = e.basedOnSourceEvidenceId;
+      fresh.sollJson = e.sollJson;
+      fresh.istJson = e.istJson;
+      fresh.planRef = copy.id;
+      return fresh;
+    });
+
+  return {
+    workspace: {
+      ...ws,
+      plans: [...(ws.plans || []), copy],
+      currentPlanId: copy.id,
+      evidence: [...(ws.evidence || []), ...clonedRenderings]
+    },
+    inverse: { type: 'remove-plan', payload: { planId: copy.id } }
   };
 });
 

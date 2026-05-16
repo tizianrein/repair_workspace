@@ -57,13 +57,18 @@ function slim(ws, needs) {
     };
   }
   if (needs.hypotheses) out.hypotheses = ws.hypotheses || [];
-  if (needs.intent)     out.intent = ws.intent || null;
-  if (needs.constraints) out.constraints = ws.constraints || null;
+
+  // In v2.1 intent + constraints are owned by the current plan
+  // (strategy). When the caller asks for them we look them up there.
+  // This keeps the AI request size the same as before — these fields
+  // come from one plan, not from every plan.
+  const cur = (ws.plans || []).find(p => p.id === ws.currentPlanId) || null;
+  if (needs.intent)     out.intent = cur?.intent || null;
+  if (needs.constraints) out.constraints = cur?.constraints || null;
 
   if (needs.plans === true) {
     out.plans = ws.plans || [];
   } else if (needs.plans === 'current') {
-    const cur = (ws.plans || []).find(p => p.id === ws.currentPlanId);
     out.plans = cur ? [cur] : [];
     out.currentPlanId = ws.currentPlanId;
   }

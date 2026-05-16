@@ -1,12 +1,16 @@
 /**
  * Intent radar.
  *
- * Reads workspace.intent.axes. Drag anywhere on the canvas to set the nearest
- * axis to that radial distance (0..1). Below the canvas, renders an editable
- * list of axes with text labels + range sliders + a remove button.
+ * Reads intent from the current strategy (plan) in v2.1. Drag anywhere
+ * on the canvas to set the nearest axis to that radial distance (0..1).
+ * Below the canvas, renders an editable list of axes with text labels +
+ * range sliders + a remove button.
  *
  * Pure-ish: emits changes via onChange(newIntent), doesn't mutate state.
+ * The state layer routes the change onto the current plan.
  */
+
+import { getCurrentIntent } from '../core/schema.js';
 
 export function createRadar(canvas, listContainer, summaryTextarea, { onChange }) {
   let intent = null;
@@ -14,7 +18,7 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
   let interacting = false;   // true while user is mid-drag / mid-type
 
   function render(workspace) {
-    intent = JSON.parse(JSON.stringify(workspace.intent));
+    intent = JSON.parse(JSON.stringify(getCurrentIntent(workspace)));
     // Don't clobber the user's input while they're using it.
     if (!interacting) {
       summaryTextarea.value = intent.summary || '';

@@ -18,7 +18,10 @@ export function createJustificationPanel(container, { getWorkspace, onJumpToHypo
     if (!step) { clear(); return; }
 
     const j = step.justification || {};
-    const intentByAxis = new Map((ws.intent?.axes || []).map(a => [a.id, a]));
+    // In v2.1 intent is per-strategy; pull it from the current plan
+    // (which is also the plan we just looked the step up in).
+    const intentAxes = plan?.intent?.axes || [];
+    const intentByAxis = new Map(intentAxes.map(a => [a.id, a]));
     const hypById = new Map((ws.hypotheses || []).map(h => [h.id, h]));
 
     const drivingAxes = (j.drivingIntentAxes || []).map(id => intentByAxis.get(id)).filter(Boolean);
