@@ -244,6 +244,7 @@ function renderAll() {
   entityList.render(ws);
   renderStrategies(ws);
   renderImagineSection(ws);
+  renderCover(ws);
   quickActions.render();
 
   if (selectedStepId) {
@@ -520,12 +521,6 @@ $('workspace-file').addEventListener('change', async e => {
 });
 
 function loadWorkspaceJson(parsed) {
-  // Any load wipes the cover. The example-load handler re-sets it
-  // immediately after this call — that ordering is intentional so a
-  // user loading a non-example JSON never carries a stale cover from
-  // a previously-loaded example.
-  clearExampleCover();
-
   let ws;
   if (parsed.schemaVersion === SCHEMA_VERSION) {
     ws = parsed;
@@ -574,9 +569,10 @@ $('load-example-select').onchange = async (e) => {
     const res = await fetch(`/examples/${slug}/workspace.json`);
     if (!res.ok) throw new Error(`Example not found (${res.status})`);
     loadWorkspaceJson(await res.json());
-    // Cover is example-only. Set after the workspace load (which calls
-    // clearExampleCover) so it isn't immediately wiped.
-    setExampleCover(slug);
+    // Attach the example's cover.jpg as a data URL on instance.coverImage
+    // so it survives reload, JSON export, and sharing. Silent no-op if
+    // the example folder has no cover.
+    await attachExampleCover(slug);
     log(`Loaded example: ${slug}`);
   } catch (err) {
     console.error(err);
@@ -618,7 +614,6 @@ $('reset-btn').onclick = () => {
   state.history = [];
   state.future = [];
   selectedStepId = null;
-  clearExampleCover();
   state.listeners.forEach(fn => fn(state.workspace, { type: 'reset' }));
   chatSheet.setScope('global');
   chatSheet.refresh();
@@ -1367,47 +1362,61 @@ function openImageLightbox(url) {
 
 // -------- Artefact cover thumbnail --------------------------------
 //
-// Only shown for loaded examples. Convention: an example folder may
-// contain cover.jpg/png/webp at /examples/<slug>/cover.<ext>. We try
-// the extensions in order on a single <img> element — the browser
-// raises onerror for each missing one and we step through the list.
-// If none load, the thumbnail panel stays hidden.
+// The cover image lives on workspace.instance.coverImage as a data URL.
+// It travels with the workspace through reload, JSON export, and
+// sharing. Examples seed it from /examples/<slug>/cover.<ext> at load
+// time. Reset wipes it (along with the rest of the workspace).
 //
-// Cover is intentionally NOT persisted on the workspace. It's a UI
-// affordance for "this is the example you picked", not part of the
-// artefact's data model. Loading a saved JSON clears it; resetting
-// clears it; loading a different example replaces it.
+// renderAll() calls renderCover() once per render, so the thumbnail
+// stays in sync without explicit show/hide calls at every entry point.
+
 const COVER_EXTS = ['jpg', 'jpeg', 'png', 'webp'];
 
-function setExampleCover(slug) {
+function renderCover(ws) {
   const wrap = $('artefact-cover');
   const img = $('artefact-cover-img');
-  if (!slug) { clearExampleCover(); return; }
-
-  let idx = 0;
-  const tryNext = () => {
-    if (idx >= COVER_EXTS.length) { clearExampleCover(); return; }
-    const ext = COVER_EXTS[idx++];
-    img.onerror = tryNext;
-    img.onload = () => {
-      wrap.hidden = false;
-      // Wire the click → lightbox here (after a successful load) so we
-      // don't open a broken-image lightbox when no cover exists.
-      wrap.onclick = () => openImageLightbox(img.src);
-    };
-    img.src = `/examples/${slug}/cover.${ext}`;
-  };
-  tryNext();
+  const src = ws.instance?.coverImage || null;
+  if (!src) {
+    wrap.hidden = true;
+    wrap.onclick = null;
+    img.removeAttribute('src');
+    return;
+  }
+  if (img.getAttribute('src') !== src) img.src = src;
+  wrap.hidden = false;
+  wrap.onclick = () => openImageLightbox(src);
 }
 
-function clearExampleCover() {
-  const wrap = $('artefact-cover');
-  const img = $('artefact-cover-img');
-  wrap.hidden = true;
-  wrap.onclick = null;
-  img.onerror = null;
-  img.onload = null;
-  img.removeAttribute('src');
+// Try /examples/<slug>/cover.{jpg,jpeg,png,webp} in order. First hit
+// wins and is stored as a data URL on instance.coverImage. If none
+// exist, the workspace is left without a cover — a graceful no-op.
+async function attachExampleCover(slug) {
+  for (const ext of COVER_EXTS) {
+    try {
+      const res = await fetch(`/examples/${slug}/cover.${ext}`);
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      const dataUrl = await blobToDataUrl(blob);
+      // Mutate via the same channel as other workspace edits so
+      // autoPersist captures it and renderAll re-runs.
+      state.workspace = {
+        ...state.workspace,
+        instance: { ...state.workspace.instance, coverImage: dataUrl }
+      };
+      state.listeners.forEach(fn => fn(state.workspace, { type: 'set-cover' }));
+      return true;
+    } catch { /* try next extension */ }
+  }
+  return false;
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
 }
 
 // -------- Source-photo picker -----------------------------------

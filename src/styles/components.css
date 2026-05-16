@@ -55,7 +55,7 @@
    letterbox bars that look broken for variable-aspect source images). */
 .artefact-cover {
   margin-top: 4px;
-  width: 150px;
+  width: 100%;
   aspect-ratio: 1 / 1;
   border: 1px solid var(--line-soft);
   border-radius: var(--radius);

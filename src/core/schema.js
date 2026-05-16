@@ -94,6 +94,10 @@ export function newInstance(objectName = 'untitled object') {
     location: null,
     provenance: null,
     notes: '',
+    // Optional cover image as a data URL. Travels with the workspace
+    // (reload, JSON export, sharing). Examples seed this from their
+    // cover.jpg on load; future user-uploaded covers would write here too.
+    coverImage: null,
     createdAt: new Date().toISOString()
   };
 }
