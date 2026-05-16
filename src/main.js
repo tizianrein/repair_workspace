@@ -112,7 +112,17 @@ chatSheet = createChatSheet(
   {
     getWorkspace: () => state.workspace,
     onScopeChange: () => quickActions?.render(),
-    onProposeIntent: ({ userMessage, scope }) => runPropose({ userMessage, scope })
+    onProposeIntent: ({ userMessage, scope }) => runPropose({ userMessage, scope }),
+    // Persist conversations through the command system. Without these,
+    // chat threads are transient JS objects that disappear the next
+    // time the workspace re-renders — which is what caused chat
+    // history to silently vanish on scope switch.
+    onEnsureThread: ({ scope, ref }) => {
+      apply(state, { type: 'start-conversation', payload: { scope, ref } }, { skipHistory: true });
+    },
+    onAppendMessage: ({ threadId, message }) => {
+      apply(state, { type: 'append-message', payload: { threadId, message } }, { skipHistory: true });
+    }
   }
 );
 

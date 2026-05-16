@@ -10,10 +10,10 @@
  * tapping the corresponding quick-action chip below, which calls propose.
  */
 
-import { newConversation, newMessage } from '../core/schema.js';
+import { newMessage } from '../core/schema.js';
 import { payloadForChat } from '../ai/ai-payload.js';
 
-export function createChatSheet(elements, { onScopeChange, getWorkspace, onProposeIntent }) {
+export function createChatSheet(elements, { onScopeChange, getWorkspace, onProposeIntent, onEnsureThread, onAppendMessage }) {
   const {
     history, input, sendBtn, scopePill, titleEl, closeBtn, handle, sheet
   } = elements;
@@ -21,7 +21,12 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
   let currentScope = 'global';
   let currentRef = null;
   let pendingPhotos = [];
-  let activeThread = null;
+  // activeThread is always resolved fresh from the workspace at the
+  // start of every operation that needs it — never cached across calls.
+  // Holding a stale reference was the root cause of the "click anywhere
+  // wipes the conversation" bug: re-rendering the workspace produced
+  // new conversation objects, and the cached activeThread pointed at
+  // garbage.
   let busy = false;
 
   function setBusy(b) {
@@ -38,7 +43,11 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     scopePill.classList.toggle('global', scope === 'global');
     onScopeChange?.({ scope, ref: currentRef });
     renderTitle();
-    activeThread = findOrCreateThread();
+    // Make sure a thread exists in the workspace for this scope/ref.
+    // The callback dispatches start-conversation via apply(), which
+    // persists and notifies listeners. We then read it back via
+    // currentThread() — never store the reference.
+    ensureThread();
     renderHistory();
   }
 
@@ -53,14 +62,23 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     titleEl.textContent = map[currentScope] || 'Discuss';
   }
 
-  function findOrCreateThread() {
+  // Resolve the active thread from the workspace on every call. Never
+  // cache — the workspace object is replaced on every apply() and stale
+  // references silently lose updates.
+  function currentThread() {
     const ws = getWorkspace();
     const wantRef = currentRef ?? null;
-    let thread = (ws.conversations || []).find(t =>
+    return (ws.conversations || []).find(t =>
       t.scope === currentScope && (t.ref ?? null) === wantRef
-    );
-    if (!thread) thread = newConversation(currentScope, wantRef);
-    return thread;
+    ) || null;
+  }
+
+  // Ensure a thread exists for the current scope/ref. If one is already
+  // there, no-op. Otherwise ask main.js to dispatch start-conversation
+  // so the thread is persisted in the workspace and survives re-renders.
+  function ensureThread() {
+    if (currentThread()) return;
+    onEnsureThread?.({ scope: currentScope, ref: currentRef });
   }
 
   const SCOPE_DISPLAY = {
@@ -73,7 +91,8 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
 
   function renderHistory() {
     history.innerHTML = '';
-    const msgs = activeThread?.messages || [];
+    const thread = currentThread();
+    const msgs = thread?.messages || [];
     if (!msgs.length) {
       const sys = document.createElement('div');
       sys.className = 'chat-system';
@@ -126,8 +145,26 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     if (!text && !pendingPhotos.length) return;
     setBusy(true);
 
+    // Ensure the thread exists before we push anything — first-message
+    // case where setScope ran but no thread was created yet (e.g. if
+    // the workspace was empty at that moment).
+    ensureThread();
+    let thread = currentThread();
+    if (!thread) {
+      // Defensive: if the host didn't wire the callback, fall back to
+      // appending to a transient thread. Messages won't persist but at
+      // least the chat doesn't crash.
+      console.warn('[chat-sheet] No thread persistence wired; messages are transient.');
+    }
+
+    // Persist the user message via the command system. We also build a
+    // local copy with the same id/timestamp so we can include it in
+    // the API request without round-tripping through the workspace.
     const userMsg = newMessage('user', text);
-    activeThread.messages.push(userMsg);
+    if (thread) {
+      onAppendMessage?.({ threadId: thread.id, message: userMsg });
+      thread = currentThread();  // re-read; now contains the new message
+    }
     appendBubble(userMsg);
     input.value = '';
     history.scrollTop = history.scrollHeight;
@@ -143,7 +180,7 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          thread: activeThread,
+          thread,
           userMessage: text,
           workspace: payloadForChat({ workspace: getWorkspace(), scope: currentScope, maxMessages: 8 }),
           files: pendingPhotos
@@ -159,7 +196,10 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
       const assistantMsg = newMessage('assistant', payload.reply);
       assistantMsg.suggestedAction = payload.suggestedAction;
       assistantMsg.uncertainty = payload.uncertainty || [];
-      activeThread.messages.push(assistantMsg);
+      // Re-resolve the thread before appending — apply() may have
+      // produced a new workspace object since we last looked.
+      const t2 = currentThread();
+      if (t2) onAppendMessage?.({ threadId: t2.id, message: assistantMsg });
       appendBubble(assistantMsg);
       pendingPhotos = [];
       updatePhotoPreview();
@@ -244,27 +284,29 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
   sendBtn.disabled = false;
 
   function pushMessage(role, content, extras = {}) {
-    if (!activeThread) activeThread = findOrCreateThread();
+    ensureThread();
+    const thread = currentThread();
     const m = newMessage(role, content);
     Object.assign(m, extras);
-    activeThread.messages.push(m);
+    if (thread) onAppendMessage?.({ threadId: thread.id, message: m });
     appendBubble(m);
     history.scrollTop = history.scrollHeight;
   }
 
   function pushActionRecord(text) {
-    if (!activeThread) activeThread = findOrCreateThread();
+    ensureThread();
+    const thread = currentThread();
     const m = newMessage('system', text);
-    activeThread.messages.push(m);
+    if (thread) onAppendMessage?.({ threadId: thread.id, message: m });
     appendBubble(m);
     history.scrollTop = history.scrollHeight;
   }
 
   function refresh() {
     // Called when the workspace was replaced externally (load, reset).
-    // Re-resolve the active thread from the new conversations array and
-    // re-render. Keep the current scope/ref selection.
-    activeThread = findOrCreateThread();
+    // Re-render from whatever the workspace now contains. No need to
+    // re-resolve a cached reference — currentThread() always looks it
+    // up fresh from getWorkspace().
     renderHistory();
   }
 

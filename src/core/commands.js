@@ -26,7 +26,7 @@ const registry = new Map();
 
 export function defineCommand(type, handler) { registry.set(type, handler); }
 
-export function apply(state, command) {
+export function apply(state, command, opts = {}) {
   const handler = registry.get(command.type);
   if (!handler) throw new Error(`Unknown command type: ${command.type}`);
   const result = handler(state.workspace, command.payload);
@@ -38,8 +38,14 @@ export function apply(state, command) {
     inverse: result.inverse,
     appliedAt: new Date().toISOString()
   };
-  state.history.push(recorded);
-  state.future = [];
+  // skipHistory: applied changes that should NOT be undoable. Used for
+  // chat messages, where Ctrl+Z popping the last AI reply would be
+  // surprising and unhelpful. The mutation still goes through the
+  // workspace + listeners + autoPersist, just not into history/future.
+  if (!opts.skipHistory) {
+    state.history.push(recorded);
+    state.future = [];
+  }
   state.listeners.forEach(fn => fn(state.workspace, recorded));
   return recorded;
 }
