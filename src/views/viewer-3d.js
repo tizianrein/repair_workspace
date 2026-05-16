@@ -124,7 +124,18 @@ export function createViewer3D(canvas, infoBox, onSelect) {
   }
 
   function frame() {
+    // Compute the union of the box parts AND the mesh overlay. If the
+    // mesh is wildly off-position (alignment bug), this keeps it in
+    // frame so the user can see and diagnose it rather than staring
+    // at an empty viewport.
     const box = new THREE.Box3().setFromObject(objectGroup);
+    if (loadedMesh) {
+      const meshBox = new THREE.Box3().setFromObject(loadedMesh);
+      if (!meshBox.isEmpty()) {
+        if (box.isEmpty()) box.copy(meshBox);
+        else box.union(meshBox);
+      }
+    }
     if (box.isEmpty()) return;
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
@@ -511,6 +522,10 @@ export function createViewer3D(canvas, infoBox, onSelect) {
           // mode interaction.
           displayMode = 'both';
           applyDisplayMode();
+          // Reframe so the user actually sees the mesh, even if it's
+          // far from the box parts. Without this a misaligned scan
+          // would silently sit off-screen.
+          frame();
           resolve(true);
         },
         undefined,

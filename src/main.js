@@ -144,22 +144,25 @@ $('explode-btn').onclick = () => {
   $('explode-btn').title = viewer3D.isExploded() ? 'Restore view' : 'Explode view';
 };
 
-// Display-mode toggle for the textured-mesh overlay. Cycles
-// both → mesh → boxes → both. Hidden when no mesh is loaded so it
-// doesn't clutter the HUD for non-example workspaces.
+// Display-mode toggle for the textured-mesh overlay. Lives in the
+// Data section of the left sidebar. Cycles boxes → mesh → both →
+// boxes. Hidden unless a mesh is actually loaded into the viewer.
 function syncDisplayModeBtn() {
   const btn = $('display-mode-btn');
   if (!btn) return;
-  if (!viewer3D.hasMesh()) { btn.hidden = true; return; }
+  if (!viewer3D || !viewer3D.hasMesh()) { btn.hidden = true; return; }
   btn.hidden = false;
   const mode = viewer3D.getDisplayMode();
-  // Glyph + tooltip describe the CURRENT mode (so the user can see what
-  // they're looking at). Clicking advances to the next mode.
-  if (mode === 'both')        { btn.textContent = '🟰'; btn.title = 'Showing both — click for mesh only'; }
-  else if (mode === 'mesh')   { btn.textContent = '🧊'; btn.title = 'Showing mesh — click for boxes only'; }
-  else                        { btn.textContent = '📦'; btn.title = 'Showing boxes — click for both'; }
+  // Label is "Showing X · click for Y" — explicit because the sidebar
+  // has room, and because users don't always remember what the icons
+  // mean. The leading glyph mirrors what the viewer is currently
+  // displaying so it doubles as a state indicator.
+  if (mode === 'both')        { btn.textContent = '🟰 Showing both · click for mesh'; }
+  else if (mode === 'mesh')   { btn.textContent = '🧊 Showing mesh · click for boxes'; }
+  else                        { btn.textContent = '📦 Showing boxes · click for both'; }
 }
 $('display-mode-btn').onclick = () => {
+  if (!viewer3D || !viewer3D.hasMesh()) return;
   const mode = viewer3D.getDisplayMode();
   const next = mode === 'both' ? 'mesh' : mode === 'mesh' ? 'boxes' : 'both';
   viewer3D.setDisplayMode(next);
@@ -1464,19 +1467,33 @@ async function attachExampleCover(slug) {
   return false;
 }
 
-// Try /examples/<slug>/mesh.glb. Silent no-op if absent.
+// Try /examples/<slug>/mesh.glb. Silent no-op if absent. Logs to the
+// in-app status line so the user can see whether a mesh was attached;
+// the console gets a detailed entry too. Always calls
+// syncDisplayModeBtn at the end so the toggle's visibility reflects
+// the true loaded state, even if loading failed.
 async function attachExampleMesh(slug) {
   if (!viewer3D) return false;
   const url = `/examples/${slug}/mesh.glb`;
+  let probeOk = false;
   try {
     // HEAD check first so a missing file doesn't surface as a GLTFLoader
     // parse error in the console — the common case is "no mesh present"
     // and we want that to be silent.
     const probe = await fetch(url, { method: 'HEAD' });
-    if (!probe.ok) return false;
-  } catch { return false; }
+    probeOk = probe.ok;
+  } catch (err) {
+    console.warn('[mesh] HEAD probe failed', url, err);
+  }
+  if (!probeOk) {
+    syncDisplayModeBtn();
+    return false;
+  }
+  log(`Loading 3D scan…`);
   const ok = await viewer3D.loadMesh(url);
   syncDisplayModeBtn();
+  if (ok) log(`3D scan loaded for ${slug}.`);
+  else log(`3D scan present but failed to parse (see console).`);
   return ok;
 }
 

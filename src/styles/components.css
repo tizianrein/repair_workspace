@@ -101,6 +101,15 @@
 }
 .data-btn:hover { background: var(--bg-soft); }
 
+/* Full-width variant — used by the 3D-scan overlay toggle that sits
+   beneath the 2x2 grid of Load/Save/Example/Reset. Inherits the same
+   look but spans the section width. Top margin so it visually attaches
+   to the grid above without sitting on top of it. */
+.data-btn-full {
+  margin-top: 6px;
+  width: 100%;
+}
+
 .radar-wrap {
   display: flex;
   justify-content: center;

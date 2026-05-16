@@ -50,6 +50,9 @@
           </select>
           <button class="data-btn" id="reset-btn"><span>↺</span> Reset</button>
         </div>
+        <!-- 3D-scan overlay toggle. Only appears when the loaded
+             example has a mesh.glb. Cycles Boxes / Mesh / Both. -->
+        <button class="data-btn data-btn-full" id="display-mode-btn" hidden></button>
       </div>
 
       <div class="section collapsed" id="intent-section">
@@ -148,7 +151,6 @@
           <canvas id="viewer-canvas"></canvas>
           <div id="info-box"></div>
           <div class="hud-tr">
-            <button class="hud-btn" id="display-mode-btn" title="Toggle scan overlay" hidden>📦</button>
             <button class="hud-btn" id="explode-btn" title="Explode view">💥</button>
           </div>
           <div class="place-banner" id="place-banner" hidden>
