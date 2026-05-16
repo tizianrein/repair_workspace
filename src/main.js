@@ -520,6 +520,12 @@ $('workspace-file').addEventListener('change', async e => {
 });
 
 function loadWorkspaceJson(parsed) {
+  // Any load wipes the cover. The example-load handler re-sets it
+  // immediately after this call — that ordering is intentional so a
+  // user loading a non-example JSON never carries a stale cover from
+  // a previously-loaded example.
+  clearExampleCover();
+
   let ws;
   if (parsed.schemaVersion === SCHEMA_VERSION) {
     ws = parsed;
@@ -568,6 +574,9 @@ $('load-example-select').onchange = async (e) => {
     const res = await fetch(`/examples/${slug}/workspace.json`);
     if (!res.ok) throw new Error(`Example not found (${res.status})`);
     loadWorkspaceJson(await res.json());
+    // Cover is example-only. Set after the workspace load (which calls
+    // clearExampleCover) so it isn't immediately wiped.
+    setExampleCover(slug);
     log(`Loaded example: ${slug}`);
   } catch (err) {
     console.error(err);
@@ -609,6 +618,7 @@ $('reset-btn').onclick = () => {
   state.history = [];
   state.future = [];
   selectedStepId = null;
+  clearExampleCover();
   state.listeners.forEach(fn => fn(state.workspace, { type: 'reset' }));
   chatSheet.setScope('global');
   chatSheet.refresh();
@@ -1353,6 +1363,51 @@ function openImageLightbox(url) {
   div.innerHTML = `<img src="${url}" style="max-width:calc(100vw - 48px);max-height:calc(100vh - 48px);width:auto;height:auto;object-fit:contain;border-radius:6px;display:block;">`;
   div.onclick = () => div.remove();
   document.body.appendChild(div);
+}
+
+// -------- Artefact cover thumbnail --------------------------------
+//
+// Only shown for loaded examples. Convention: an example folder may
+// contain cover.jpg/png/webp at /examples/<slug>/cover.<ext>. We try
+// the extensions in order on a single <img> element — the browser
+// raises onerror for each missing one and we step through the list.
+// If none load, the thumbnail panel stays hidden.
+//
+// Cover is intentionally NOT persisted on the workspace. It's a UI
+// affordance for "this is the example you picked", not part of the
+// artefact's data model. Loading a saved JSON clears it; resetting
+// clears it; loading a different example replaces it.
+const COVER_EXTS = ['jpg', 'jpeg', 'png', 'webp'];
+
+function setExampleCover(slug) {
+  const wrap = $('artefact-cover');
+  const img = $('artefact-cover-img');
+  if (!slug) { clearExampleCover(); return; }
+
+  let idx = 0;
+  const tryNext = () => {
+    if (idx >= COVER_EXTS.length) { clearExampleCover(); return; }
+    const ext = COVER_EXTS[idx++];
+    img.onerror = tryNext;
+    img.onload = () => {
+      wrap.hidden = false;
+      // Wire the click → lightbox here (after a successful load) so we
+      // don't open a broken-image lightbox when no cover exists.
+      wrap.onclick = () => openImageLightbox(img.src);
+    };
+    img.src = `/examples/${slug}/cover.${ext}`;
+  };
+  tryNext();
+}
+
+function clearExampleCover() {
+  const wrap = $('artefact-cover');
+  const img = $('artefact-cover-img');
+  wrap.hidden = true;
+  wrap.onclick = null;
+  img.onerror = null;
+  img.onload = null;
+  img.removeAttribute('src');
 }
 
 // -------- Source-photo picker -----------------------------------

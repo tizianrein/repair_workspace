@@ -31,6 +31,13 @@
         <div class="section-label">Artefact</div>
         <input id="object-name" class="object-input" type="text" placeholder="Enter artefact name…" />
         <div class="section-mini-stats" id="object-stats">— parts · — conditions</div>
+        <!-- Cover thumbnail. Only populated when an example is loaded; the
+             <img>'s src is set in main.js. Element is removed from layout
+             when src is empty (hidden attribute), so it doesn't push the
+             rest of the sidebar around for non-example workspaces. -->
+        <div class="artefact-cover" id="artefact-cover" hidden>
+          <img id="artefact-cover-img" alt="Artefact cover image">
+        </div>
       </div>
 
       <div class="section">

@@ -48,6 +48,29 @@
 }
 .object-input:focus { outline: none; border-color: var(--ink); }
 
+/* Cover thumbnail for loaded examples. Fixed small size so it acts as a
+   visual identifier without dominating the sidebar. Aspect-ratio keeps it
+   tidy regardless of source-image proportions; object-fit: cover crops
+   the image to fill the box (the alternative — `contain` — leaves
+   letterbox bars that look broken for variable-aspect source images). */
+.artefact-cover {
+  margin-top: 4px;
+  width: 150px;
+  aspect-ratio: 3 / 2;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: zoom-in;
+  background: var(--bg-soft);
+}
+.artefact-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.artefact-cover:hover { border-color: var(--ink); }
+
 .data-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
