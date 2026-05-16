@@ -30,6 +30,7 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
       miniViewer.destroy();
       miniViewer = null;
     }
+    lastViewerTargetKey = null;
   }
 
   // Hook modal close so we always tear down the WebGL context
@@ -40,13 +41,33 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     observer.observe(modalEl, { attributes: true, attributeFilter: ['class'] });
   }
 
-  function buildMiniViewer3D(parentEl, highlightPartIds, highlightHypIds, extraOpts = {}) {
+  function buildMiniViewer3D(parentEl, targetKey, highlightPartIds, highlightHypIds, extraOpts = {}) {
+    // Reuse the existing viewer if we're rebuilding for the same target.
+    // This preserves the camera rotation/zoom across in-place updates
+    // (e.g. toggling a connection). Only re-skin via updateHighlights.
+    if (miniViewer && lastViewerTargetKey === targetKey && parentEl.contains(miniViewer.containerEl)) {
+      miniViewer.updateHighlights({
+        highlightPartIds,
+        connectedPartIds: extraOpts.connectedPartIds || []
+      });
+      // The body was wiped before we got here — re-attach the existing
+      // viewer container as the first child of the new body.
+      parentEl.insertBefore(miniViewer.containerEl, parentEl.firstChild);
+      // Reinstall the (potentially updated) click handler
+      if (typeof extraOpts.onPartClick === 'function') {
+        miniViewer.setOnPartClick(extraOpts.onPartClick);
+      }
+      return;
+    }
+
     destroyMiniViewer();
     const wrap = el('div', 'detail-3d-mini');
     parentEl.appendChild(wrap);
+    lastViewerTargetKey = targetKey;
     // Defer to next frame so the wrap has its size before WebGL initializes
     requestAnimationFrame(() => {
       miniViewer = createMiniViewer3D(wrap);
+      miniViewer.containerEl = wrap;
       miniViewer.render(getWorkspace(), {
         highlightPartIds,
         highlightHypIds,
@@ -59,12 +80,19 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
-  function open(target) {
+  // Tracks which target the mini-viewer was last initialized for. If a
+  // subsequent open() call requests the same target (e.g. because the
+  // workspace updated and renderAll() asked us to refresh the modal),
+  // we keep the existing viewer instance to preserve camera state. We
+  // still call updateHighlights() so colour state stays in sync.
+  let lastViewerTargetKey = null;
+
+  function open(target, opts = {}) {
     if (!target) return;
     const ws = getWorkspace();
-    if (target.type === 'part') openPart(target.id, ws);
-    else if (target.type === 'hypothesis') openHypothesis(target.id, ws);
-    else if (target.type === 'step') openStep(target.id, ws);
+    if (target.type === 'part') openPart(target.id, ws, opts);
+    else if (target.type === 'hypothesis') openHypothesis(target.id, ws, opts);
+    else if (target.type === 'step') openStep(target.id, ws, opts);
   }
 
   function showModal() {
@@ -89,7 +117,7 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     // Clicking a non-current part toggles connection symmetrically.
     const relatedHypIds = (ws.hypotheses || []).filter(h => h.partRef === id).map(h => h.id);
     const currentConnections = Array.isArray(p.connections) ? p.connections : [];
-    buildMiniViewer3D(bodyEl, [id], relatedHypIds, {
+    buildMiniViewer3D(bodyEl, `part:${id}`, [id], relatedHypIds, {
       connectedPartIds: currentConnections,
       onPartClick: (clickedPartId) => toggleConnection(id, clickedPartId)
     });
@@ -207,7 +235,7 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     bodyEl.innerHTML = '';
 
     // Mini 3D-Preview: highlight the affected part + this condition's marker
-    buildMiniViewer3D(bodyEl, h.partRef ? [h.partRef] : [], [id]);
+    buildMiniViewer3D(bodyEl, `hyp:${id}`, h.partRef ? [h.partRef] : [], [id]);
 
     const form = el('div', 'detail-form');
     form.appendChild(field('Type', input(h.type || '', v => patchHypothesis(id, { type: v }))));
@@ -288,7 +316,7 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
 
     // Mini 3D-Preview: highlight affected parts + condition markers for
     // conditions this step addresses. Gives spatial context at a glance.
-    buildMiniViewer3D(bodyEl, s.affectedPartRefs || [], s.addressesHypothesisRefs || []);
+    buildMiniViewer3D(bodyEl, `step:${id}`, s.affectedPartRefs || [], s.addressesHypothesisRefs || []);
 
     // If this step is inside a mutex group (i.e. one of several alternatives),
     // show a banner at the top with a button to commit to this branch.

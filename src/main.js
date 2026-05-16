@@ -260,10 +260,11 @@ function renderAll() {
   }
   if (spatialGraph && activeTab === 'pane-spatial') spatialGraph.render(ws);
 
-  // Re-render the detail modal if open so edits (e.g. toggling a connection)
-  // immediately reflect in the modal contents and mini-3D-preview.
+  // Re-render the detail modal if open so edits reflect in modal contents.
+  // The detail editor itself skips destroying the mini-viewer when the
+  // target hasn't changed, so the camera position is preserved.
   if (lastDetailTarget && $('detail-modal')?.classList.contains('on')) {
-    detailEditor.open(lastDetailTarget);
+    detailEditor.open(lastDetailTarget, { preserveViewer: true });
   }
 
   const hypCount = (ws.hypotheses || []).length;

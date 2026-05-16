@@ -74,6 +74,25 @@ export function createMiniViewer3D(container) {
   // solid box meshes that should be clickable.
   const meshToPartId = new Map();
 
+  // Reverse map (partId → { mesh, edges }) used by updateHighlights() to
+  // re-skin parts without rebuilding the scene.
+  const partIdToObjects = new Map();
+
+  // Shared materials — created once, reused across renders. Mini-viewer
+  // recreates the scene on every render(), but the material handles persist.
+  const matDim = new THREE.MeshBasicMaterial({
+    color: 0xd0d0d0, transparent: true, opacity: 0.40, depthWrite: false
+  });
+  const matHighlight = new THREE.MeshBasicMaterial({
+    color: 0xff4d4d, transparent: true, opacity: 0.85, depthWrite: false
+  });
+  const matConnected = new THREE.MeshBasicMaterial({
+    color: 0x2266aa, transparent: true, opacity: 0.75, depthWrite: false
+  });
+  const matEdge = new THREE.LineBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.5 });
+  const matEdgeHighlight = new THREE.LineBasicMaterial({ color: 0x7a1418 });
+  const matEdgeConnected = new THREE.LineBasicMaterial({ color: 0x113a66 });
+
   /**
    * Render the artefact with optional highlights.
    * @param ws workspace
@@ -91,25 +110,13 @@ export function createMiniViewer3D(container) {
     } = opts;
     clear();
     meshToPartId.clear();
+    partIdToObjects.clear();
     const parts = ws.instance?.parts || [];
     if (!parts.length) return;
 
     const highlightSet = new Set(highlightPartIds);
     const hypSet = new Set(highlightHypIds);
     const connectedSet = new Set(connectedPartIds);
-
-    const matDim = new THREE.MeshBasicMaterial({
-      color: 0xd0d0d0, transparent: true, opacity: 0.40, depthWrite: false
-    });
-    const matHighlight = new THREE.MeshBasicMaterial({
-      color: 0xff4d4d, transparent: true, opacity: 0.85, depthWrite: false
-    });
-    const matConnected = new THREE.MeshBasicMaterial({
-      color: 0x2266aa, transparent: true, opacity: 0.75, depthWrite: false
-    });
-    const matEdge = new THREE.LineBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.5 });
-    const matEdgeHighlight = new THREE.LineBasicMaterial({ color: 0x7a1418 });
-    const matEdgeConnected = new THREE.LineBasicMaterial({ color: 0x113a66 });
 
     for (const part of parts) {
       const d = part.dimensions || {};
@@ -137,6 +144,8 @@ export function createMiniViewer3D(container) {
       lines.position.copy(mesh.position);
       lines.rotation.copy(mesh.rotation);
       objectGroup.add(lines);
+
+      partIdToObjects.set(part.id, { mesh, lines });
     }
 
     // Hypothesis markers — small red spheres. Sized proportionally to the
@@ -238,6 +247,10 @@ export function createMiniViewer3D(container) {
     renderer.domElement.style.cursor = currentClickCallback ? 'pointer' : 'default';
   }
 
+  // Public helper for in-place click-handler updates (used when the same
+  // viewer instance is reused across detail-modal refreshes).
+  function setOnPartClick(cb) { installClickHandler(cb); }
+
   function resize() {
     const w = container.clientWidth || 300;
     const h = container.clientHeight || 180;
@@ -256,5 +269,25 @@ export function createMiniViewer3D(container) {
     if (renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
   }
 
-  return { render, resize, destroy };
+  /**
+   * Cheaply re-skin parts without rebuilding the scene. Used by the
+   * detail editor when the user toggles a connection — keeps camera
+   * position, rotation and zoom intact.
+   *
+   * @param opts.highlightPartIds  parts to render in red (typically the
+   *                               currently-edited part — unchanged here)
+   * @param opts.connectedPartIds  parts to render in blue
+   */
+  function updateHighlights({ highlightPartIds = [], connectedPartIds = [] } = {}) {
+    const highlightSet = new Set(highlightPartIds);
+    const connectedSet = new Set(connectedPartIds);
+    partIdToObjects.forEach((objs, partId) => {
+      const isHL = highlightSet.has(partId);
+      const isConn = !isHL && connectedSet.has(partId);
+      objs.mesh.material = isHL ? matHighlight : (isConn ? matConnected : matDim);
+      objs.lines.material = isHL ? matEdgeHighlight : (isConn ? matEdgeConnected : matEdge);
+    });
+  }
+
+  return { render, resize, destroy, updateHighlights, setOnPartClick };
 }
