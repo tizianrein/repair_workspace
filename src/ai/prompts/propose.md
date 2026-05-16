@@ -46,7 +46,20 @@ Each command in `commands` is one of the types listed below. Pick the most speci
   ```
   `status` is one of: `suspected`, `confirmed`, `refuted`. New observations default to `suspected`. Set `confirmed` only when the user's text or attached photo provides direct visual evidence. `refuted` means the user looked and the condition is not there.
 
-  **CRITICAL — one hypothesis per part. `partRef` is a SINGLE part id (e.g. `"front_right_leg"`), never a comma-separated list, never an array, never the string `"all"`.** When the user describes a condition that applies to multiple parts (e.g. "weathered grey on all wood", "rust on every leg"), emit one `add-hypothesis` command per affected part. A request that affects 13 parts produces 13 add-hypothesis commands in the same response. Use the same `description` and `type` for each so they read as a coherent set; vary only `partRef` and `coordinates`. Do NOT collapse them into one hypothesis with a multi-part reference — the data model has no such concept and the UI will fail to display them.
+  **CRITICAL — `coordinates` is a WORLD-SPACE position (same coordinate system as `part.origin`), NOT a local offset from the part.** The viewer renders a red dot at exactly these `(x, y, z)` world coordinates. Picking `{x:0, y:0, z:0}` puts the dot at the world origin — usually floating below the artefact in empty space — which is almost always wrong.
+
+  How to choose `coordinates`:
+  1. **Default** (the user's description has no spatial cue): copy the affected part's `origin` directly. This puts the marker at the part's center. Use this for material/finish/whole-surface observations like "weathered grey on the leg" — there's no specific point, the dot should sit on the part.
+  2. **Spatial cue in the user's wording** ("at the top of...", "on the underside of...", "on the right side of..."): start from the part's `origin` and offset by half the part's `dimensions` in the appropriate axis.
+
+     Axis convention used throughout the workspace:
+     - `+y` is up, `-y` is down  → "top" = origin.y + height/2, "bottom" = origin.y − height/2
+     - `+z` is back, `-z` is front  → "front" = origin.z − depth/2, "back" = origin.z + depth/2
+     - `+x` is right, `-x` is left  → "right" = origin.x + width/2, "left" = origin.x − width/2
+
+     Example: a "crack at the top of front_left_leg" where `origin = {x:-0.235, y:0.221, z:-0.222}` and `dimensions = {width:0.030, height:0.426, depth:0.045}` becomes `coordinates = {x:-0.235, y:0.221 + 0.426/2, z:-0.222} = {x:-0.235, y:0.434, z:-0.222}`.
+
+  **CRITICAL — one hypothesis per part. `partRef` is a SINGLE part id (e.g. `"front_right_leg"`), never a comma-separated list, never an array, never the string `"all"`.** When the user describes a condition that applies to multiple parts (e.g. "weathered grey on all wood", "rust on every leg"), emit one `add-hypothesis` command per affected part. A request that affects 13 parts produces 13 add-hypothesis commands in the same response. Use the same `description` and `type` for each so they read as a coherent set; vary `partRef` and `coordinates` (each part's `coordinates` uses that part's own `origin` — never reuse one part's coordinates for another). Do NOT collapse them into one hypothesis with a multi-part reference — the data model has no such concept and the UI will fail to display them.
 - `update-hypothesis` — modify an existing hypothesis. Provide `hypothesisId` and a `patch` object with only the fields that change.
 - `confirm-hypothesis` / `refute-hypothesis` — promote status with optional `evidenceId`.
 

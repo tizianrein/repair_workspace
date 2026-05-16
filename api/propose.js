@@ -77,6 +77,9 @@ export default async function handler(req, res) {
     // Build a set of valid part ids from the workspace so we can validate
     // partRef on add-hypothesis. Used by the fan-out logic below.
     const validPartIds = new Set((workspace.instance?.parts || []).map(p => p.id));
+    // Full part lookup, used by the coordinate-rescue path below to read
+    // a part's origin and dimensions when fixing degenerate coordinates.
+    const partById = new Map((workspace.instance?.parts || []).map(p => [p.id, p]));
 
     // Filter out commands with unknown types so they never make it to the
     // accept-modal-then-fail path. Surface the rejected types so the user
@@ -129,25 +132,30 @@ export default async function handler(req, res) {
         }
         const refs = expandPartRef(h.partRef, validPartIds);
         if (refs.length === 0) {
-          // The model gave us a partRef that doesn't match any known part.
-          // Don't silently drop — keep the hypothesis with whatever ref it
-          // had so the user can fix it in the detail editor. The existing
-          // behaviour for unmatched refs.
+          // partRef doesn't match any known part. Keep it so the user
+          // can fix it in the detail editor. No coordinate rescue
+          // possible — we don't know which part to anchor to.
           known.push(cmd);
           continue;
         }
         if (refs.length === 1 && refs[0] === h.partRef) {
-          // Already well-formed, no fan-out needed.
-          known.push(cmd);
+          // Well-formed single-part hypothesis. Still run the coordinate
+          // rescue: the model often emits {0,0,0} or omits the field,
+          // which lands the marker at the world origin instead of on
+          // the part.
+          known.push({
+            type: 'add-hypothesis',
+            payload: { hypothesis: rescueCoordinates(h, partById.get(refs[0])) }
+          });
           continue;
         }
         // Fan out: one add-hypothesis per resolved partRef. Each gets its
-        // own hypothesis object so the runtime command (which generates
-        // a fresh id) produces distinct entities.
+        // own hypothesis object — and crucially its own coordinate rescue
+        // anchored to THAT part, not a shared default.
         for (const partId of refs) {
           known.push({
             type: 'add-hypothesis',
-            payload: { hypothesis: { ...h, partRef: partId } }
+            payload: { hypothesis: rescueCoordinates({ ...h, partRef: partId }, partById.get(partId)) }
           });
         }
         fannedOut.push(`condition "${h.description || h.type}" → ${refs.length} parts`);
@@ -234,4 +242,61 @@ function expandPartRef(partRef, validPartIds) {
   // unmatched-ref path keeps it for the user to fix in the detail editor.
   if (validPartIds.has(trimmed)) return [trimmed];
   return [];
+}
+
+/**
+ * Return a hypothesis with sane coordinates, anchored to its part when
+ * the model gave us something useless. The model frequently emits
+ * `{x:0, y:0, z:0}` regardless of the part's actual position, which
+ * lands the marker at the world origin instead of on the part. The
+ * fix: detect the degenerate cases and substitute the part's origin
+ * as a safe default. Coordinates that look plausible (non-zero and
+ * within reach of the part) are left untouched — we don't second-guess
+ * a model that's doing the right thing.
+ *
+ * Rescue triggers:
+ *   1. coordinates missing or non-object
+ *   2. all three components zero (world-origin sentinel)
+ *   3. coordinates are absurdly far from the part (>5× the part's
+ *      largest dimension from origin) — signals "the model didn't
+ *      understand the part frame and just guessed".
+ */
+function rescueCoordinates(h, part) {
+  if (!part || !part.origin) return h;
+  const o = part.origin;
+  const c = h.coordinates;
+  const partOriginIsZero =
+    (o.x || 0) === 0 && (o.y || 0) === 0 && (o.z || 0) === 0;
+
+  // (1) missing / non-object → snap to part origin.
+  if (!c || typeof c !== 'object') {
+    return { ...h, coordinates: { x: o.x || 0, y: o.y || 0, z: o.z || 0 } };
+  }
+
+  const cx = Number(c.x) || 0;
+  const cy = Number(c.y) || 0;
+  const cz = Number(c.z) || 0;
+
+  // (2) all-zero coordinates while the part itself sits AWAY from the
+  // world origin → almost certainly the {0,0,0} sentinel, not a
+  // deliberate world-origin pick. Snap to part origin.
+  if (cx === 0 && cy === 0 && cz === 0 && !partOriginIsZero) {
+    return { ...h, coordinates: { x: o.x, y: o.y, z: o.z } };
+  }
+
+  // (3) absurdly far from the part. Compute distance from part origin
+  // and compare against a generous radius (5× the largest dimension).
+  // This catches "model invented coordinates from a different
+  // reference frame" without punishing legitimate offsets.
+  const d = part.dimensions || {};
+  const reach = Math.max(d.width || 0, d.height || 0, d.depth || 0, 0.1);
+  const distSq =
+    (cx - (o.x || 0)) ** 2 +
+    (cy - (o.y || 0)) ** 2 +
+    (cz - (o.z || 0)) ** 2;
+  if (distSq > (reach * 5) ** 2) {
+    return { ...h, coordinates: { x: o.x, y: o.y, z: o.z } };
+  }
+
+  return h;
 }
