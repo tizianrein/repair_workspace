@@ -260,6 +260,12 @@ function renderAll() {
   }
   if (spatialGraph && activeTab === 'pane-spatial') spatialGraph.render(ws);
 
+  // Re-render the detail modal if open so edits (e.g. toggling a connection)
+  // immediately reflect in the modal contents and mini-3D-preview.
+  if (lastDetailTarget && $('detail-modal')?.classList.contains('on')) {
+    detailEditor.open(lastDetailTarget);
+  }
+
   const hypCount = (ws.hypotheses || []).length;
   $('fab-right-badge').hidden = hypCount === 0;
   $('fab-right-badge').textContent = hypCount;

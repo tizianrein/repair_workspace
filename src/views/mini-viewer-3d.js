@@ -69,19 +69,34 @@ export function createMiniViewer3D(container) {
     }
   }
 
+  // Map mesh.uuid → part.id so raycast click results can be turned into part IDs.
+  // Rebuilt every render(). Edge LineSegments are NOT entered here; only the
+  // solid box meshes that should be clickable.
+  const meshToPartId = new Map();
+
   /**
    * Render the artefact with optional highlights.
    * @param ws workspace
-   * @param highlightPartIds array of part ids to render in highlight color
-   * @param highlightHypIds array of hypothesis ids whose markers to draw
+   * @param opts.highlightPartIds   parts rendered in highlight (red) color
+   * @param opts.highlightHypIds    hypothesis ids whose markers to draw
+   * @param opts.connectedPartIds   parts rendered in connection (blue) color
+   * @param opts.onPartClick        (partId) => void; if set, parts become clickable via raycast
    */
-  function render(ws, { highlightPartIds = [], highlightHypIds = [] } = {}) {
+  function render(ws, opts = {}) {
+    const {
+      highlightPartIds = [],
+      highlightHypIds = [],
+      connectedPartIds = [],
+      onPartClick = null
+    } = opts;
     clear();
+    meshToPartId.clear();
     const parts = ws.instance?.parts || [];
     if (!parts.length) return;
 
     const highlightSet = new Set(highlightPartIds);
     const hypSet = new Set(highlightHypIds);
+    const connectedSet = new Set(connectedPartIds);
 
     const matDim = new THREE.MeshBasicMaterial({
       color: 0xd0d0d0, transparent: true, opacity: 0.40, depthWrite: false
@@ -89,8 +104,12 @@ export function createMiniViewer3D(container) {
     const matHighlight = new THREE.MeshBasicMaterial({
       color: 0xff4d4d, transparent: true, opacity: 0.85, depthWrite: false
     });
+    const matConnected = new THREE.MeshBasicMaterial({
+      color: 0x2266aa, transparent: true, opacity: 0.75, depthWrite: false
+    });
     const matEdge = new THREE.LineBasicMaterial({ color: 0x888888, transparent: true, opacity: 0.5 });
     const matEdgeHighlight = new THREE.LineBasicMaterial({ color: 0x7a1418 });
+    const matEdgeConnected = new THREE.LineBasicMaterial({ color: 0x113a66 });
 
     for (const part of parts) {
       const d = part.dimensions || {};
@@ -100,16 +119,21 @@ export function createMiniViewer3D(container) {
       const geo = new THREE.BoxGeometry(w, h, dp);
 
       const isHL = highlightSet.has(part.id);
-      const mesh = new THREE.Mesh(geo, isHL ? matHighlight : matDim);
+      const isConn = !isHL && connectedSet.has(part.id);
+      const fillMat = isHL ? matHighlight : (isConn ? matConnected : matDim);
+      const edgeMat = isHL ? matEdgeHighlight : (isConn ? matEdgeConnected : matEdge);
+
+      const mesh = new THREE.Mesh(geo, fillMat);
       const o = part.origin || { x: 0, y: 0, z: 0 };
       mesh.position.set(o.x || 0, o.y || 0, o.z || 0);
       if (part.rotation) {
         mesh.rotation.set(part.rotation.x || 0, part.rotation.y || 0, part.rotation.z || 0, 'YXZ');
       }
       objectGroup.add(mesh);
+      meshToPartId.set(mesh.uuid, part.id);
 
       const edges = new THREE.EdgesGeometry(geo);
-      const lines = new THREE.LineSegments(edges, isHL ? matEdgeHighlight : matEdge);
+      const lines = new THREE.LineSegments(edges, edgeMat);
       lines.position.copy(mesh.position);
       lines.rotation.copy(mesh.rotation);
       objectGroup.add(lines);
@@ -162,6 +186,56 @@ export function createMiniViewer3D(container) {
       controls.maxDistance = distance * 3;
       controls.update();
     }
+
+    // Replace any previously-installed click handler. The handler closure
+    // captures `onPartClick` and the current mesh map.
+    installClickHandler(onPartClick);
+  }
+
+  // ----- Click / tap handling -----
+  // We distinguish a tap (intent: click) from a drag (intent: orbit) by
+  // measuring pointer travel between pointerdown and pointerup. If the
+  // pointer moved more than CLICK_THRESHOLD pixels, the gesture is an
+  // orbit and we ignore it as far as part-selection goes.
+  const CLICK_THRESHOLD_PX = 5;
+  let pointerDownX = 0, pointerDownY = 0, pointerDownTime = 0;
+  let currentClickCallback = null;
+
+  const raycaster = new THREE.Raycaster();
+  const ndc = new THREE.Vector2();
+
+  function onPointerDown(e) {
+    pointerDownX = e.clientX;
+    pointerDownY = e.clientY;
+    pointerDownTime = Date.now();
+  }
+  function onPointerUp(e) {
+    if (!currentClickCallback) return;
+    const dx = e.clientX - pointerDownX;
+    const dy = e.clientY - pointerDownY;
+    const dist = Math.hypot(dx, dy);
+    if (dist > CLICK_THRESHOLD_PX) return; // it's an orbit, not a tap
+    if (Date.now() - pointerDownTime > 600) return; // long press, ignore
+
+    // Compute NDC and raycast
+    const rect = renderer.domElement.getBoundingClientRect();
+    ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(ndc, camera);
+    const meshes = objectGroup.children.filter(c => c.isMesh);
+    const hits = raycaster.intersectObjects(meshes, false);
+    if (!hits.length) return;
+    const partId = meshToPartId.get(hits[0].object.uuid);
+    if (partId) currentClickCallback(partId);
+  }
+
+  renderer.domElement.addEventListener('pointerdown', onPointerDown);
+  renderer.domElement.addEventListener('pointerup', onPointerUp);
+
+  function installClickHandler(cb) {
+    currentClickCallback = typeof cb === 'function' ? cb : null;
+    // Cursor feedback so it's clear the viewer is interactive
+    renderer.domElement.style.cursor = currentClickCallback ? 'pointer' : 'default';
   }
 
   function resize() {
@@ -174,6 +248,8 @@ export function createMiniViewer3D(container) {
 
   function destroy() {
     if (animationId) cancelAnimationFrame(animationId);
+    renderer.domElement.removeEventListener('pointerdown', onPointerDown);
+    renderer.domElement.removeEventListener('pointerup', onPointerUp);
     clear();
     controls.dispose();
     renderer.dispose();

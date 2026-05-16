@@ -40,14 +40,18 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     observer.observe(modalEl, { attributes: true, attributeFilter: ['class'] });
   }
 
-  function buildMiniViewer3D(parentEl, highlightPartIds, highlightHypIds) {
+  function buildMiniViewer3D(parentEl, highlightPartIds, highlightHypIds, extraOpts = {}) {
     destroyMiniViewer();
     const wrap = el('div', 'detail-3d-mini');
     parentEl.appendChild(wrap);
     // Defer to next frame so the wrap has its size before WebGL initializes
     requestAnimationFrame(() => {
       miniViewer = createMiniViewer3D(wrap);
-      miniViewer.render(getWorkspace(), { highlightPartIds, highlightHypIds });
+      miniViewer.render(getWorkspace(), {
+        highlightPartIds,
+        highlightHypIds,
+        ...extraOpts
+      });
     });
   }
 
@@ -78,9 +82,22 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     titleEl.textContent = `Part: ${p.id}`;
     bodyEl.innerHTML = '';
 
-    // Mini 3D-Preview: highlight this part, plus any condition markers on it
+    // Mini 3D-Preview with click-to-toggle for connections.
+    //   • the current part itself: red
+    //   • parts in `connections`:   blue
+    //   • everything else:          dim grey
+    // Clicking a non-current part toggles connection symmetrically.
     const relatedHypIds = (ws.hypotheses || []).filter(h => h.partRef === id).map(h => h.id);
-    buildMiniViewer3D(bodyEl, [id], relatedHypIds);
+    const currentConnections = Array.isArray(p.connections) ? p.connections : [];
+    buildMiniViewer3D(bodyEl, [id], relatedHypIds, {
+      connectedPartIds: currentConnections,
+      onPartClick: (clickedPartId) => toggleConnection(id, clickedPartId)
+    });
+
+    // Small hint banner under the viewer
+    const hint = el('div', 'detail-3d-hint');
+    hint.innerHTML = `<span class="hint-swatch hint-swatch-red"></span> this part &nbsp;&nbsp; <span class="hint-swatch hint-swatch-blue"></span> connected &nbsp;&nbsp; <span class="hint-dim">click any part to toggle a connection</span>`;
+    bodyEl.appendChild(hint);
 
     const form = el('div', 'detail-form');
     form.appendChild(field('Label', input(p.label || '', v => patchPart(id, { label: v }))));
@@ -134,6 +151,52 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     const existing = (ws.instance?.parts || []).find(x => x.id === id);
     if (!existing) return;
     dispatch({ type: 'upsert-part', payload: { part: { ...existing, ...patch } } });
+  }
+
+  /**
+   * Symmetric connection toggle.
+   * If A is editing and the user clicks B, the connection is added or
+   * removed on BOTH sides. Connections are physical and should always be
+   * bidirectional. Empty arrays are normalized.
+   *
+   * After the dispatch the detail editor's caller re-renders the modal
+   * (which rebuilds the mini-viewer) to reflect the new state.
+   */
+  function toggleConnection(currentPartId, otherPartId) {
+    if (!otherPartId || otherPartId === currentPartId) return;
+    const ws = getWorkspace();
+    const current = (ws.instance?.parts || []).find(p => p.id === currentPartId);
+    const other = (ws.instance?.parts || []).find(p => p.id === otherPartId);
+    if (!current || !other) return;
+
+    const currentConns = Array.isArray(current.connections) ? [...current.connections] : [];
+    const otherConns = Array.isArray(other.connections) ? [...other.connections] : [];
+
+    const wasConnected = currentConns.includes(otherPartId);
+
+    let newCurrentConns;
+    let newOtherConns;
+    if (wasConnected) {
+      newCurrentConns = currentConns.filter(x => x !== otherPartId);
+      newOtherConns = otherConns.filter(x => x !== currentPartId);
+    } else {
+      newCurrentConns = [...currentConns, otherPartId];
+      newOtherConns = otherConns.includes(currentPartId) ? otherConns : [...otherConns, currentPartId];
+    }
+
+    // Dispatch a batch of two upserts so undo/redo treats it as one step
+    dispatch({
+      type: 'batch',
+      payload: {
+        label: wasConnected
+          ? `disconnect ${currentPartId} ↔ ${otherPartId}`
+          : `connect ${currentPartId} ↔ ${otherPartId}`,
+        commands: [
+          { type: 'upsert-part', payload: { part: { ...current, connections: newCurrentConns } } },
+          { type: 'upsert-part', payload: { part: { ...other, connections: newOtherConns } } }
+        ]
+      }
+    });
   }
 
   // -------------------------------------------------------- hypotheses

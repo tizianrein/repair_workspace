@@ -2,17 +2,17 @@
   "schemaVersion": "2.0.0",
   "template": null,
   "instance": {
-    "id": "lunch_chair",
-    "name": "Lunch Chair",
+    "id": "inst_wooden_chair",
+    "name": "Wooden Chair",
     "templateRef": null,
     "parts": [
       {
-        "id": "back_left_leg",
-        "label": "Back Left Leg",
+        "id": "backrest",
+        "label": "Backrest",
         "origin": {
-          "x": -0.133218,
-          "y": 0.016459,
-          "z": 0.745991
+          "x": -0.157503,
+          "y": 0.752163,
+          "z": -0.005168
         },
         "dimensions": {
           "width": 0.04529,
@@ -20,16 +20,15 @@
           "depth": 0.084895
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
+          "x": -1.570796,
+          "y": -0.0,
           "z": 0.0
         },
         "connections": [
-          "left_apron",
-          "left_stretcher",
-          "top_rail"
+          "back_left_leg",
+          "back_right_leg"
         ],
-        "material": "weathered solid wood",
+        "material": "Weathered solid timber",
         "status": "intact",
         "notes": ""
       },
@@ -37,157 +36,25 @@
         "id": "front_left_leg",
         "label": "Front Left Leg",
         "origin": {
-          "x": -0.154013,
-          "y": 0.02171,
-          "z": 0.555544
+          "x": 0.177713,
+          "y": 0.222923,
+          "z": -0.144027
         },
         "dimensions": {
-          "width": 0.024317,
-          "height": 0.248498,
-          "depth": 0.047522
-        },
-        "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
-        },
-        "connections": [
-          "left_seat_support",
-          "left_apron",
-          "left_stretcher"
-        ],
-        "material": "weathered solid wood",
-        "status": "intact",
-        "notes": ""
-      },
-      {
-        "id": "left_seat_support",
-        "label": "Left Seat Support",
-        "origin": {
-          "x": -0.152049,
-          "y": 0.02171,
-          "z": 0.625669
-        },
-        "dimensions": {
-          "width": 0.022688,
-          "height": 0.248498,
-          "depth": 0.046981
-        },
-        "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
-        },
-        "connections": [
-          "front_left_leg",
-          "left_apron"
-        ],
-        "material": "weathered solid wood",
-        "status": "intact",
-        "notes": ""
-      },
-      {
-        "id": "right_apron",
-        "label": "Right Apron",
-        "origin": {
-          "x": 0.201997,
-          "y": 0.155318,
-          "z": 0.216751
-        },
-        "dimensions": {
-          "width": 0.037881,
+          "width": 0.40512,
           "height": 0.03755,
-          "depth": 0.405338
+          "depth": 0.03528
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
-        },
-        "connections": [
-          "front_right_leg",
-          "back_panel_right_support"
-        ],
-        "material": "weathered solid wood",
-        "status": "intact",
-        "notes": ""
-      },
-      {
-        "id": "right_stretcher",
-        "label": "Right Stretcher",
-        "origin": {
-          "x": 0.215339,
-          "y": -0.168949,
-          "z": 0.216665
-        },
-        "dimensions": {
-          "width": 0.055415,
-          "height": 0.038881,
-          "depth": 0.406374
-        },
-        "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
-        },
-        "connections": [
-          "front_right_leg",
-          "back_panel_right_support"
-        ],
-        "material": "weathered solid wood",
-        "status": "intact",
-        "notes": ""
-      },
-      {
-        "id": "left_apron",
-        "label": "Left Apron",
-        "origin": {
-          "x": -0.156929,
-          "y": 0.140994,
-          "z": 0.374873
-        },
-        "dimensions": {
-          "width": 0.075218,
-          "height": 0.101234,
-          "depth": 0.762092
-        },
-        "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": -0.006422,
+          "y": -1.570796,
+          "z": 1.570796
         },
         "connections": [
           "back_left_leg",
-          "front_left_leg",
-          "left_seat_support"
+          "front_apron"
         ],
-        "material": "weathered solid wood",
-        "status": "intact",
-        "notes": ""
-      },
-      {
-        "id": "left_stretcher",
-        "label": "Left Stretcher",
-        "origin": {
-          "x": -0.158888,
-          "y": -0.157203,
-          "z": 0.381076
-        },
-        "dimensions": {
-          "width": 0.076617,
-          "height": 0.110677,
-          "depth": 0.744939
-        },
-        "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
-        },
-        "connections": [
-          "back_left_leg",
-          "front_left_leg"
-        ],
-        "material": "weathered solid wood",
+        "material": "Weathered solid timber",
         "status": "intact",
         "notes": ""
       },
@@ -195,103 +62,243 @@
         "id": "front_right_leg",
         "label": "Front Right Leg",
         "origin": {
-          "x": 0.206242,
-          "y": -0.009487,
-          "z": 0.296696
+          "x": 0.191055,
+          "y": 0.222838,
+          "z": 0.18024
         },
         "dimensions": {
-          "width": 0.024037,
-          "height": 0.292059,
-          "depth": 0.027114
+          "width": 0.40512,
+          "height": 0.038881,
+          "depth": 0.03528
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": 0.049829,
+          "y": -1.570796,
+          "z": 1.570796
         },
         "connections": [
-          "right_apron",
-          "right_stretcher"
+          "back_right_leg",
+          "rounded_apron"
         ],
-        "material": "weathered solid wood",
+        "material": "Weathered solid timber",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "back_slat_lower",
-        "label": "Back Slat Lower",
+        "id": "back_left_leg",
+        "label": "Back Left Leg",
         "origin": {
-          "x": 0.030321,
-          "y": -0.017449,
-          "z": 0.331173
+          "x": -0.181214,
+          "y": 0.381046,
+          "z": -0.129702
         },
         "dimensions": {
-          "width": 0.342661,
-          "height": 0.325155,
-          "depth": 0.020734
+          "width": 0.759087,
+          "height": 0.052487,
+          "depth": 0.045646
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": -0.038933,
+          "y": -1.573305,
+          "z": 1.635148
         },
         "connections": [
-          "back_slat_middle"
+          "backrest",
+          "front_left_leg",
+          "seat",
+          "back_slat_upper",
+          "back_slat_lower"
         ],
-        "material": "weathered solid wood",
+        "material": "Weathered solid timber",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "back_slat_middle",
-        "label": "Back Slat Middle",
+        "id": "back_right_leg",
+        "label": "Back Right Leg",
         "origin": {
-          "x": 0.019005,
-          "y": -0.008197,
-          "z": 0.436978
+          "x": -0.183172,
+          "y": 0.387249,
+          "z": 0.168494
         },
         "dimensions": {
-          "width": 0.337169,
-          "height": 0.364331,
-          "depth": 0.035574
+          "width": 0.741169,
+          "height": 0.062518,
+          "depth": 0.046624
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": -0.040198,
+          "y": -1.575075,
+          "z": 1.6359
         },
         "connections": [
-          "back_slat_lower",
-          "back_slat_upper"
+          "backrest",
+          "front_right_leg",
+          "seat",
+          "back_slat_upper",
+          "back_slat_lower"
         ],
-        "material": "weathered solid wood",
+        "material": "Weathered solid timber",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "back_panel_right_support",
-        "label": "Back Panel Right Support",
+        "id": "front_stretcher",
+        "label": "Front Stretcher",
         "origin": {
-          "x": 0.215702,
-          "y": -0.007211,
-          "z": 0.436979
+          "x": 0.181957,
+          "y": 0.302869,
+          "z": 0.020778
         },
         "dimensions": {
-          "width": 0.060088,
-          "height": 0.362734,
-          "depth": 0.035571
+          "width": 0.292059,
+          "height": 0.027114,
+          "depth": 0.024037
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
+          "x": -0.0,
+          "y": 1.570796,
+          "z": 3.141593
+        },
+        "connections": [
+          "front_apron",
+          "rounded_apron"
+        ],
+        "material": "Weathered solid timber",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "front_apron",
+        "label": "Front Apron",
+        "origin": {
+          "x": 0.191417,
+          "y": 0.443152,
+          "z": 0.018502
+        },
+        "dimensions": {
+          "width": 0.362613,
+          "height": 0.058178,
+          "depth": 0.034912
+        },
+        "rotation": {
+          "x": 1.568978,
+          "y": -1.565416,
           "z": 0.0
         },
         "connections": [
-          "right_apron",
-          "right_stretcher",
-          "top_rail"
+          "front_left_leg",
+          "front_stretcher",
+          "seat"
         ],
-        "material": "weathered solid wood",
+        "material": "Weathered solid timber",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "seat_panel",
+        "label": "Seat Panel",
+        "origin": {
+          "x": 0.023798,
+          "y": 0.462697,
+          "z": 0.019359
+        },
+        "dimensions": {
+          "width": 0.394143,
+          "height": 0.363173,
+          "depth": 0.004181
+        },
+        "rotation": {
+          "x": -1.56898,
+          "y": 0.003274,
+          "z": 0.0
+        },
+        "connections": [
+          "seat"
+        ],
+        "material": "Weathered solid timber",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "seat",
+        "label": "Seat",
+        "origin": {
+          "x": 0.023798,
+          "y": 0.477304,
+          "z": 0.019332
+        },
+        "dimensions": {
+          "width": 0.394143,
+          "height": 0.363173,
+          "depth": 0.025034
+        },
+        "rotation": {
+          "x": -1.56898,
+          "y": 0.003274,
+          "z": 0.0
+        },
+        "connections": [
+          "back_left_leg",
+          "back_right_leg",
+          "front_apron",
+          "seat_panel",
+          "rounded_apron"
+        ],
+        "material": "Weathered solid timber",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "rounded_apron",
+        "label": "Rounded Apron",
+        "origin": {
+          "x": -0.005127,
+          "y": 0.443264,
+          "z": 0.01966
+        },
+        "dimensions": {
+          "width": 0.363389,
+          "height": 0.336901,
+          "depth": 0.034695
+        },
+        "rotation": {
+          "x": 1.568952,
+          "y": -1.569205,
+          "z": 0.0
+        },
+        "connections": [
+          "front_right_leg",
+          "front_stretcher",
+          "seat",
+          "round_stretcher"
+        ],
+        "material": "Weathered solid timber",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "round_stretcher",
+        "label": "Round Stretcher",
+        "origin": {
+          "x": -0.005127,
+          "y": 0.332098,
+          "z": 0.01966
+        },
+        "dimensions": {
+          "width": 0.363342,
+          "height": 0.336901,
+          "depth": 0.018362
+        },
+        "rotation": {
+          "x": 1.569827,
+          "y": -1.569205,
+          "z": 0.0
+        },
+        "connections": [
+          "rounded_apron"
+        ],
+        "material": "Weathered solid timber",
         "status": "intact",
         "notes": ""
       },
@@ -299,52 +306,51 @@
         "id": "back_slat_upper",
         "label": "Back Slat Upper",
         "origin": {
-          "x": 0.048083,
-          "y": -0.008068,
-          "z": 0.456524
+          "x": -0.176334,
+          "y": 0.631842,
+          "z": 7.4e-05
         },
         "dimensions": {
-          "width": 0.395325,
-          "height": 0.364463,
-          "depth": 0.004842
+          "width": 0.248498,
+          "height": 0.045587,
+          "depth": 0.019058
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": 0.081093,
+          "y": 1.570796,
+          "z": 3.141593
         },
         "connections": [
-          "back_slat_middle",
-          "top_rail"
+          "back_left_leg",
+          "back_right_leg"
         ],
-        "material": "weathered solid wood",
+        "material": "Weathered solid timber",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "top_rail",
-        "label": "Top Rail",
+        "id": "back_slat_lower",
+        "label": "Back Slat Lower",
         "origin": {
-          "x": 0.048083,
-          "y": -0.008041,
-          "z": 0.471131
+          "x": -0.178298,
+          "y": 0.561717,
+          "z": 0.004252
         },
         "dimensions": {
-          "width": 0.395326,
-          "height": 0.364501,
-          "depth": 0.025695
+          "width": 0.248498,
+          "height": 0.045587,
+          "depth": 0.019058
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": 0.118593,
+          "y": 1.570796,
+          "z": -3.141593
         },
         "connections": [
-          "back_slat_upper",
           "back_left_leg",
-          "back_panel_right_support"
+          "back_right_leg"
         ],
-        "material": "weathered solid wood",
+        "material": "Weathered solid timber",
         "status": "intact",
         "notes": ""
       }
@@ -352,17 +358,17 @@
     "location": "",
     "provenance": "",
     "notes": "",
-    "createdAt": "2026-05-16T14:08:33.218Z",
-    "sourcePhotoEvidenceId": "ev_de0b98ec642"
+    "createdAt": "2026-05-16T15:04:11.777Z",
+    "sourcePhotoEvidenceId": "ev_7f43309a26f"
   },
   "evidence": [
     {
-      "id": "ev_de0b98ec642",
+      "id": "ev_7f43309a26f",
       "kind": "photo",
       "attachedTo": null,
-      "capturedAt": "2026-05-16T14:08:33.218Z",
+      "capturedAt": "2026-05-16T15:04:11.777Z",
       "capturedBy": null,
-      "url": "idb://ev_de0b98ec642",
+      "url": "idb://ev_7f43309a26f",
       "text": null,
       "measurement": null,
       "confirmsHypothesisRef": null,
@@ -391,6 +397,6 @@
   "currentPlanId": null,
   "executionLog": [],
   "conversations": [],
-  "createdAt": "2026-05-16T14:08:33.218Z",
-  "updatedAt": "2026-05-16T14:08:33.218Z"
+  "createdAt": "2026-05-16T15:04:11.777Z",
+  "updatedAt": "2026-05-16T15:13:03.667Z"
 }
