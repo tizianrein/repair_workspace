@@ -144,6 +144,28 @@ $('explode-btn').onclick = () => {
   $('explode-btn').title = viewer3D.isExploded() ? 'Restore view' : 'Explode view';
 };
 
+// Display-mode toggle for the textured-mesh overlay. Cycles
+// both → mesh → boxes → both. Hidden when no mesh is loaded so it
+// doesn't clutter the HUD for non-example workspaces.
+function syncDisplayModeBtn() {
+  const btn = $('display-mode-btn');
+  if (!btn) return;
+  if (!viewer3D.hasMesh()) { btn.hidden = true; return; }
+  btn.hidden = false;
+  const mode = viewer3D.getDisplayMode();
+  // Glyph + tooltip describe the CURRENT mode (so the user can see what
+  // they're looking at). Clicking advances to the next mode.
+  if (mode === 'both')        { btn.textContent = '🟰'; btn.title = 'Showing both — click for mesh only'; }
+  else if (mode === 'mesh')   { btn.textContent = '🧊'; btn.title = 'Showing mesh — click for boxes only'; }
+  else                        { btn.textContent = '📦'; btn.title = 'Showing boxes — click for both'; }
+}
+$('display-mode-btn').onclick = () => {
+  const mode = viewer3D.getDisplayMode();
+  const next = mode === 'both' ? 'mesh' : mode === 'mesh' ? 'boxes' : 'both';
+  viewer3D.setDisplayMode(next);
+  syncDisplayModeBtn();
+};
+
 // -------------------------------------------------------------------------
 // Manual "place new condition" mode
 //
@@ -521,6 +543,13 @@ $('workspace-file').addEventListener('change', async e => {
 });
 
 function loadWorkspaceJson(parsed) {
+  // Any non-example load drops the previous example's mesh overlay and
+  // forgets its slug. The example-load handler re-attaches them after
+  // calling this — ordering matters.
+  if (viewer3D) viewer3D.clearMesh();
+  forgetExampleSlug();
+  syncDisplayModeBtn();
+
   let ws;
   if (parsed.schemaVersion === SCHEMA_VERSION) {
     ws = parsed;
@@ -569,10 +598,9 @@ $('load-example-select').onchange = async (e) => {
     const res = await fetch(`/examples/${slug}/workspace.json`);
     if (!res.ok) throw new Error(`Example not found (${res.status})`);
     loadWorkspaceJson(await res.json());
-    // Attach the example's cover.jpg as a data URL on instance.coverImage
-    // so it survives reload, JSON export, and sharing. Silent no-op if
-    // the example folder has no cover.
-    await attachExampleCover(slug);
+    // Cover (persisted on workspace) + mesh.glb (transient, slug
+    // remembered in localStorage so reload can re-fetch).
+    await attachExampleAssets(slug);
     log(`Loaded example: ${slug}`);
   } catch (err) {
     console.error(err);
@@ -614,6 +642,11 @@ $('reset-btn').onclick = () => {
   state.history = [];
   state.future = [];
   selectedStepId = null;
+  // Resetting drops the example association: mesh out of the viewer,
+  // slug out of localStorage so it doesn't rehydrate on next reload.
+  if (viewer3D) viewer3D.clearMesh();
+  forgetExampleSlug();
+  syncDisplayModeBtn();
   state.listeners.forEach(fn => fn(state.workspace, { type: 'reset' }));
   chatSheet.setScope('global');
   chatSheet.refresh();
@@ -1360,17 +1393,38 @@ function openImageLightbox(url) {
   document.body.appendChild(div);
 }
 
-// -------- Artefact cover thumbnail --------------------------------
+// -------- Example assets: cover image + optional textured mesh --------
 //
-// The cover image lives on workspace.instance.coverImage as a data URL.
-// It travels with the workspace through reload, JSON export, and
-// sharing. Examples seed it from /examples/<slug>/cover.<ext> at load
-// time. Reset wipes it (along with the rest of the workspace).
+// When an example is loaded we attempt to attach two optional assets:
+//   - cover.{jpg,jpeg,png,webp} → stored as a data URL on instance.coverImage
+//   - mesh.glb                   → loaded into the 3D viewer as a static
+//                                   overlay aligned to workspace coords
 //
-// renderAll() calls renderCover() once per render, so the thumbnail
-// stays in sync without explicit show/hide calls at every entry point.
+// The cover travels with the workspace (persisted in instance.coverImage).
+// The mesh is too big to bake into the JSON, so we instead remember which
+// example we loaded in localStorage; on a page reload that slug is used
+// to re-fetch mesh.glb. Sharing a JSON does NOT transfer the mesh — the
+// recipient just sees the box model unless they reload from the example
+// dropdown themselves.
 
 const COVER_EXTS = ['jpg', 'jpeg', 'png', 'webp'];
+const SLUG_STORAGE_KEY = 'repair-workspace-v2-example-slug';
+
+function rememberExampleSlug(slug) {
+  try { localStorage.setItem(SLUG_STORAGE_KEY, slug); } catch { /* quota etc — non-fatal */ }
+}
+function forgetExampleSlug() {
+  try { localStorage.removeItem(SLUG_STORAGE_KEY); } catch {}
+}
+function recalledExampleSlug() {
+  try { return localStorage.getItem(SLUG_STORAGE_KEY); } catch { return null; }
+}
+
+async function attachExampleAssets(slug) {
+  await attachExampleCover(slug);
+  await attachExampleMesh(slug);
+  rememberExampleSlug(slug);
+}
 
 function renderCover(ws) {
   const wrap = $('artefact-cover');
@@ -1408,6 +1462,22 @@ async function attachExampleCover(slug) {
     } catch { /* try next extension */ }
   }
   return false;
+}
+
+// Try /examples/<slug>/mesh.glb. Silent no-op if absent.
+async function attachExampleMesh(slug) {
+  if (!viewer3D) return false;
+  const url = `/examples/${slug}/mesh.glb`;
+  try {
+    // HEAD check first so a missing file doesn't surface as a GLTFLoader
+    // parse error in the console — the common case is "no mesh present"
+    // and we want that to be silent.
+    const probe = await fetch(url, { method: 'HEAD' });
+    if (!probe.ok) return false;
+  } catch { return false; }
+  const ok = await viewer3D.loadMesh(url);
+  syncDisplayModeBtn();
+  return ok;
 }
 
 function blobToDataUrl(blob) {
@@ -1655,4 +1725,15 @@ async function dataUrlToBlob(dataUrl) {
 renderAll();
 setTimeout(() => viewer3D.resize(), 50);
 chatSheet.setScope('global');
+
+// Rehydrate the textured mesh overlay if the previous session loaded
+// an example. The slug lives in localStorage (not the workspace JSON)
+// because mesh.glb is large and tied to the example folder, not the
+// artefact. Silent no-op when there's nothing to rehydrate.
+(async function rehydrateMesh() {
+  const slug = recalledExampleSlug();
+  if (!slug) return;
+  await attachExampleMesh(slug);
+})();
+
 log('Workspace ready.');

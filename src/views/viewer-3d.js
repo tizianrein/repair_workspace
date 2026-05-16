@@ -11,6 +11,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const materials = {
   intact: new THREE.MeshBasicMaterial({ color: 0xd0d0d0, transparent: true, opacity: 0.75, depthWrite: false, side: THREE.FrontSide }),
@@ -33,6 +34,17 @@ export function createViewer3D(canvas, infoBox, onSelect) {
   scene.background = new THREE.Color(0xfdfcf9);
   const objectGroup = new THREE.Group();
   scene.add(objectGroup);
+  // Optional textured-mesh overlay loaded from an example's mesh.glb.
+  // Coexists with the box parts in the same world-space coordinates;
+  // the example author is responsible for alignment.
+  const meshGroup = new THREE.Group();
+  scene.add(meshGroup);
+  // displayMode controls visibility of box parts vs. the textured mesh.
+  // 'boxes' | 'mesh' | 'both'. Defaults to 'boxes'; flipped to 'both'
+  // automatically when a mesh is loaded.
+  let displayMode = 'boxes';
+  let loadedMesh = null;     // root Object3D from GLTFLoader
+  const gltfLoader = new GLTFLoader();
   const partMeshes = new Map();
   const hypSpheres = [];
   let activeAnims = [];
@@ -207,6 +219,52 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     return null;
   }
 
+  /**
+   * Raycast against the textured mesh overlay. Returns the world-space
+   * hit point and the nearest part by bounding-box distance. Used when
+   * the mesh is visible so the user can click directly on the scan.
+   * Returns null if the mesh isn't loaded or the ray missed.
+   */
+  function hitTestMesh(event) {
+    if (!loadedMesh) return null;
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const hits = raycaster.intersectObject(loadedMesh, true);
+    if (!hits.length) return null;
+    const point = hits[0].point.clone();
+    const part = nearestPartToPoint(point);
+    return part ? { part, point } : null;
+  }
+
+  /**
+   * Find the part whose oriented bounding box is closest to a world-
+   * space point. Returns null when there are no parts (empty workspace).
+   *
+   * Note: we use distanceToPoint on each part mesh's Box3 — that's
+   * close enough for typical box-part scales and is robust against the
+   * "click between two close parts" edge case (the part whose box
+   * actually contains the point gets distance 0). For oriented parts
+   * the bounding box is in WORLD space (computed via setFromObject),
+   * so rotation is correctly accounted for as an axis-aligned hull
+   * of the rotated geometry. Slightly loose but consistent.
+   */
+  function nearestPartToPoint(worldPoint) {
+    let best = null;
+    let bestDist = Infinity;
+    const tmpBox = new THREE.Box3();
+    partMeshes.forEach((mesh) => {
+      tmpBox.setFromObject(mesh);
+      const d = tmpBox.distanceToPoint(worldPoint);
+      if (d < bestDist) {
+        bestDist = d;
+        best = mesh.userData.part;
+      }
+    });
+    return best;
+  }
+
   // -------- Place mode (used when adding a new condition manually) -------
   let placeMode = false;
   let placeCallback = null;     // (result) => void with { part, point }
@@ -250,9 +308,16 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     }
   }
 
+  // When the mesh overlay is visible, click & hover prefer to hit the
+  // mesh first (it's what the user sees). Falls through to the box
+  // raycast when the mesh isn't visible or the ray misses it.
+  function meshIsHittable() {
+    return !!loadedMesh && (displayMode === 'mesh' || displayMode === 'both');
+  }
+
   renderer.domElement.addEventListener('pointermove', e => {
     if (placeMode) {
-      const hit = hitTestPart(e);
+      const hit = meshIsHittable() ? (hitTestMesh(e) || hitTestPart(e)) : hitTestPart(e);
       if (hit) showPlaceMarker(hit.point);
       else hidePlaceMarker();
       return;
@@ -267,12 +332,25 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     if (moved > 6) return;
 
     if (placeMode) {
-      const hit = hitTestPart(e);
+      // Mesh-visible: prefer the mesh raycast (gives the precise surface
+      // point the user clicked AND the nearest part via heuristic). Fall
+      // back to the box raycast if the mesh ray missed (e.g. clicked the
+      // background but a box was there).
+      const hit = meshIsHittable() ? (hitTestMesh(e) || hitTestPart(e)) : hitTestPart(e);
       if (hit && placeCallback) placeCallback({ part: hit.part, point: hit.point });
       return;
     }
 
-    const hit = hitTest(e);
+    // For selection (not placement) we keep the existing hitTest which
+    // also picks up hypothesis spheres. When the mesh is visible and
+    // the user clicks on bare mesh (no hypothesis, no box ray-hit), we
+    // resolve the click to the nearest part via the mesh hit so they
+    // still get a selection.
+    let hit = hitTest(e);
+    if (!hit && meshIsHittable()) {
+      const meshHit = hitTestMesh(e);
+      if (meshHit) hit = { type: 'part', data: meshHit.part };
+    }
     if (!hit) { selection = { partId: null, hypothesisId: null }; applySelection(); onSelect?.(null); return; }
     if (hit.type === 'part') { selection = { partId: hit.data.id, hypothesisId: null }; }
     else { selection = { hypothesisId: hit.data.id, partId: hit.data.partRef }; }
@@ -377,6 +455,87 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     return `${parts}::${hyps}`;
   }
 
+  // Apply the current displayMode to the two groups. Toggling visibility
+  // is enough — the raycast lookups gate themselves on meshIsHittable()
+  // so invisible objects don't grab clicks.
+  function applyDisplayMode() {
+    objectGroup.visible = displayMode !== 'mesh';
+    meshGroup.visible = displayMode !== 'boxes';
+  }
+
+  // Disposes anything currently in meshGroup. We recurse because a glTF
+  // scene can be a tree of Mesh / Group / Object3D nodes, each owning
+  // geometry/materials/textures. Without this, repeated mesh loads
+  // would leak GPU resources just like the WebGL-context bug from
+  // earlier in the session.
+  function clearMeshGroup() {
+    meshGroup.traverse(obj => {
+      if (obj.isMesh) {
+        obj.geometry?.dispose();
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach(m => {
+          if (!m) return;
+          // Dispose textures referenced by this material before the
+          // material itself, otherwise the texture handles leak.
+          ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap'].forEach(k => {
+            if (m[k]) m[k].dispose();
+          });
+          m.dispose();
+        });
+      }
+    });
+    while (meshGroup.children.length) meshGroup.remove(meshGroup.children[0]);
+    loadedMesh = null;
+  }
+
+  /**
+   * Load a textured glb from a URL. Replaces any previously loaded mesh.
+   * Returns a promise that resolves with true on success, false on
+   * failure (caller may want to know to update toolbar UI).
+   *
+   * Assumes the mesh is already aligned to workspace world coordinates.
+   * Convention is to bundle these as /examples/<slug>/mesh.glb.
+   */
+  function loadMesh(url) {
+    clearMeshGroup();
+    return new Promise(resolve => {
+      gltfLoader.load(
+        url,
+        gltf => {
+          loadedMesh = gltf.scene;
+          meshGroup.add(loadedMesh);
+          // Auto-switch to 'both' on first mesh load so the user
+          // immediately sees the scan. If they had explicitly set a
+          // mode before loading, this overrides — but in practice
+          // mesh loading happens during example load, before any
+          // mode interaction.
+          displayMode = 'both';
+          applyDisplayMode();
+          resolve(true);
+        },
+        undefined,
+        err => {
+          console.warn('[viewer-3d] mesh load failed', url, err);
+          resolve(false);
+        }
+      );
+    });
+  }
+
+  function clearMesh() {
+    clearMeshGroup();
+    displayMode = 'boxes';
+    applyDisplayMode();
+  }
+
+  function setDisplayMode(mode) {
+    if (!['boxes', 'mesh', 'both'].includes(mode)) return;
+    // 'mesh' / 'both' are meaningful only when a mesh is loaded.
+    if ((mode === 'mesh' || mode === 'both') && !loadedMesh) mode = 'boxes';
+    displayMode = mode;
+    applyDisplayMode();
+  }
+
   return {
     render(workspace) {
       currentWorkspace = workspace;
@@ -417,6 +576,12 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     },
     toggleExplode,
     isExploded: () => exploded,
-    setPlaceMode
+    setPlaceMode,
+    // Mesh overlay API
+    loadMesh,
+    clearMesh,
+    hasMesh: () => !!loadedMesh,
+    setDisplayMode,
+    getDisplayMode: () => displayMode
   };
 }

@@ -26,6 +26,13 @@ Living list. Add to it freely. Items removed only when shipped or formally cut.
 - Cytoscape with >100 nodes gets sluggish on mobile. Plans rarely exceed 15 steps, so fine for now.
 - Three.js viewer on iOS Safari occasionally drops frames during explode animation. Cosmetic only.
 - Gemini calls take 10–30s. We show a progress indicator, but participants should be warned.
+- Textured mesh overlays (`/examples/<slug>/mesh.glb`) add 5–50 MB to the example asset load and meaningful triangle counts to the viewer. Mobile performance with the mesh visible may be marginal; the user can hide it via the HUD toggle.
+
+## Textured mesh overlay
+- Optional per example. Drop `mesh.glb` (glTF binary, embedded textures) into the example folder; it is auto-loaded on example load.
+- **Must be pre-aligned** to the workspace's coordinate system. There is no in-app alignment editor — that's the example author's job in Blender / MeshLab / etc.
+- Slug is remembered in localStorage so the mesh re-loads after a page reload. Sharing a workspace JSON does NOT transfer the mesh — recipients see only the box model unless they load the same example themselves.
+- Condition placement with the mesh visible uses a **nearest-part heuristic**: the click hits the mesh surface, then we assign the click to whichever part's bounding box is closest. Misalignment between mesh and box model → wrong part assignment. Author the example carefully.
 
 ## Testing gaps
 - No automated end-to-end test. Manual smoke tests in `docs/smoke-test.md`.
