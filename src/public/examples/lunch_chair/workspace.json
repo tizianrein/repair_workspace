@@ -57,7 +57,7 @@
           "round_stretcher"
         ],
         "material": "Weathered solid timber",
-        "status": "intact",
+        "status": "defective",
         "notes": ""
       },
       {
@@ -85,7 +85,7 @@
           "round_stretcher"
         ],
         "material": "Weathered solid timber",
-        "status": "intact",
+        "status": "defective",
         "notes": ""
       },
       {
@@ -114,7 +114,7 @@
           "rounded_apron"
         ],
         "material": "Weathered solid timber",
-        "status": "intact",
+        "status": "defective",
         "notes": ""
       },
       {
@@ -169,7 +169,7 @@
           "front_right_leg"
         ],
         "material": "Weathered solid timber",
-        "status": "intact",
+        "status": "defective",
         "notes": ""
       },
       {
@@ -197,7 +197,7 @@
           "rounded_apron"
         ],
         "material": "Weathered solid timber",
-        "status": "intact",
+        "status": "defective",
         "notes": ""
       },
       {
@@ -279,7 +279,7 @@
           "back_left_leg"
         ],
         "material": "Weathered solid timber",
-        "status": "intact",
+        "status": "defective",
         "notes": ""
       },
       {
@@ -307,7 +307,7 @@
           "front_right_leg"
         ],
         "material": "Weathered solid timber",
-        "status": "intact",
+        "status": "defective",
         "notes": ""
       },
       {
@@ -333,7 +333,7 @@
           "back_right_leg"
         ],
         "material": "Weathered solid timber",
-        "status": "intact",
+        "status": "defective",
         "notes": ""
       },
       {
@@ -359,7 +359,7 @@
           "back_right_leg"
         ],
         "material": "Weathered solid timber",
-        "status": "intact",
+        "status": "defective",
         "notes": ""
       }
     ],
@@ -385,24 +385,7 @@
       "byteSize": 2552032
     }
   ],
-  "hypotheses": [
-    {
-      "id": "hyp_mp8i69gu00g",
-      "type": "New condition",
-      "description": "",
-      "partRef": "back_right_leg",
-      "coordinates": {
-        "x": -0.15062202849282036,
-        "y": 0.6151027078132805,
-        "z": 0.1557269970976222
-      },
-      "status": "suspected",
-      "confidence": 0.5,
-      "evidenceRefs": [],
-      "createdAt": "2026-05-16T15:30:23.214Z",
-      "updatedAt": "2026-05-16T15:30:23.214Z"
-    }
-  ],
+  "hypotheses": [],
   "intent": {
     "axes": [
       {
@@ -454,5 +437,5 @@
   "executionLog": [],
   "conversations": [],
   "createdAt": "2026-05-16T15:04:11.777Z",
-  "updatedAt": "2026-05-16T15:44:45.363Z"
+  "updatedAt": "2026-05-16T15:48:08.842Z"
 }
