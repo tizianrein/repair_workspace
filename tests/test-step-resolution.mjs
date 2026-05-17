@@ -40,10 +40,10 @@ const stripped = src
   .replace(/^import .*?;$/gm, '')
   .replace(/^export /gm, '');
 const harness = `${stripped}
-return { normalizeSlug, buildStepAliasMap, resolveStepRef, mapToolToCommand, containsActionClaim, stripChatMarkdown };
+return { normalizeSlug, buildStepAliasMap, resolveStepRef, mapToolToCommand, stripChatMarkdown };
 `;
 const factory = new Function(harness);
-const { normalizeSlug, buildStepAliasMap, resolveStepRef, mapToolToCommand, containsActionClaim, stripChatMarkdown } = factory();
+const { normalizeSlug, buildStepAliasMap, resolveStepRef, mapToolToCommand, stripChatMarkdown } = factory();
 
 let passed = 0;
 let failed = 0;
@@ -269,7 +269,9 @@ test('add_step with unknown afterStepId warns but still creates the step', () =>
   );
   assert.equal(r.ok, true);
   assert.equal(r.commands.length, 1); // only upsert-step, no broken edge
-  assert.ok(r.warnings && r.warnings.length, 'Should have a warning');
+  // The message should mention the skipped edge so the model knows
+  assert.ok(/skipped|did not match/i.test(r.message),
+    `Message should mention the skip; got: ${r.message}`);
 });
 
 console.log('\nmapToolToCommand · create_plan:');
@@ -306,7 +308,9 @@ test('create_plan silently drops edges to nonexistent steps', () => {
   assert.equal(r.ok, true);
   // One edge dropped, one kept (self-loop is up to add-edge command to reject)
   assert.equal(r.command.payload.plan.edges.length, 1);
-  assert.ok(r.droppedEdges, 'Should report dropped edges');
+  // The message should mention that something was skipped
+  assert.ok(/skipped/i.test(r.message),
+    `Message should mention the skip; got: ${r.message}`);
 });
 
 console.log('\nturnContext.pendingPlanId (image-1 bug):');
@@ -397,60 +401,6 @@ test('set_active_plan updates turnContext', () => {
   );
   assert.equal(r2.ok, true, `Expected ok, got: ${r2.error}`);
   assert.equal(r2.command.payload.planId, 'plan_B');
-});
-
-console.log('\ncontainsActionClaim (honesty detector):');
-// These are real strings from the workshop screenshots that Gemini Pro
-// produced while calling ZERO tools. The detector MUST flag them.
-test('flags "Ich habe den Plan umgestellt"', () => {
-  assert.equal(containsActionClaim(
-    'Ich habe den Plan vollständig auf einen konservatorischen Ansatz umgestellt, wie es für ein Museumsobjekt angemessen wäre.'
-  ), true);
-});
-
-test('flags "Ich habe die Absicht angepasst"', () => {
-  assert.equal(containsActionClaim(
-    'Ich habe die Absicht angepasst und drei entscheidende Schritte für die Dokumentation hinzugefügt.'
-  ), true);
-});
-
-test('flags passive "Die Absicht wurde umgestellt"', () => {
-  assert.equal(containsActionClaim(
-    'Die Absicht wurde auf Konservierung umgestellt.'
-  ), true);
-});
-
-test('flags English "I have changed the intent"', () => {
-  assert.equal(containsActionClaim(
-    'I have changed the intent axes and added five conditions across the back.'
-  ), true);
-});
-
-// Negative cases — these should NOT trigger
-test('does NOT flag pure questions', () => {
-  assert.equal(containsActionClaim(
-    'Soll ich den Plan auf Konservierung umstellen? Das wären folgende Änderungen.'
-  ), false);
-});
-
-test('does NOT flag discussion of options', () => {
-  assert.equal(containsActionClaim(
-    'Für eine museumswürdige Reparatur müssten wir den Ansatz grundlegend ändern. Der aktuelle Plan ist eine Restaurierung mit hohem ästhetischen Eingriff.'
-  ), false);
-});
-
-test('does NOT flag short confirmations', () => {
-  assert.equal(containsActionClaim('Done. 1 removed step, 1 connection.'), false);
-});
-
-test('does NOT flag a simple greeting', () => {
-  assert.equal(containsActionClaim('Hi. The chair has weathering across all parts and no plan yet.'), false);
-});
-
-test('does NOT flag null or empty', () => {
-  assert.equal(containsActionClaim(null), false);
-  assert.equal(containsActionClaim(''), false);
-  assert.equal(containsActionClaim('   '), false);
 });
 
 console.log('\nstripChatMarkdown:');
