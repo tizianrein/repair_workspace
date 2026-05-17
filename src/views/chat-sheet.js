@@ -194,68 +194,11 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
       thinking.textContent = `… ${elapsed}s`;
     }, 1000);
 
-    // Client-side timeout. Mirrors the runPropose pattern in main.js —
-    // without this, a hung server keeps "Waiting for AI response…"
-    // forever and the user has no signal of failure.
+    // Client-side timeout. The chat endpoint uses Gemini function calling
+    // which can do several multi-turn rounds — give it 60s.
     const controller = new AbortController();
-    // Streaming responses can legitimately take longer than the old
-    // single-shot timeout — the AI may stream text for 30s and then
-    // do a few tool calls. Use a generous per-event timeout: as long as
-    // we receive *something* every 30s, we keep going. The setTimeout
-    // below is reset by each incoming chunk.
-    const INACTIVITY_MS = 30_000;
-    let inactivityHandle = setTimeout(() => controller.abort('inactivity-timeout'), INACTIVITY_MS);
-    const resetInactivity = () => {
-      clearTimeout(inactivityHandle);
-      inactivityHandle = setTimeout(() => controller.abort('inactivity-timeout'), INACTIVITY_MS);
-    };
-
-    // We render a single assistant bubble that grows as text deltas
-    // arrive, and accumulate tool calls into a sidebar list inside it.
-    let liveBubble = null;
-    let liveTextSpan = null;
-    let liveActionsList = null;
-    let liveText = '';
-    const liveToolCalls = [];
-
-    function ensureLiveBubble() {
-      if (liveBubble) return;
-      // Remove the thinking placeholder
-      if (thinking.isConnected) thinking.remove();
-      liveBubble = document.createElement('div');
-      liveBubble.className = 'chat-bubble chat-llm chat-streaming';
-      liveTextSpan = document.createElement('span');
-      liveTextSpan.className = 'chat-streaming-text';
-      liveBubble.appendChild(liveTextSpan);
-      history.appendChild(liveBubble);
-      history.scrollTop = history.scrollHeight;
-    }
-
-    function appendLiveText(delta) {
-      ensureLiveBubble();
-      liveText += delta;
-      liveTextSpan.textContent = liveText;
-      history.scrollTop = history.scrollHeight;
-    }
-
-    function appendLiveToolCall(event) {
-      ensureLiveBubble();
-      liveToolCalls.push(event);
-      if (!liveActionsList) {
-        liveActionsList = document.createElement('div');
-        liveActionsList.className = 'chat-actions-card chat-actions-live';
-        liveActionsList.innerHTML = '<span class="csa-label">✓ Applying:</span> <span class="csa-items"></span>';
-        liveBubble.appendChild(liveActionsList);
-      }
-      const itemsEl = liveActionsList.querySelector('.csa-items');
-      const item = document.createElement('span');
-      item.className = 'csa-item';
-      item.textContent = friendlyActionLabel(event);
-      itemsEl.appendChild(item);
-      // Brief pop-in animation
-      requestAnimationFrame(() => item.classList.add('csa-item-in'));
-      history.scrollTop = history.scrollHeight;
-    }
+    const TIMEOUT_MS = 60_000;
+    const timeoutHandle = setTimeout(() => controller.abort('client-timeout'), TIMEOUT_MS);
 
     try {
       const res = await fetch('/api/chat', {
@@ -274,86 +217,60 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
         appendError(err.error || `Server returned ${res.status}`);
         return;
       }
+      const payload = await res.json();
 
-      // Consume Server-Sent Events. Each event line: "data: {json}\n\n"
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let streamError = null;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        resetInactivity();
-        buffer += decoder.decode(value, { stream: true });
-        let idx;
-        while ((idx = buffer.indexOf('\n\n')) >= 0) {
-          const raw = buffer.slice(0, idx).trim();
-          buffer = buffer.slice(idx + 2);
-          if (!raw.startsWith('data:')) continue;
-          const json = raw.slice(5).trim();
-          if (!json) continue;
-          let ev;
-          try { ev = JSON.parse(json); } catch { continue; }
-
-          if (ev.kind === 'text_delta') {
-            appendLiveText(ev.text || '');
-          } else if (ev.kind === 'tool_call') {
-            // Apply the command immediately so the workspace updates live
-            if (ev.result?.command) {
-              try {
-                onApplyCommands?.({
-                  commands: [ev.result.command],
-                  summary: friendlyActionLabel(ev)
-                });
-              } catch (err) {
-                console.error('[chat-sheet] apply failed during stream:', err);
-              }
-            }
-            appendLiveToolCall(ev);
-          } else if (ev.kind === 'turn_complete') {
-            // Optional: could indicate "thinking again..." between tool turns
-          } else if (ev.kind === 'done') {
-            // End of stream; loop will exit when reader is done
-          } else if (ev.kind === 'error') {
-            streamError = ev.error || 'Unknown server error';
-          }
+      // Apply commands BEFORE appending the assistant bubble so the
+      // workspace re-render finishes before the bubble references
+      // any new entities.
+      if (Array.isArray(payload.commands) && payload.commands.length > 0) {
+        try {
+          onApplyCommands?.({
+            commands: payload.commands,
+            summary: payload.plannedSummary || ''
+          });
+        } catch (err) {
+          console.error('[chat-sheet] applyCommands failed:', err);
+          appendError(`Could not apply changes: ${err.message}`);
         }
       }
 
-      if (streamError) {
-        appendError(streamError);
+      // Build the assistant message. If the AI produced no text but did
+      // perform actions, synthesize a brief acknowledgement so we don't
+      // show a silent bubble. If the AI produced neither text nor
+      // actions, show an honest message — this happens with vacuous
+      // user input on a loaded workspace.
+      let replyText = payload.reply || '';
+      if (!replyText.trim() && payload.commands?.length) {
+        replyText = `Done: ${payload.plannedSummary || `${payload.commands.length} change(s)`}.`;
+      }
+      if (!replyText.trim() && !payload.commands?.length) {
+        appendError(
+          "The AI didn't respond. Try describing what you want to do — " +
+          "for example: \"What conditions do you see?\" or \"Suggest a repair strategy.\""
+        );
+        return;
       }
 
-      // Persist the assistant message with its final text + tool call trace.
-      const assistantMsg = newMessage('assistant', liveText);
-      assistantMsg.toolCalls = liveToolCalls.map(t => ({
-        name: t.name, args: t.args, result: t.result
-      }));
-      assistantMsg.plannedSummary = liveToolCalls.length
-        ? liveToolCalls.map(friendlyActionLabel).join(', ')
-        : '';
+      const assistantMsg = newMessage('assistant', replyText);
+      assistantMsg.toolCalls = payload.toolCalls || [];
+      assistantMsg.plannedSummary = payload.plannedSummary || '';
+
       const t2 = currentThread();
       if (t2) onAppendMessage?.({ threadId: t2.id, message: assistantMsg });
-
-      // Replace the live streaming bubble with the final rendered version
-      // so the styling matches other historical messages.
-      if (liveBubble?.isConnected) liveBubble.remove();
       appendBubble(assistantMsg);
-
       pendingPhotos = [];
       updatePhotoPreview();
     } catch (err) {
-      const wasInactivity = err.name === 'AbortError' && controller.signal.reason === 'inactivity-timeout';
-      if (wasInactivity) {
-        appendError('No response from the AI for 30s. The connection may have stalled. Try again.');
+      const wasTimeout = err.name === 'AbortError' && controller.signal.reason === 'client-timeout';
+      if (wasTimeout) {
+        appendError(`No response after ${TIMEOUT_MS / 1000}s — try again.`);
       } else if (err.name === 'AbortError') {
         appendError('Request was cancelled.');
       } else {
         appendError(err.message);
       }
     } finally {
-      clearTimeout(inactivityHandle);
+      clearTimeout(timeoutHandle);
       clearInterval(tickHandle);
       if (thinking.isConnected) thinking.remove();
       setBusy(false);
@@ -361,6 +278,7 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
       history.scrollTop = history.scrollHeight;
     }
   }
+
 
   function appendError(msg) {
     const div = document.createElement('div');
