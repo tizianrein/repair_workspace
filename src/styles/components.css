@@ -582,6 +582,50 @@
 .chat-thinking { font-style: italic; opacity: 0.6; }
 .chat-error { background: var(--accent-soft) !important; color: var(--accent-deep) !important; }
 
+/* Live streaming bubble — typing cursor while text arrives */
+.chat-streaming .chat-streaming-text::after {
+  content: '▍';
+  display: inline-block;
+  margin-left: 1px;
+  animation: chat-cursor 1s steps(2) infinite;
+  color: var(--info);
+  font-weight: bold;
+}
+@keyframes chat-cursor { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+
+/* Inline action card — shown after AI bubble text, lists what was done */
+.chat-actions-card {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: var(--ok-soft, #e6f4ec);
+  border-left: 2px solid var(--ok, #2a8a4a);
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.chat-actions-card .csa-label {
+  color: var(--ok, #2a8a4a);
+}
+.csa-items {
+  display: inline;
+}
+.csa-item {
+  display: inline-block;
+  margin: 1px 4px 1px 0;
+  padding: 2px 7px;
+  background: rgba(42, 138, 74, 0.08);
+  border-radius: 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+.csa-item.csa-item-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .chat-photo-preview {
   display: none;
   gap: 4px;

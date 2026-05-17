@@ -119,6 +119,22 @@ export default async function handler(req, res) {
           continue;
         }
       }
+      // add-plan without steps is almost never what the user wanted. When
+      // a user explicitly asks for a plan with named steps, an empty plan
+      // means the AI failed to translate the instruction. Reject and
+      // surface — silent acceptance produces invisible "Strategy N" entries
+      // with no content.
+      if (cmd.type === 'add-plan') {
+        const inlinePlan = cmd.payload?.plan;
+        if (!inlinePlan) {
+          malformed.push('add-plan (missing plan payload)');
+          continue;
+        }
+        if (!Array.isArray(inlinePlan.steps) || inlinePlan.steps.length === 0) {
+          malformed.push(`add-plan "${inlinePlan.label || inlinePlan.id}" with no steps — re-ask the AI to include the steps inline.`);
+          continue;
+        }
+      }
       // add-hypothesis: the model occasionally collapses "condition applies
       // to many parts" into a single command with partRef like
       // "back_left_leg,back_right_leg,..." or an array, even though the

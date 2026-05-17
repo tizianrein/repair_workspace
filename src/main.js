@@ -122,6 +122,18 @@ chatSheet = createChatSheet(
     },
     onAppendMessage: ({ threadId, message }) => {
       apply(state, { type: 'append-message', payload: { threadId, message } }, { skipHistory: true });
+    },
+    // Apply AI tool-call commands as a single undoable batch so the user
+    // can Ctrl+Z the whole conversational change in one go.
+    onApplyCommands: ({ commands, summary }) => {
+      if (!Array.isArray(commands) || commands.length === 0) return;
+      apply(state, {
+        type: 'batch',
+        payload: {
+          commands,
+          label: `AI: ${summary || (commands.length + ' changes')}`
+        }
+      });
     }
   }
 );

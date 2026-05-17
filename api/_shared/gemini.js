@@ -169,6 +169,276 @@ function balanceBraces(s) {
 }
 
 /**
+ * Call Gemini with function-calling enabled.
+ *
+ * Unlike callGemini which forces a JSON response, this variant lets the
+ * model freely mix text and tool calls. Used by the conversational chat
+ * endpoint so the AI can act on the workspace directly while talking.
+ *
+ * Multi-turn loop: if the model returns function calls, the caller runs
+ * them and feeds the results back as a follow-up message, then asks the
+ * model to continue. We do up to maxTurns iterations to allow chained
+ * reasoning (e.g. "first add conditions, then create a plan that
+ * addresses them").
+ *
+ * Returns:
+ *   {
+ *     text: string,            // Final assistant text reply
+ *     toolCalls: [{name, args, result}],  // All calls performed, in order
+ *     turns: number            // How many model calls were made
+ *   }
+ */
+export async function callGeminiWithTools({
+  systemPrompt,
+  userMessage,
+  history = [],            // Prior {role, parts} turns
+  workspaceSnapshot,       // Stringified workspace summary for context
+  tools,                   // Array of function declarations
+  executeTool,             // async (name, args) => result
+  model = 'gemini-2.5-flash',
+  temperature = 0.5,
+  maxTurns = 8,
+  maxOutputTokens = 16384
+}) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY not configured on the server');
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  // Build initial contents. System prompt goes as system_instruction.
+  // History is the prior conversation turns. Then we append the user's
+  // new message + the workspace snapshot as a single user turn.
+  const userParts = [];
+  if (workspaceSnapshot) {
+    userParts.push({
+      text: `Current workspace state:\n\`\`\`json\n${typeof workspaceSnapshot === 'string'
+        ? workspaceSnapshot
+        : JSON.stringify(workspaceSnapshot, null, 2)}\n\`\`\``
+    });
+  }
+  userParts.push({ text: userMessage });
+
+  const contents = [...history, { role: 'user', parts: userParts }];
+
+  const toolCalls = [];
+  let finalText = '';
+  let turns = 0;
+
+  for (let i = 0; i < maxTurns; i++) {
+    turns++;
+    const body = {
+      contents,
+      systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
+      tools: tools && tools.length ? [{ functionDeclarations: tools }] : undefined,
+      generationConfig: {
+        temperature,
+        maxOutputTokens
+      }
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Gemini ${res.status}: ${errText.slice(0, 400)}`);
+    }
+    const json = await res.json();
+    const candidate = json?.candidates?.[0];
+    const parts = candidate?.content?.parts || [];
+
+    // Collect text and function calls from this turn
+    let turnText = '';
+    const turnCalls = [];
+    for (const p of parts) {
+      if (p.text) turnText += p.text;
+      const fc = p.functionCall || p.function_call;
+      if (fc) turnCalls.push({ name: fc.name, args: fc.args || {} });
+    }
+
+    // Append model's response to contents
+    contents.push({ role: 'model', parts });
+
+    if (turnCalls.length === 0) {
+      // No more tool calls — this is the final reply
+      finalText = turnText.trim();
+      break;
+    }
+
+    // Execute each tool call and collect results
+    const responseParts = [];
+    for (const call of turnCalls) {
+      let result;
+      try {
+        result = await executeTool(call.name, call.args);
+      } catch (err) {
+        result = { error: err.message };
+      }
+      toolCalls.push({ name: call.name, args: call.args, result });
+      responseParts.push({
+        functionResponse: {
+          name: call.name,
+          response: typeof result === 'object' && result !== null ? result : { value: result }
+        }
+      });
+    }
+
+    // Feed the tool results back as a user turn
+    contents.push({ role: 'user', parts: responseParts });
+  }
+
+  return { text: finalText, toolCalls, turns };
+}
+
+
+/**
+ * Streaming variant of callGeminiWithTools.
+ *
+ * Same multi-turn tool-calling loop, but uses Gemini's streamGenerateContent
+ * endpoint and emits incremental events through onEvent callback:
+ *
+ *   onEvent({ kind: 'text_delta', text: '...' })
+ *   onEvent({ kind: 'tool_call', name, args, result })
+ *   onEvent({ kind: 'turn_complete' })
+ *   onEvent({ kind: 'done', toolCalls, turns })
+ *
+ * The caller (chat endpoint) translates these into SSE events for the
+ * browser to consume in real time.
+ */
+export async function streamGeminiWithTools({
+  systemPrompt,
+  userMessage,
+  history = [],
+  workspaceSnapshot,
+  tools,
+  executeTool,
+  onEvent,
+  model = 'gemini-2.5-flash',
+  temperature = 0.5,
+  maxTurns = 8,
+  maxOutputTokens = 16384
+}) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY not configured on the server');
+
+  // streamGenerateContent emits SSE-style chunks
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+  const userParts = [];
+  if (workspaceSnapshot) {
+    userParts.push({
+      text: `Current workspace state:\n\`\`\`json\n${typeof workspaceSnapshot === 'string'
+        ? workspaceSnapshot
+        : JSON.stringify(workspaceSnapshot, null, 2)}\n\`\`\``
+    });
+  }
+  userParts.push({ text: userMessage });
+
+  const contents = [...history, { role: 'user', parts: userParts }];
+
+  const allToolCalls = [];
+  let turns = 0;
+
+  for (let i = 0; i < maxTurns; i++) {
+    turns++;
+    const body = {
+      contents,
+      systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
+      tools: tools && tools.length ? [{ functionDeclarations: tools }] : undefined,
+      generationConfig: { temperature, maxOutputTokens }
+    };
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Gemini ${res.status}: ${errText.slice(0, 400)}`);
+    }
+
+    // Parse SSE stream
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    const turnParts = [];          // all parts of this turn (text + function calls)
+    const turnCalls = [];          // just the function calls
+    let turnText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // SSE messages are separated by \n\n
+      let idx;
+      while ((idx = buffer.indexOf('\n\n')) >= 0) {
+        const line = buffer.slice(0, idx).trim();
+        buffer = buffer.slice(idx + 2);
+        if (!line.startsWith('data:')) continue;
+        const payload = line.slice(5).trim();
+        if (!payload || payload === '[DONE]') continue;
+        let chunk;
+        try { chunk = JSON.parse(payload); } catch { continue; }
+        const cand = chunk?.candidates?.[0];
+        const parts = cand?.content?.parts || [];
+        for (const p of parts) {
+          if (p.text) {
+            turnText += p.text;
+            turnParts.push({ text: p.text });
+            onEvent?.({ kind: 'text_delta', text: p.text });
+          }
+          const fc = p.functionCall || p.function_call;
+          if (fc) {
+            turnCalls.push({ name: fc.name, args: fc.args || {} });
+            turnParts.push({ functionCall: { name: fc.name, args: fc.args || {} } });
+            // We delay emitting the tool_call event until we actually execute
+            // it below — so the client gets it together with its result.
+          }
+        }
+      }
+    }
+
+    // Append model turn to contents (consolidate consecutive text parts)
+    contents.push({ role: 'model', parts: turnParts.length ? turnParts : [{ text: turnText }] });
+
+    onEvent?.({ kind: 'turn_complete' });
+
+    if (turnCalls.length === 0) {
+      // Final reply — no more tools to call
+      break;
+    }
+
+    // Execute tools, emit events, feed results back
+    const responseParts = [];
+    for (const call of turnCalls) {
+      let result;
+      try {
+        result = await executeTool(call.name, call.args);
+      } catch (err) {
+        result = { error: err.message };
+      }
+      const record = { name: call.name, args: call.args, result };
+      allToolCalls.push(record);
+      onEvent?.({ kind: 'tool_call', ...record });
+      responseParts.push({
+        functionResponse: {
+          name: call.name,
+          response: typeof result === 'object' && result !== null ? result : { value: result }
+        }
+      });
+    }
+    contents.push({ role: 'user', parts: responseParts });
+  }
+
+  onEvent?.({ kind: 'done', toolCalls: allToolCalls, turns });
+}
+
+
+/**
  * Call Gemini 2.5 Flash Image (Nano Banana) to generate or edit an image.
  *
  * Unlike callGemini which expects a JSON response, this returns the image

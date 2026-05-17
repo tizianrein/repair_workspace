@@ -13,7 +13,7 @@
 import { newMessage } from '../core/schema.js';
 import { payloadForChat } from '../ai/ai-payload.js';
 
-export function createChatSheet(elements, { onScopeChange, getWorkspace, onProposeIntent, onEnsureThread, onAppendMessage }) {
+export function createChatSheet(elements, { onScopeChange, getWorkspace, onProposeIntent, onEnsureThread, onAppendMessage, onApplyCommands }) {
   const {
     history, input, sendBtn, scopePill, titleEl, closeBtn, handle, sheet
   } = elements;
@@ -121,11 +121,24 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
           msg.uncertainty.map(u => `<li>${escapeHtml(u)}</li>`).join('') + '</ul>';
         div.appendChild(un);
       }
-      if (msg.suggestedAction && typeof msg.suggestedAction === 'string') {
-        // Only render the suggested-action affordance when the server gave
-        // us a proper string. If a non-string slips through (model bug,
-        // schema drift), drop it silently rather than render [object Object]
-        // and a Propose button that points at garbage.
+      // New conversational mode: the AI directly performed tool calls.
+      // Render a compact summary card listing what was done. This replaces
+      // the old "Suggested action / Propose this →" affordance for tool
+      // results — the actions have already been applied, so we just show
+      // them as a record.
+      if (Array.isArray(msg.toolCalls) && msg.toolCalls.length > 0) {
+        const card = document.createElement('div');
+        card.className = 'chat-actions-card';
+        const summary = msg.plannedSummary
+          ? msg.plannedSummary
+          : `${msg.toolCalls.length} action${msg.toolCalls.length === 1 ? '' : 's'}`;
+        card.innerHTML = `<span class="csa-label">✓ Applied:</span> ${escapeHtml(summary)}`;
+        div.appendChild(card);
+      }
+      // Legacy suggested-action path — only show when there are no tool
+      // calls (i.e. the response came from the old propose flow, not the
+      // new direct conversational flow).
+      else if (msg.suggestedAction && typeof msg.suggestedAction === 'string') {
         const sa = document.createElement('div');
         sa.className = 'chat-suggested';
         sa.innerHTML = `<span class="csa-label">Suggested action:</span> ${escapeHtml(msg.suggestedAction)}`;
@@ -185,8 +198,64 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     // without this, a hung server keeps "Waiting for AI response…"
     // forever and the user has no signal of failure.
     const controller = new AbortController();
-    const CHAT_TIMEOUT_MS = 45_000;
-    const timeoutHandle = setTimeout(() => controller.abort('client-timeout'), CHAT_TIMEOUT_MS);
+    // Streaming responses can legitimately take longer than the old
+    // single-shot timeout — the AI may stream text for 30s and then
+    // do a few tool calls. Use a generous per-event timeout: as long as
+    // we receive *something* every 30s, we keep going. The setTimeout
+    // below is reset by each incoming chunk.
+    const INACTIVITY_MS = 30_000;
+    let inactivityHandle = setTimeout(() => controller.abort('inactivity-timeout'), INACTIVITY_MS);
+    const resetInactivity = () => {
+      clearTimeout(inactivityHandle);
+      inactivityHandle = setTimeout(() => controller.abort('inactivity-timeout'), INACTIVITY_MS);
+    };
+
+    // We render a single assistant bubble that grows as text deltas
+    // arrive, and accumulate tool calls into a sidebar list inside it.
+    let liveBubble = null;
+    let liveTextSpan = null;
+    let liveActionsList = null;
+    let liveText = '';
+    const liveToolCalls = [];
+
+    function ensureLiveBubble() {
+      if (liveBubble) return;
+      // Remove the thinking placeholder
+      if (thinking.isConnected) thinking.remove();
+      liveBubble = document.createElement('div');
+      liveBubble.className = 'chat-bubble chat-llm chat-streaming';
+      liveTextSpan = document.createElement('span');
+      liveTextSpan.className = 'chat-streaming-text';
+      liveBubble.appendChild(liveTextSpan);
+      history.appendChild(liveBubble);
+      history.scrollTop = history.scrollHeight;
+    }
+
+    function appendLiveText(delta) {
+      ensureLiveBubble();
+      liveText += delta;
+      liveTextSpan.textContent = liveText;
+      history.scrollTop = history.scrollHeight;
+    }
+
+    function appendLiveToolCall(event) {
+      ensureLiveBubble();
+      liveToolCalls.push(event);
+      if (!liveActionsList) {
+        liveActionsList = document.createElement('div');
+        liveActionsList.className = 'chat-actions-card chat-actions-live';
+        liveActionsList.innerHTML = '<span class="csa-label">✓ Applying:</span> <span class="csa-items"></span>';
+        liveBubble.appendChild(liveActionsList);
+      }
+      const itemsEl = liveActionsList.querySelector('.csa-items');
+      const item = document.createElement('span');
+      item.className = 'csa-item';
+      item.textContent = friendlyActionLabel(event);
+      itemsEl.appendChild(item);
+      // Brief pop-in animation
+      requestAnimationFrame(() => item.classList.add('csa-item-in'));
+      history.scrollTop = history.scrollHeight;
+    }
 
     try {
       const res = await fetch('/api/chat', {
@@ -205,28 +274,87 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
         appendError(err.error || `Server returned ${res.status}`);
         return;
       }
-      const payload = await res.json();
-      const assistantMsg = newMessage('assistant', payload.reply);
-      assistantMsg.suggestedAction = payload.suggestedAction;
-      assistantMsg.uncertainty = payload.uncertainty || [];
-      // Re-resolve the thread before appending — apply() may have
-      // produced a new workspace object since we last looked.
+
+      // Consume Server-Sent Events. Each event line: "data: {json}\n\n"
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let streamError = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        resetInactivity();
+        buffer += decoder.decode(value, { stream: true });
+        let idx;
+        while ((idx = buffer.indexOf('\n\n')) >= 0) {
+          const raw = buffer.slice(0, idx).trim();
+          buffer = buffer.slice(idx + 2);
+          if (!raw.startsWith('data:')) continue;
+          const json = raw.slice(5).trim();
+          if (!json) continue;
+          let ev;
+          try { ev = JSON.parse(json); } catch { continue; }
+
+          if (ev.kind === 'text_delta') {
+            appendLiveText(ev.text || '');
+          } else if (ev.kind === 'tool_call') {
+            // Apply the command immediately so the workspace updates live
+            if (ev.result?.command) {
+              try {
+                onApplyCommands?.({
+                  commands: [ev.result.command],
+                  summary: friendlyActionLabel(ev)
+                });
+              } catch (err) {
+                console.error('[chat-sheet] apply failed during stream:', err);
+              }
+            }
+            appendLiveToolCall(ev);
+          } else if (ev.kind === 'turn_complete') {
+            // Optional: could indicate "thinking again..." between tool turns
+          } else if (ev.kind === 'done') {
+            // End of stream; loop will exit when reader is done
+          } else if (ev.kind === 'error') {
+            streamError = ev.error || 'Unknown server error';
+          }
+        }
+      }
+
+      if (streamError) {
+        appendError(streamError);
+      }
+
+      // Persist the assistant message with its final text + tool call trace.
+      const assistantMsg = newMessage('assistant', liveText);
+      assistantMsg.toolCalls = liveToolCalls.map(t => ({
+        name: t.name, args: t.args, result: t.result
+      }));
+      assistantMsg.plannedSummary = liveToolCalls.length
+        ? liveToolCalls.map(friendlyActionLabel).join(', ')
+        : '';
       const t2 = currentThread();
       if (t2) onAppendMessage?.({ threadId: t2.id, message: assistantMsg });
+
+      // Replace the live streaming bubble with the final rendered version
+      // so the styling matches other historical messages.
+      if (liveBubble?.isConnected) liveBubble.remove();
       appendBubble(assistantMsg);
+
       pendingPhotos = [];
       updatePhotoPreview();
     } catch (err) {
-      const wasOurTimeout = err.name === 'AbortError' && controller.signal.reason === 'client-timeout';
-      if (wasOurTimeout) {
-        const elapsedS = Math.round((Date.now() - startedAt) / 1000);
-        appendError(`No response after ${elapsedS}s — server timeout or cold start. Try again.`);
+      const wasInactivity = err.name === 'AbortError' && controller.signal.reason === 'inactivity-timeout';
+      if (wasInactivity) {
+        appendError('No response from the AI for 30s. The connection may have stalled. Try again.');
+      } else if (err.name === 'AbortError') {
+        appendError('Request was cancelled.');
       } else {
         appendError(err.message);
       }
     } finally {
+      clearTimeout(inactivityHandle);
       clearInterval(tickHandle);
-      clearTimeout(timeoutHandle);
       if (thinking.isConnected) thinking.remove();
       setBusy(false);
       input.focus();
@@ -243,9 +371,19 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
 
   function inferScopeFromAction(action) {
     const lower = action.toLowerCase();
-    if (/\bplan\b|\bstep\b|\bintervention\b/.test(lower)) return 'interventions';
-    if (/\bhypothes\w*\b|\bdamag\w*\b|\bcrack\b|\bcondition\b/.test(lower)) return 'hypotheses';
-    if (/\bpart\b|\bassembly\b|\bcomponent\b/.test(lower)) return 'assembly';
+    // Count how many distinct concept domains the action mentions. If it
+    // mixes two or more, we must use 'all' scope — otherwise the AI will
+    // only have access to one domain's commands and silently fail to do
+    // the rest (e.g. "remove part X and update plan Y" picked 'interventions'
+    // when 'plan' matched first, then the AI had no remove-part available).
+    const mentionsPlan = /\bplan\b|\bstep\b|\bintervention\b/.test(lower);
+    const mentionsHypothesis = /\bhypothes\w*\b|\bdamag\w*\b|\bcrack\b|\bcondition\b/.test(lower);
+    const mentionsAssembly = /\bpart\b|\bassembly\b|\bcomponent\b|\bartefact\b/.test(lower);
+    const domainCount = [mentionsPlan, mentionsHypothesis, mentionsAssembly].filter(Boolean).length;
+    if (domainCount >= 2) return 'all';
+    if (mentionsPlan) return 'interventions';
+    if (mentionsHypothesis) return 'hypotheses';
+    if (mentionsAssembly) return 'assembly';
     return 'all';
   }
 
@@ -349,4 +487,31 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
 
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/**
+ * Human-readable label for a tool call event, used in the live "Applying:"
+ * chip list and the final message summary. Compact form so many fit in
+ * one line: "added Crack on front_left_leg" → "Crack on front_left_leg".
+ */
+function friendlyActionLabel(ev) {
+  if (!ev) return '';
+  const name = ev.name;
+  const a = ev.args || {};
+  switch (name) {
+    case 'add_condition': return `+ ${a.type} on ${a.partRef}`;
+    case 'remove_condition': return `− condition`;
+    case 'update_condition': return `~ condition`;
+    case 'create_plan': return `+ plan "${a.label}" (${(a.steps || []).length} steps)`;
+    case 'add_step': return `+ step "${a.title}"`;
+    case 'update_step': return `~ step`;
+    case 'remove_step': return `− step`;
+    case 'add_edge': return `→ link`;
+    case 'remove_edge': return `× link`;
+    case 'set_intent': return `~ intent`;
+    case 'set_constraints': return `~ constraints`;
+    case 'set_active_plan': return `→ active plan`;
+    case 'remove_plan': return `− plan`;
+    default: return name;
+  }
 }

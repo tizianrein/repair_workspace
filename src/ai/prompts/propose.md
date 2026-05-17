@@ -61,9 +61,16 @@ Each command in `commands` is one of the types listed below. Pick the most speci
 
   **CRITICAL — one hypothesis per part. `partRef` is a SINGLE part id (e.g. `"front_right_leg"`), never a comma-separated list, never an array, never the string `"all"`.** When the user describes a condition that applies to multiple parts (e.g. "weathered grey on all wood", "rust on every leg"), emit one `add-hypothesis` command per affected part. A request that affects 13 parts produces 13 add-hypothesis commands in the same response. Use the same `description` and `type` for each so they read as a coherent set; vary `partRef` and `coordinates` (each part's `coordinates` uses that part's own `origin` — never reuse one part's coordinates for another). Do NOT collapse them into one hypothesis with a multi-part reference — the data model has no such concept and the UI will fail to display them.
 - `update-hypothesis` — modify an existing hypothesis. Provide `hypothesisId` and a `patch` object with only the fields that change.
+- `remove-hypothesis` — remove a hypothesis (condition) by id. Provide `hypothesisId`.
 - `confirm-hypothesis` / `refute-hypothesis` — promote status with optional `evidenceId`.
 
 ### When scope is "interventions" or "all"
+
+**CRITICAL ROUTING RULE — DO NOT CONFUSE PLAN-CREATION WITH INTENT-EDITING.**
+
+When the user asks for a plan, strategy, or sequence of steps — especially when they name specific steps (e.g. "Create a plan with: clean surfaces, sand, finish") — your response MUST be an `add-plan` command with those steps inlined. Do NOT respond by editing the intent (`set-intent`), editing the constraints, or any other side-channel update. The user wants a plan; produce a plan with real steps in it.
+
+Empty plans (with `steps: []`) are NEVER correct output. If you cannot produce concrete steps from the user's request, ask for clarification in the summary instead of emitting an empty plan.
 
 - `add-plan` — create a new plan. Set `status: "draft"`. **Always inline all steps, edges, and mutex groups in the plan object itself.** Do not split a plan into add-plan + many upsert-step + add-edge follow-ups — that pattern frequently breaks. One self-contained `add-plan` command is correct.
   ```json
