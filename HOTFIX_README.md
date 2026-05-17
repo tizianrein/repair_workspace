@@ -1,48 +1,56 @@
-# Workshop Hotfix v2
+# Workshop Hotfix v3
 
-Builds on v1 (step-ref resolution). Fixes three new issues, keeps everything
-v1 fixed.
+Builds on v2. Inverts the model strategy (Flash first, Pro on failure),
+adds an honesty guard against fake action claims, and rewrites the prompt
+to encourage proactive design-process behaviour with proper paragraphs.
 
-## What v2 adds
+## What v3 changes
 
-1. **Pro-first model selection with Flash fallback.**
-   `chat-engine.js` now tries `gemini-2.5-pro` first. Pro produces far fewer
-   tool-call mistakes (no more `tool_code print(default_api.…)` text dumps,
-   no hallucinated step ids). When Pro returns a 429/quota error, the engine
-   transparently retries the same request on `gemini-2.5-flash` — the user
-   sees no failure, just a slightly slower or differently-worded reply.
+### 1. Model strategy: Flash first, Pro on failure
+Flash is now the default. It's more eager to call tools, faster (~2x), and
+cheaper (~3-4x). Pro is only invoked when Flash produces a recognizable
+failure signal:
+- a thrown error (MALFORMED_FUNCTION_CALL, MAX_TOKENS, network)
+- an empty response with no tool calls
+- a tool_code-as-text leak
 
-   A module-level cool-down (90s after a Pro quota hit) skips Pro entirely
-   on subsequent requests in the same warm Lambda instance, sparing
-   participants the wasted Pro call when quota is empty. Cold-starts reset
-   the cool-down — fine, the live fallback catches it.
+This is the inverse of v2 and matches the observed reality of the workshop
+preview: Pro consistently produced long descriptive replies with zero tool
+calls ("the chat says it changed things but the workspace didn't change").
+Flash actually acts.
 
-2. **`pendingPlanId` turn-context** — fixes the image-1 bug.
-   When the model created a new plan AND added steps in the same chat turn,
-   the steps were routed to the **old** current plan because the workspace
-   snapshot's `currentPlanId` only updates client-side after the whole
-   batch applies. The engine now tracks the just-created plan id and routes
-   subsequent `add_step` / `update_step` / `add_edge` / `remove_step` /
-   `remove_edge` in the same turn to that new plan. `set_active_plan` and
-   `remove_plan` update the same tracker so a mid-turn plan switch sticks.
+### 2. Honesty guard
+Detects replies that claim past-tense actions ("Ich habe X gemacht",
+"I have changed Y") while calling zero tools. Behaviour:
+- One retry on Pro (Flash → Pro escalation, or stay on Pro if already there)
+  with a sharp "either call the tools or rewrite as a question" instruction
+- If retry succeeds (tools called OR claims removed), use the retry
+- If retry fails, annotate the original reply with a transparent warning
+  telling the user nothing actually happened and asking them to retry
 
-3. **`tool_code` text-leak stripping** — fixes the image-2 bug.
-   Gemini Flash 2.5 sometimes ignores its function-calling channel and
-   instead emits a Python-like text block describing what it would call:
-   `tool_code print(default_api.set_intent(...)) ... thought The user wants…`.
-   The action is lost (we can't recover it — the model didn't actually
-   call any tool), but `gemini.js` now detects the leak, strips the dump
-   from the visible reply, warns in server logs, and supplies a graceful
-   fallback message so the user sees a sensible "please rephrase" instead
-   of a wall of unreadable code. Pro almost never does this, so #1 is the
-   primary mitigation; #3 is the safety net.
+Detector covers German + English action verbs, passive forms, and is
+careful not to fire on questions, options-discussion, or short
+confirmations. Tested against real strings from the workshop screenshots —
+all flag correctly, none false-positive.
 
-4. **Prompt hardening** — added a CRITICAL "output format" section at the
-   very top of `chat.md` explicitly forbidding `tool_code` / `default_api.`
-   in text replies. Also strengthened the tone rules to forbid enumerating
-   every change in the reply ("1. Ich habe… 2. Ich habe… 3. Ich habe…")
-   because that gives a false sense of completeness when the actual
-   workspace doesn't match. Image-1 was that pattern in action.
+### 3. Prompt rewrite
+- New "CRITICAL — say-do alignment" section right at the top:
+  rules + concrete worked examples for "Ja, konservierung" (the exact
+  scenario from your screenshots).
+- New "The design process — what this conversation actually is" section:
+  encourages the snowflake-growth pattern. After each move, look at what's
+  still thin (default intent values? empty constraints? plan with no edges?
+  one strategy where two might fit? a part with no condition?) and surface
+  ONE next-most-useful question. Not a checklist robot — a workshop master.
+- New paragraph rule: replies over ~4 sentences must use blank-line-separated
+  paragraphs (`\n\n`) for readability. Walls of text are unreadable.
+- Removed the old "NEVER enumerate every change" rule that was too strict —
+  it suppressed the engaging "here's what changed and what it means"
+  pattern you want.
+
+### 4. Tests
+33 tests, all green. New tests cover the honesty detector with exact
+strings from the workshop screenshots.
 
 ## What this does NOT change
 
@@ -50,59 +58,71 @@ v1 fixed.
 - Client code (no rebuild needed)
 - Vocabulary of tools the model can call
 - The propose endpoint (still uses its own model setting)
+- The v1 step-ref resolution
+- The v2 pendingPlanId turn-context
 
 ## How to apply
 
 Drop these 6 files over the corresponding files in your repo:
 
 ```
-api/_shared/chat-engine.js      ← modified (pro/flash fallback, turnContext)
-api/_shared/chat-tools.js       ← modified (from v1: hardened descriptions)
-api/_shared/gemini.js           ← modified (NEW: model helpers + tool_code strip)
-src/ai/prompts/chat.md          ← modified (NEW: anti-tool_code section, anti-enumeration)
-tests/test-step-resolution.mjs  ← modified (24 tests now, was 20)
-package.json                    ← modified (one new npm script: test:step-resolution)
+api/_shared/chat-engine.js      ← modified (Flash-first, honesty guard)
+api/_shared/chat-tools.js       ← unchanged from v2
+api/_shared/gemini.js           ← modified (tool_code leak surfaced as signal)
+src/ai/prompts/chat.md          ← rewritten (say-do, snowflake, paragraphs)
+tests/test-step-resolution.mjs  ← extended (33 tests now, was 24)
+package.json                    ← unchanged from v2
 ```
 
-Then redeploy:
-
-```
-vercel --prod
-```
-
-No `npm install` needed.
+Then commit + push (or `vercel --prod` directly).
 
 ## Verify locally before deploying
 
 ```
-npm run test:commands          # existing tests, should still pass
-npm run test:step-resolution   # 24 tests, all green
+npm run test:commands           # should still pass
+npm run test:step-resolution    # 33 tests, all green
 ```
 
 ## What participants will likely notice
 
-- Replies will feel slightly slower at first (Pro is ~2x slower than Flash).
-  When you see "Generated by gemini-2.5-flash" patterns in the logs, that's
-  the fallback kicking in.
-- The "I've done X, Y, Z, also W, and updated Q" enumerations will mostly
-  disappear — Pro follows the no-listing rule.
-- "tool_code" walls in chat will be replaced with a German fallback message
-  asking the user to rephrase.
-- Adding a step inside a plan that was just created in the same turn now
-  actually appears in that plan (image-1 fix).
+- **Faster replies.** Flash is ~2x faster than Pro.
+- **More actual changes happening.** Flash actually calls the tools when
+  told to act. The "talks about doing it but doesn't" pattern should
+  largely disappear on the first try; the honesty guard catches the
+  remaining cases.
+- **More engaging conversation.** Replies should regularly include a
+  "and one more thing" observation or open question instead of just
+  "Done." The design feels more like a process, less like a transactional bot.
+- **Better-formatted long replies.** Paragraphs with blank lines instead
+  of walls of text.
+- **Occasional honesty warnings.** If the model still claims something
+  it didn't do, you'll see "— Hinweis: Ich habe oben Änderungen
+  beschrieben, aber im Workspace ist nichts angepasst worden..." at
+  the bottom of the reply. That's the safety net working.
+- **Tool_code leaks essentially gone.** Flash rarely leaks tool_code,
+  and when it does, the engine escalates to Pro which almost never does.
 
 ## Cost / quota note
 
-Pro is roughly 3-4× the per-token cost of Flash. For 12 participants in a
-3-4 hour workshop with ~50 chat turns each, you're looking at maybe
-$15-25 instead of ~$5 — still well within free tier if you have one.
+Flash-first is much cheaper than v2's Pro-first. Per-token Flash is roughly
+1/3 the price of Pro. For 12 participants in a 3-4 hour workshop, expect
+$3-5 in API cost, well within free tier.
 
-If you exhaust Pro's free-tier per-minute or per-day quota, the fallback
-kicks in automatically. Participants will see Flash quality for ~90s
-after each quota hit, then Pro retries.
+The Pro escalation kicks in only on Flash failure, which is rare.
 
 ## Rollback
 
-If something breaks: revert `api/_shared/chat-engine.js` and
-`api/_shared/gemini.js` from your git history and redeploy. The prompt
-change is harmless on its own.
+If something breaks, revert `api/_shared/chat-engine.js`,
+`api/_shared/gemini.js`, and `src/ai/prompts/chat.md` from your git
+history and redeploy. The other files are unchanged from v2.
+
+## What's NOT in v3 (intentional)
+
+- **Clickable option buttons.** Deferred to post-workshop. Would need new
+  tool definition + UI renderer + state handling — too risky 36 hours
+  before workshop.
+- **"Plan-update results in mager + intent reset" bug.** This is likely
+  caused by the model itself when it does remove_plan + add_plan instead
+  of update_plan. The new prompt's "take the chance to do it richly"
+  guidance addresses it at the model level. If it persists, that's the
+  next thing to look at.

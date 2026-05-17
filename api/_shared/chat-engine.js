@@ -142,15 +142,20 @@ export async function runChat({ thread, userMessage, workspace, files }) {
   }
 
   // ---------------------------------------------------------------------
-  // Model selection: prefer Pro for quality, fall back to Flash on quota.
+  // Model selection: Flash first, Pro only on failure.
   // ---------------------------------------------------------------------
-  // Pro produces FAR fewer tool-call mistakes than Flash: less hallucinated
-  // step ids, vanishingly rare "tool_code"-as-text reasoning leaks. It's
-  // ~3x more expensive and ~2x slower, so we don't use it unconditionally;
-  // we keep a module-level cool-down so once Pro 429's we stop trying it
-  // for ~90s.
-  const wantPro = isProAvailable();
-  let modelTried = wantPro ? PREFERRED_CHAT_MODEL_NAME : FALLBACK_CHAT_MODEL_NAME;
+  // Flash is the default because it's act-freudig (eager to call tools)
+  // and 2x faster. Pro is more cautious about acting and frequently
+  // produced long descriptive replies with zero tool calls — exactly the
+  // failure mode the user complained about ("the chat says it did things
+  // but the workspace didn't change").
+  //
+  // We escalate to Pro only when Flash produces a recognizable failure
+  // signal: a thrown error (MALFORMED_FUNCTION_CALL, MAX_TOKENS, network),
+  // an empty response with no tool calls, or a tool_code-as-text leak.
+  // Pro is much more reliable at producing structured function calls and
+  // very rarely leaks tool_code text, so this catches the cases where
+  // Flash literally cannot do the job.
 
   async function tryModel(model, opts = {}) {
     return callGeminiWithTools({
@@ -163,47 +168,53 @@ export async function runChat({ thread, userMessage, workspace, files }) {
       model,
       temperature: 0.6,
       maxTurns: 12,
-      // Gemini 2.5 supports up to 65k output tokens. We use a generous
-      // budget so big plans can fit. Pro tolerates deeper nesting in
-      // function calls, so it rarely needs the chunking retry below.
       maxOutputTokens: 32768,
       ...opts
     });
   }
 
-  // First attempt
+  // Helper: detect whether a result looks like a recoverable failure that
+  // would benefit from a Pro retry. Returns null if the result is usable,
+  // or a short reason string otherwise.
+  function flashFailureReason(res, err) {
+    if (err) return `error: ${err.message}`;
+    if (res?.toolCodeLeakDetected) return 'tool_code leak';
+    if (!res?.text?.trim() && toolCallTrace.length === 0) return 'empty response';
+    return null;
+  }
+
   let result;
   let firstError = null;
+  let modelTried = FALLBACK_CHAT_MODEL_NAME; // Flash
   const t0 = Date.now();
   try {
     result = await tryModel(modelTried);
-    console.log(`[chat-engine] ${modelTried} OK in`, Date.now() - t0, 'ms. text.len=', result?.text?.length || 0, 'tools=', toolCallTrace.length);
+    console.log(`[chat-engine] ${modelTried} OK in`, Date.now() - t0, 'ms. text.len=', result?.text?.length || 0, 'tools=', toolCallTrace.length, result?.toolCodeLeakDetected ? '(leak)' : '');
   } catch (err) {
     firstError = err;
     console.warn(`[chat-engine] ${modelTried} FAILED after`, Date.now() - t0, 'ms:', err.message);
+  }
 
-    // If Pro hit a quota error, trip the cool-down and immediately try
-    // Flash with the same request — participants shouldn't see a failure
-    // just because Pro is rate-limited.
-    if (modelTried === PREFERRED_CHAT_MODEL_NAME && isQuotaError(err)) {
-      tripProCoolDown(err.message);
-      // Reset turn-local state so the Flash retry starts clean. Without
-      // this, anything Pro half-applied (none, in practice, because Pro
-      // failed before any tool ran) would double-up.
-      collectedCommands.length = 0;
-      toolCallTrace.length = 0;
-      pendingSteps.length = 0;
-      turnContext.pendingPlanId = null;
-      modelTried = FALLBACK_CHAT_MODEL_NAME;
-      const t1 = Date.now();
-      try {
-        result = await tryModel(FALLBACK_CHAT_MODEL_NAME);
-        firstError = null;
-        console.log('[chat-engine] Flash fallback OK in', Date.now() - t1, 'ms. text.len=', result?.text?.length || 0, 'tools=', toolCallTrace.length);
-      } catch (flashErr) {
-        firstError = flashErr;
-        console.warn('[chat-engine] Flash fallback also FAILED after', Date.now() - t1, 'ms:', flashErr.message);
-      }
+  // Escalate to Pro if Flash failed or produced unusable output.
+  const failureReason = flashFailureReason(result, firstError);
+  if (failureReason) {
+    console.warn(`[chat-engine] escalating to Pro (reason: ${failureReason})`);
+    // Reset turn-local state so the Pro retry starts clean. Anything Flash
+    // half-committed (which is rare on the failure paths above — leak and
+    // empty-response yield no tool calls) would otherwise double-up.
+    collectedCommands.length = 0;
+    toolCallTrace.length = 0;
+    pendingSteps.length = 0;
+    turnContext.pendingPlanId = null;
+    modelTried = PREFERRED_CHAT_MODEL_NAME;
+    const t1 = Date.now();
+    try {
+      result = await tryModel(PREFERRED_CHAT_MODEL_NAME);
+      firstError = null;
+      console.log('[chat-engine] Pro escalation OK in', Date.now() - t1, 'ms. text.len=', result?.text?.length || 0, 'tools=', toolCallTrace.length);
+    } catch (proErr) {
+      firstError = proErr;
+      console.warn('[chat-engine] Pro escalation also FAILED after', Date.now() - t1, 'ms:', proErr.message);
     }
     if (firstError) {
       console.warn('[chat-engine] context at failure: history.length=', history.length,
@@ -253,12 +264,117 @@ export async function runChat({ thread, userMessage, workspace, files }) {
     }
   }
 
+  // ---------------------------------------------------------------------
+  // Honesty guard
+  //
+  // Workshop bug: the model writes long reflective replies claiming to have
+  // done things ("Ich habe den Plan auf Konservierung umgestellt...") while
+  // calling zero tools — workspace doesn't change but user thinks it did.
+  // Destroys trust faster than any other failure mode. Detect the pattern,
+  // retry with a sharp instruction (escalating model if we were on Flash),
+  // annotate the reply transparently if retry doesn't help.
+  // ---------------------------------------------------------------------
+  if (result?.text && toolCallTrace.length === 0 && containsActionClaim(result.text)) {
+    console.warn(`[chat-engine] honesty guard tripped on ${modelTried}: reply claims actions but 0 tools called`);
+    console.warn('[chat-engine] suspect reply head:', result.text.slice(0, 200).replace(/\s+/g, ' '));
+    // If Flash lied, the retry uses Pro — Pro is more careful about claims
+    // and more likely to actually call tools when retrying. If Pro lied,
+    // retry on Pro since we don't have a better option.
+    const retryModel = modelTried === FALLBACK_CHAT_MODEL_NAME
+      ? PREFERRED_CHAT_MODEL_NAME
+      : modelTried;
+    const hardInstruction =
+      `Your previous reply claimed to have done things ("ich habe...", "I have...", "I've changed...") ` +
+      `but you did NOT call any tools, so the workspace was NOT actually modified. ` +
+      `That is a lie to the user and breaks their trust. ` +
+      `Reply again. You have two honest options: ` +
+      `(1) Call the actual tools to do what you claimed — set_intent, update_plan, add_step, etc. ` +
+      `Then briefly say what was done. ` +
+      `(2) If you only intended to think out loud or propose, rewrite the reply as a question or proposal ` +
+      `("Soll ich den Plan auf Konservierung umstellen? Das wären folgende Änderungen...") — ` +
+      `do NOT use past tense for actions you did not actually perform via tool calls.`;
+    try {
+      const retryResult = await callGeminiWithTools({
+        systemPrompt: systemPrompt + '\n\n## HONESTY RETRY\n\n' + hardInstruction,
+        userMessage,
+        history,
+        workspaceSnapshot: snapshot,
+        tools: CHAT_TOOLS,
+        executeTool,
+        model: retryModel,
+        temperature: 0.4,
+        maxTurns: 6,
+        maxOutputTokens: 16384
+      });
+      console.log(`[chat-engine] honesty retry on ${retryModel} returned. text.len=`, retryResult?.text?.length || 0, 'tools=', toolCallTrace.length);
+      // Use the retry result only if it actually fixed the problem
+      // (either it called tools now, OR it rewrote the reply without
+      // action claims). Otherwise keep the original + warn the user.
+      const retryHasTools = toolCallTrace.length > 0;
+      const retryHasClaims = retryResult?.text && containsActionClaim(retryResult.text);
+      if (retryHasTools || !retryHasClaims) {
+        result = retryResult;
+        modelTried = retryModel;
+        console.log('[chat-engine] honesty retry succeeded.');
+      } else {
+        // Retry didn't help. Append a transparent warning to the original
+        // reply so the user knows nothing actually happened.
+        console.warn('[chat-engine] honesty retry did NOT recover; annotating reply');
+        result = {
+          ...result,
+          text: result.text.trim()
+            + '\n\n— Hinweis: Ich habe oben Änderungen beschrieben, aber im Workspace ist nichts angepasst worden. Bitte fordere die konkrete Änderung nochmal direkt an, dann führe ich sie aus.'
+        };
+      }
+    } catch (retryErr) {
+      console.warn('[chat-engine] honesty retry threw:', retryErr.message);
+      result = {
+        ...result,
+        text: result.text.trim()
+          + '\n\n— Hinweis: Ich habe oben Änderungen beschrieben, aber im Workspace ist nichts angepasst worden. Bitte fordere die konkrete Änderung nochmal direkt an, dann führe ich sie aus.'
+      };
+    }
+  }
+
   return {
     reply: result.text || '',
     commands: collectedCommands,
     toolCalls: toolCallTrace,
     plannedSummary: buildSummary(collectedCommands)
   };
+}
+
+// ----------------------------------------------------------------------------
+// Action-claim detection
+//
+// Lightweight heuristic for "this reply claims a workspace action was taken."
+// We don't try to be perfect — false positives cost a retry (cheap), false
+// negatives mean a missed lie (the original bad behaviour). German + English
+// covered because the prompt enforces same-language replies.
+// ----------------------------------------------------------------------------
+
+const ACTION_CLAIM_PATTERNS = [
+  // German: "ich habe ... gesetzt/geändert/hinzugefügt/entfernt/aktualisiert/umbenannt/umgestellt/erstellt"
+  /\bich habe\b[^.!?\n]*\b(gesetzt|geändert|hinzugefügt|entfernt|aktualisiert|umbenannt|umgestellt|erstellt|angepasst|gelöscht|eingefügt|umgestaltet|verschoben|umgewandelt|gewechselt|markiert|deaktiviert|aktiviert|reduziert|erhöht|gespeichert)\b/i,
+  // German: "X wurde ..." passive (e.g. "Die Absicht wurde angepasst")
+  /\b(wurde|wurden)\b[^.!?\n]*\b(gesetzt|geändert|hinzugefügt|entfernt|aktualisiert|umbenannt|umgestellt|erstellt|angepasst|gelöscht|eingefügt|verschoben|aktiviert)\b/i,
+  // German: "Plan/Intent/Schritte sind jetzt ..."
+  /\b(der Plan|die Absicht|das Intent|die Schritte|die Constraints?|die Bedingungen|die Conditions?)\b[^.!?\n]*\bist jetzt\b/i,
+  /\b(der Plan|die Absicht|das Intent|die Schritte)\b[^.!?\n]*\bnun\b[^.!?\n]*\b(angepasst|aktualisiert|geändert|umgestellt|umbenannt)\b/i,
+  // English: "I've / I have ... changed/added/removed/set/updated/renamed"
+  /\bI('ve| have)\b[^.!?\n]*\b(set|changed|added|removed|updated|renamed|deleted|created|inserted|switched|adjusted|reduced|raised|moved)\b/i,
+  // English: "X has been ..."
+  /\bhas been\b[^.!?\n]*\b(set|changed|added|removed|updated|renamed|deleted|created|inserted|switched|adjusted)\b/i
+];
+
+function containsActionClaim(text) {
+  if (!text || typeof text !== 'string') return false;
+  // Skip very short replies — "Hi.", "Yes.", etc. can't credibly be a lie
+  if (text.trim().length < 30) return false;
+  for (const re of ACTION_CLAIM_PATTERNS) {
+    if (re.test(text)) return true;
+  }
+  return false;
 }
 
 /**

@@ -267,6 +267,7 @@ export async function callGeminiWithTools({
   const toolCalls = [];
   let finalText = '';
   let turns = 0;
+  let toolCodeLeakDetected = false;
 
   for (let i = 0; i < maxTurns; i++) {
     turns++;
@@ -330,6 +331,7 @@ export async function callGeminiWithTools({
     let toolCodeLeak = false;
     if (turnText && /\b(?:tool_code\b|default_api\.|print\(default_api)/.test(turnText)) {
       toolCodeLeak = true;
+      toolCodeLeakDetected = true;
       console.warn('[gemini] detected tool_code leak in text output — stripping. snippet:',
         turnText.slice(0, 200).replace(/\s+/g, ' '));
       turnText = turnText
@@ -396,7 +398,7 @@ export async function callGeminiWithTools({
     contents.push({ role: 'user', parts: responseParts });
   }
 
-  return { text: finalText, toolCalls, turns };
+  return { text: finalText, toolCalls, turns, toolCodeLeakDetected };
 }
 
 
