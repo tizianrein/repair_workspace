@@ -897,14 +897,34 @@ async function runPropose({ scope = 'all', userMessage }) {
   chatSheet.pushMessage('user', userMessage);
   chatSheet.open();
 
-  // Show a thinking placeholder bubble inline
+  // Show a thinking placeholder bubble inline. We update its text every
+  // second with elapsed time, so a hanging call is visibly distinct
+  // from a slow-but-running call — the previous behaviour gave the
+  // user no signal at all and "Waiting for AI response" felt frozen.
   const thinking = document.createElement('div');
   thinking.className = 'chat-bubble chat-llm chat-thinking';
-  thinking.textContent = isPlanGenRequestForUi
-    ? `Generating plan structure (Gemini 2.5 Pro, ~30s). Tools/materials/rationale will fill in afterwards in the background.`
-    : `Proposing changes (${scope})…`;
+  const baseText = isPlanGenRequestForUi
+    ? `Generating plan structure (Gemini 2.5 Pro). Tools/materials/rationale will fill in afterwards in the background.`
+    : `Proposing changes (${scope})`;
+  thinking.textContent = `${baseText} … 0s`;
   $('chat-history').appendChild(thinking);
   $('chat-history').scrollTop = $('chat-history').scrollHeight;
+  const startedAt = Date.now();
+  const tickHandle = setInterval(() => {
+    const elapsed = Math.round((Date.now() - startedAt) / 1000);
+    if (thinking.isConnected) {
+      thinking.textContent = `${baseText} … ${elapsed}s`;
+    }
+  }, 1000);
+
+  // Client-side timeout. Vercel's serverless functions have their own
+  // server-side limits (set per route via `maxDuration`), but if the
+  // connection stalls earlier — flaky LTE, Vercel cold start, browser
+  // suspension — the fetch promise can hang indefinitely. AbortController
+  // gives us a deterministic floor so the UI always recovers.
+  const controller = new AbortController();
+  const TIMEOUT_MS = isPlanGenRequestForUi ? 100_000 : 75_000;
+  const timeoutHandle = setTimeout(() => controller.abort('client-timeout'), TIMEOUT_MS);
 
   try {
     // Plan-generation requests go to the dedicated /api/generate-plan
@@ -919,13 +939,15 @@ async function runPropose({ scope = 'all', userMessage }) {
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: controller.signal
     });
     thinking.remove();
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: res.statusText }));
-      log(`Propose failed: ${err.error || res.status}`);
-      chatSheet.pushMessage('assistant', `Proposal failed: ${err.error || res.status}`);
+      const err = await res.json().catch(() => ({ error: res.statusText || `HTTP ${res.status}` }));
+      const detail = err.error || `HTTP ${res.status}`;
+      log(`Propose failed: ${detail}`);
+      chatSheet.pushMessage('assistant', `Proposal failed: ${detail}`);
       return;
     }
     const payload = await res.json();
@@ -977,9 +999,24 @@ async function runPropose({ scope = 'all', userMessage }) {
       }
     }
   } catch (err) {
-    log(`Propose error: ${err.message}`);
-    chatSheet.pushMessage('assistant', `Error during proposal: ${err.message}`);
+    // Distinguish a client-side abort (our 75s timeout) from a real
+    // network/parse error. AbortError comes from controller.abort() —
+    // either our timeout or the user navigating away. The reason string
+    // is set above to 'client-timeout' for our case.
+    const wasOurTimeout = err.name === 'AbortError' && controller.signal.reason === 'client-timeout';
+    if (wasOurTimeout) {
+      const elapsedS = Math.round((Date.now() - startedAt) / 1000);
+      const msg = `The AI did not respond within ${elapsedS}s and was given up on. This usually means a serverless cold start, a slow Gemini response, or a server-side timeout (Vercel's per-route limit). Try again in a moment.`;
+      log(`Propose timed out after ${elapsedS}s.`);
+      chatSheet.pushMessage('assistant', msg);
+    } else {
+      log(`Propose error: ${err.message}`);
+      chatSheet.pushMessage('assistant', `Error during proposal: ${err.message}`);
+    }
   } finally {
+    clearInterval(tickHandle);
+    clearTimeout(timeoutHandle);
+    if (thinking.isConnected) thinking.remove();
     proposeInFlight = false;
     chatSheet.setBusy(false);
   }

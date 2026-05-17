@@ -171,9 +171,22 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
 
     const thinking = document.createElement('div');
     thinking.className = 'chat-bubble chat-llm chat-thinking';
-    thinking.textContent = '…';
+    thinking.textContent = '… 0s';
     history.appendChild(thinking);
     history.scrollTop = history.scrollHeight;
+    const startedAt = Date.now();
+    const tickHandle = setInterval(() => {
+      if (!thinking.isConnected) return;
+      const elapsed = Math.round((Date.now() - startedAt) / 1000);
+      thinking.textContent = `… ${elapsed}s`;
+    }, 1000);
+
+    // Client-side timeout. Mirrors the runPropose pattern in main.js —
+    // without this, a hung server keeps "Waiting for AI response…"
+    // forever and the user has no signal of failure.
+    const controller = new AbortController();
+    const CHAT_TIMEOUT_MS = 45_000;
+    const timeoutHandle = setTimeout(() => controller.abort('client-timeout'), CHAT_TIMEOUT_MS);
 
     try {
       const res = await fetch('/api/chat', {
@@ -184,9 +197,9 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
           userMessage: text,
           workspace: payloadForChat({ workspace: getWorkspace(), scope: currentScope, maxMessages: 8 }),
           files: pendingPhotos
-        })
+        }),
+        signal: controller.signal
       });
-      thinking.remove();
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText }));
         appendError(err.error || `Server returned ${res.status}`);
@@ -204,9 +217,17 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
       pendingPhotos = [];
       updatePhotoPreview();
     } catch (err) {
-      thinking.remove();
-      appendError(err.message);
+      const wasOurTimeout = err.name === 'AbortError' && controller.signal.reason === 'client-timeout';
+      if (wasOurTimeout) {
+        const elapsedS = Math.round((Date.now() - startedAt) / 1000);
+        appendError(`No response after ${elapsedS}s — server timeout or cold start. Try again.`);
+      } else {
+        appendError(err.message);
+      }
     } finally {
+      clearInterval(tickHandle);
+      clearTimeout(timeoutHandle);
+      if (thinking.isConnected) thinking.remove();
       setBusy(false);
       input.focus();
       history.scrollTop = history.scrollHeight;
