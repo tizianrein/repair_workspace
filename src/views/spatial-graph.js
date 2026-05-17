@@ -31,6 +31,16 @@ export function createSpatialGraph(container, { onDetail, onBackgroundTap }) {
       cy = null;
       return;
     }
+
+    // Preserve user's view across rebuilds — see action-graph.js for the
+    // rationale. Automatic re-fit on every workspace update makes the
+    // graph unusable mid-session; we restore zoom/pan after the new
+    // layout settles.
+    let previousView = null;
+    if (cy) {
+      previousView = { zoom: cy.zoom(), pan: { ...cy.pan() } };
+    }
+
     container.innerHTML = '';
 
     // Sort parts by X position (left to right in physical space).
@@ -189,7 +199,9 @@ export function createSpatialGraph(container, { onDetail, onBackgroundTap }) {
     },
       minZoom: 0.3,
       maxZoom: 3,
-      wheelSensitivity: 0.2
+      // Earlier 0.2 was too sluggish; 0.5 keeps the same feel as the
+      // action graph (see action-graph.js for rationale).
+      wheelSensitivity: 0.5
     });
 
     cy.on('tap', 'node', evt => {
@@ -203,6 +215,13 @@ export function createSpatialGraph(container, { onDetail, onBackgroundTap }) {
     cy.on('tap', evt => {
       if (evt.target === cy) onBackgroundTap?.();
     });
+
+    // Restore the user's zoom/pan if they had one — see capture at top of
+    // render() for the rationale. dagre layout above is synchronous (no
+    // `animate`), so cy.pan()/cy.zoom() currently reflect the default fit.
+    if (previousView) {
+      cy.viewport({ zoom: previousView.zoom, pan: previousView.pan });
+    }
   }
 
   return {

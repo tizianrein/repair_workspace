@@ -37,7 +37,9 @@ export function createMiniViewer3D(container) {
   controls.dampingFactor = 0.08;
   controls.enablePan = false;
   controls.enableZoom = true;
-  controls.zoomSpeed = 0.5;
+  // OrbitControls default zoomSpeed is 1.0. Earlier 0.5 was too slow
+  // for typical scroll-wheel zoom. 1.0 matches the rest of the app.
+  controls.zoomSpeed = 1.0;
   controls.rotateSpeed = 0.6;
 
   const objectGroup = new THREE.Group();

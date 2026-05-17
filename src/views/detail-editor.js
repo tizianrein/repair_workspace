@@ -51,8 +51,14 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
   function buildMiniViewer3D(parentEl, targetKey, highlightPartIds, highlightHypIds, extraOpts = {}) {
     // Reuse the existing viewer if we're rebuilding for the same target.
     // This preserves the camera rotation/zoom across in-place updates
-    // (e.g. toggling a connection). Only re-skin via updateHighlights.
-    if (miniViewer && lastViewerTargetKey === targetKey && parentEl.contains(miniViewer.containerEl)) {
+    // (e.g. toggling a connection, editing dimensions).
+    //
+    // We deliberately do NOT require parentEl.contains(miniViewer.containerEl)
+    // here. The open() flow wipes bodyEl.innerHTML before calling us, which
+    // detaches the viewer's container but does not destroy it. Re-attaching
+    // the detached container is exactly what we want — the WebGL context,
+    // camera state, and meshes are all preserved through the detach.
+    if (miniViewer && lastViewerTargetKey === targetKey) {
       miniViewer.updateHighlights({
         highlightPartIds,
         connectedPartIds: extraOpts.connectedPartIds || []

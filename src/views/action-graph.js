@@ -32,6 +32,18 @@ export function createActionGraph(container, { onSelect, onDetail }) {
       cy = null;
       return;
     }
+
+    // Capture the user's current view (zoom + pan) before rebuilding, so
+    // we can restore it after the new layout settles. Without this, every
+    // workspace update — even ones unrelated to the plan — yanks the user
+    // back to the default fit. The user has a Fit button for the case
+    // where they want to recenter; automatic re-fitting on every render
+    // makes the graph unusable for medium-to-long sessions.
+    let previousView = null;
+    if (cy) {
+      previousView = { zoom: cy.zoom(), pan: { ...cy.pan() } };
+    }
+
     container.innerHTML = '';
 
     const mutexByStep = new Map();
@@ -148,7 +160,10 @@ export function createActionGraph(container, { onSelect, onDetail }) {
         }
       ],
       layout: { name: 'dagre', rankDir: 'LR', nodeSep: 50, rankSep: 80, padding: 30 },
-      wheelSensitivity: 0.2,
+      // Cytoscape's default wheelSensitivity is 1.0 but that overshoots
+      // on most trackpads. 0.5 lands at "one notch ≈ one comfortable zoom
+      // step" without feeling sluggish. Earlier 0.2 was much too slow.
+      wheelSensitivity: 0.5,
       minZoom: 0.3, maxZoom: 3
     });
 
@@ -167,6 +182,14 @@ export function createActionGraph(container, { onSelect, onDetail }) {
       }
     });
     cy.on('dbltap', 'node[!isMutex]', evt => onDetail?.(evt.target.id()));
+
+    // Restore the user's previous zoom/pan if they had one. The dagre
+    // layout above ran synchronously (no `animate`), so cy.pan()/cy.zoom()
+    // currently reflect the default fit — we override that now.
+    if (previousView) {
+      cy.viewport({ zoom: previousView.zoom, pan: previousView.pan });
+    }
+
     startPulse();
   }
 
