@@ -179,7 +179,7 @@ function enrichedWorkspace(ws) {
         provenance: p.provenance
       }))
     },
-    conditions: (ws.hypotheses || []).map(h => ({
+    conditions: (ws.conditions || []).map(h => ({
       id: h.id,
       type: h.type,
       description: h.description,
@@ -201,7 +201,7 @@ function enrichedWorkspace(ws) {
         expectedOutcome: s.expectedOutcome,
         status: s.status,
         affectedPartRefs: s.affectedPartRefs,
-        addressesHypothesisRefs: s.addressesHypothesisRefs,
+        addressesConditionRefs: s.addressesConditionRefs,
         toolsRequired: s.toolsRequired,
         materialsRequired: s.materialsRequired,
         estimatedMinutes: s.estimatedMinutes

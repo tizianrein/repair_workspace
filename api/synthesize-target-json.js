@@ -49,7 +49,7 @@ Rules for producing the soll:
    - Parts not touched by any step: condition string unchanged.
 
 2. MODIFY PARTS PER PLAN STEP
-   - Find the plan step(s) that address this part (via affectedPartRefs or addressesHypothesisRefs).
+   - Find the plan step(s) that address this part (via affectedPartRefs or addressesConditionRefs).
    - Read the step's title, description, and expectedOutcome.
    - Translate that into a new condition string describing how this part LOOKS after the step is complete. Use concrete visual language (texture, color, surface state) — not procedural language.
    - If the step removes the part: present: false, removed_note describes the cut/joint based on the step's expectedOutcome.
@@ -111,7 +111,7 @@ export default async function handler(req, res) {
         description: s.description,
         expectedOutcome: s.expectedOutcome,
         affectedPartRefs: s.affectedPartRefs,
-        addressesHypothesisRefs: s.addressesHypothesisRefs,
+        addressesConditionRefs: s.addressesConditionRefs,
         status: s.status
       })),
       mutexGroups: (plan.mutexGroups || []).map(g => ({
@@ -126,7 +126,7 @@ export default async function handler(req, res) {
       workspace: {
         instanceName: workspace.instance?.name,
         intent: workspace.intent,
-        conditions: workspace.hypotheses || [],
+        conditions: workspace.conditions || [],
         plan: planSummary,
         constraints: workspace.constraints
       }

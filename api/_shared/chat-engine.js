@@ -13,7 +13,7 @@
  *
  * The `mapToolToCommand` function translates the AI's tool vocabulary
  * (add_condition, create_plan, etc) into the workspace's command
- * vocabulary (add-hypothesis, add-plan, etc). Server is stateless:
+ * vocabulary (add-condition, add-plan, etc). Server is stateless:
  * commands are collected and returned to the client which owns the
  * workspace state.
  */
@@ -420,7 +420,7 @@ function computeGaps(ws) {
   }
 
   // Artefact gaps
-  if ((ws.hypotheses || []).length === 0) {
+  if ((ws.conditions || []).length === 0) {
     gaps.push({
       key: 'conditions.none',
       hint: 'no conditions registered on the artefact yet — nothing to plan around'
@@ -490,7 +490,7 @@ function leanWorkspace(ws, thread = null) {
         id: p.id, label: p.label, material: p.material, status: p.status
       }))
     },
-    conditions: (ws.hypotheses || []).map(h => ({
+    conditions: (ws.conditions || []).map(h => ({
       id: h.id, type: h.type, description: h.description,
       partRef: h.partRef, status: h.status, confidence: h.confidence
     })),
@@ -502,7 +502,7 @@ function leanWorkspace(ws, thread = null) {
       steps: (plan.steps || []).map(s => ({
         id: s.id, title: s.title, description: s.description,
         affectedPartRefs: s.affectedPartRefs,
-        addressesHypothesisRefs: s.addressesHypothesisRefs
+        addressesConditionRefs: s.addressesConditionRefs
       })),
       edges: (plan.edges || []).map(e => ({ source: e.source, target: e.target })),
       mutexGroups: plan.mutexGroups
@@ -543,14 +543,14 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
 
   switch (name) {
     case 'add_condition': {
-      const id = newId('hyp');
+      const id = newId('cond');
       // Default coordinates: anchor to the part's origin.
       //
       // In this workspace, a part's `origin` is the position of its mesh
       // in world space (see views/viewer-3d.js: mesh.position.set(o.x,
       // o.y, o.z)). The box geometry extends symmetrically around that
       // origin, so the origin is effectively the part's anchor point —
-      // not a corner. The viewer also skips rendering hypothesis spheres
+      // not a corner. The viewer also skips rendering condition spheres
       // that have no coordinates at all, so we need *some* coordinate.
       //
       // For an unlocated condition (e.g. "weathering across the whole
@@ -558,7 +558,7 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
       // the marker visually attached to its part instead of floating
       // away by half a bounding box, which is what a naive
       // origin + dim/2 calculation produced. propose.js uses the same
-      // convention in rescueCoordinates(): when a hypothesis has no
+      // convention in rescueCoordinates(): when a condition has no
       // meaningful location, snap it to the part origin.
       //
       // If the model has a real spatial cue from the user ("crack on
@@ -580,12 +580,12 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
         };
       }
       return {
-        ok: true, hypothesisId: id,
+        ok: true, conditionId: id,
         message: `Added ${args.type} on ${args.partRef}`,
         command: {
-          type: 'add-hypothesis',
+          type: 'add-condition',
           payload: {
-            hypothesis: {
+            condition: {
               id, type: args.type, description: args.description,
               partRef: args.partRef,
               coordinates,
@@ -598,24 +598,24 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
     }
     case 'remove_condition':
       return {
-        ok: true, message: `Removed ${args.hypothesisId}`,
-        command: { type: 'remove-hypothesis', payload: { hypothesisId: args.hypothesisId } }
+        ok: true, message: `Removed ${args.conditionId}`,
+        command: { type: 'remove-condition', payload: { conditionId: args.conditionId } }
       };
     case 'update_condition': {
-      if (!args.hypothesisId) {
-        return { error: 'update_condition: hypothesisId is required.' };
+      if (!args.conditionId) {
+        return { error: 'update_condition: conditionId is required.' };
       }
       if (isEmptyPatch(args.patch)) {
         return {
-          error: `update_condition called on ${args.hypothesisId} with an empty patch — ` +
+          error: `update_condition called on ${args.conditionId} with an empty patch — ` +
                  'nothing to update. Pass `patch` with at least one of: type, description, status, confidence.'
         };
       }
       const changedFields = Object.keys(args.patch).join(', ');
       return {
         ok: true,
-        message: `Updated ${args.hypothesisId} (${changedFields})`,
-        command: { type: 'update-hypothesis', payload: { hypothesisId: args.hypothesisId, patch: args.patch } }
+        message: `Updated ${args.conditionId} (${changedFields})`,
+        command: { type: 'update-condition', payload: { conditionId: args.conditionId, patch: args.patch } }
       };
     }
     case 'set_intent': {
@@ -687,7 +687,7 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
           id: realId,
           title: s.title, description: s.description,
           affectedPartRefs: s.affectedPartRefs || [],
-          addressesHypothesisRefs: s.addressesHypothesisRefs || [],
+          addressesConditionRefs: s.addressesConditionRefs || [],
           toolsRequired: s.toolsRequired || [],
           materialsRequired: s.materialsRequired || [],
           estimatedMinutes: s.estimatedMinutes || null
@@ -745,7 +745,7 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
           step: {
             id: stepId, title: args.title, description: args.description,
             affectedPartRefs: args.affectedPartRefs || [],
-            addressesHypothesisRefs: args.addressesHypothesisRefs || [],
+            addressesConditionRefs: args.addressesConditionRefs || [],
             toolsRequired: args.toolsRequired || [],
             materialsRequired: args.materialsRequired || [],
             estimatedMinutes: args.estimatedMinutes || null
@@ -797,7 +797,7 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
         return {
           error: `update_step on ${resolvedId} called with an empty patch — nothing to update. ` +
                  'Pass `patch` with at least one of: title, description, affectedPartRefs, ' +
-                 'addressesHypothesisRefs, toolsRequired, materialsRequired, estimatedMinutes.'
+                 'addressesConditionRefs, toolsRequired, materialsRequired, estimatedMinutes.'
         };
       }
       const changedFields = Object.keys(args.patch).join(', ');
@@ -915,9 +915,9 @@ function buildSummary(commands) {
   const counts = {};
   for (const c of commands) counts[c.type] = (counts[c.type] || 0) + 1;
   const friendly = {
-    'add-hypothesis': 'condition',
-    'remove-hypothesis': 'removed condition',
-    'update-hypothesis': 'updated condition',
+    'add-condition': 'condition',
+    'remove-condition': 'removed condition',
+    'update-condition': 'updated condition',
     'add-plan': 'plan',
     'remove-plan': 'removed plan',
     'upsert-step': 'step',

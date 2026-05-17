@@ -2,13 +2,13 @@
  * Justification panel.
  *
  * Shown when a step is selected in the action graph. Displays the trace from
- * step → driving hypotheses (clickable), driving intent axes (with their
+ * step → driving conditions (clickable), driving intent axes (with their
  * current values), driving constraints, and the model's rationale.
  *
  * Read-only. To change a step, the user uses the detail modal or the chat.
  */
 
-export function createJustificationPanel(container, { getWorkspace, onJumpToHypothesis }) {
+export function createJustificationPanel(container, { getWorkspace, onJumpToCondition }) {
   function clear() { container.innerHTML = ''; container.classList.remove('on'); }
 
   function show(stepId) {
@@ -22,10 +22,10 @@ export function createJustificationPanel(container, { getWorkspace, onJumpToHypo
     // (which is also the plan we just looked the step up in).
     const intentAxes = plan?.intent?.axes || [];
     const intentByAxis = new Map(intentAxes.map(a => [a.id, a]));
-    const hypById = new Map((ws.hypotheses || []).map(h => [h.id, h]));
+    const hypById = new Map((ws.conditions || []).map(h => [h.id, h]));
 
     const drivingAxes = (j.drivingIntentAxes || []).map(id => intentByAxis.get(id)).filter(Boolean);
-    const drivingHyps = (j.drivingHypotheses || []).map(id => hypById.get(id)).filter(Boolean);
+    const drivingHyps = (j.drivingConditions || []).map(id => hypById.get(id)).filter(Boolean);
     const drivingConstraints = j.drivingConstraints || [];
 
     const confidence = Math.round((step.confidence ?? 0) * 100);
@@ -82,7 +82,7 @@ export function createJustificationPanel(container, { getWorkspace, onJumpToHypo
 
     container.querySelector('.jp-close').onclick = clear;
     container.querySelectorAll('.jp-clickable').forEach(li => {
-      li.onclick = () => onJumpToHypothesis?.(li.dataset.hyp);
+      li.onclick = () => onJumpToCondition?.(li.dataset.hyp);
     });
   }
 

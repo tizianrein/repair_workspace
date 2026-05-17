@@ -16,10 +16,10 @@
 
 const SCOPE_NEEDS = {
   // Each scope: which workspace slices the AI needs to reason.
-  assembly:      { parts: true, hypotheses: true,  intent: true, constraints: true, plans: false, executionLog: false },
-  hypotheses:    { parts: true, hypotheses: true,  intent: true, constraints: true, plans: false, executionLog: false },
-  interventions: { parts: true, hypotheses: true,  intent: true, constraints: true, plans: 'current', executionLog: true },
-  all:           { parts: true, hypotheses: true,  intent: true, constraints: true, plans: 'current', executionLog: true }
+  assembly:      { parts: true, conditions: true,  intent: true, constraints: true, plans: false, executionLog: false },
+  conditions:    { parts: true, conditions: true,  intent: true, constraints: true, plans: false, executionLog: false },
+  interventions: { parts: true, conditions: true,  intent: true, constraints: true, plans: 'current', executionLog: true },
+  all:           { parts: true, conditions: true,  intent: true, constraints: true, plans: 'current', executionLog: true }
 };
 
 export function payloadForPropose({ workspace, scope = 'all' }) {
@@ -29,7 +29,7 @@ export function payloadForPropose({ workspace, scope = 'all' }) {
 
 export function payloadForChat({ workspace, scope = 'all', ref = null, maxMessages = 8 }) {
   // Chat always needs the broadest context except old plan versions
-  const needs = { parts: true, hypotheses: true, intent: true, constraints: true, plans: 'current', executionLog: true };
+  const needs = { parts: true, conditions: true, intent: true, constraints: true, plans: 'current', executionLog: true };
   const payload = slim(workspace, needs);
   // Truncate conversations to last N messages of the active thread.
   // For scoped-by-ref threads (part/hyp/step/plan), we must filter on
@@ -65,7 +65,7 @@ function slim(ws, needs) {
       parts: needs.parts ? ws.instance.parts : []
     };
   }
-  if (needs.hypotheses) out.hypotheses = ws.hypotheses || [];
+  if (needs.conditions) out.conditions = ws.conditions || [];
 
   // In v2.1 intent + constraints are owned by the current plan
   // (strategy). When the caller asks for them we look them up there.
@@ -93,8 +93,8 @@ function slim(ws, needs) {
     capturedAt: e.capturedAt,
     text: e.text || null,
     measurement: e.measurement || null,
-    confirmsHypothesisRef: e.confirmsHypothesisRef || null,
-    refutesHypothesisRef: e.refutesHypothesisRef || null,
+    confirmsConditionRef: e.confirmsConditionRef || null,
+    refutesConditionRef: e.refutesConditionRef || null,
     hasImage: !!e.url
   }));
 

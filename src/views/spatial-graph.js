@@ -4,14 +4,14 @@
  * Hierarchical layout (dagre) with parts assigned to columns based on their
  * spatial role in the assembly. The result reads like the paper's example:
  * left side on the left, right side on the right, central anchor in the
- * middle. Hypotheses sit immediately next to their part as red ellipses
+ * middle. Conditions sit immediately next to their part as red ellipses
  * connected with dashed edges.
  *
  * Columns are derived from X coordinate quantiles, so the layout adapts to
  * any object: a chair gets 3 columns (legs / aprons / seat), a door might
  * get 5 (hinges / frame / panes / handle / trim).
  *
- * Tap a part or hypothesis → onDetail callback opens the modal.
+ * Tap a part or condition → onDetail callback opens the modal.
  */
 
 import cytoscape from 'cytoscape';
@@ -25,7 +25,7 @@ export function createSpatialGraph(container, { onDetail, onBackgroundTap }) {
 
   function render(workspace) {
     const parts = workspace.instance?.parts || [];
-    const hypotheses = workspace.hypotheses || [];
+    const conditions = workspace.conditions || [];
     if (!parts.length) {
       container.innerHTML = `<div class="pane-empty">No assembly loaded.</div>`;
       cy = null;
@@ -58,9 +58,9 @@ export function createSpatialGraph(container, { onDetail, onBackgroundTap }) {
     const nodes = [];
     const edges = [];
 
-    // Hypothesis grouping by parent part (for fanning)
+    // Condition grouping by parent part (for fanning)
     const hypsByPart = new Map();
-    hypotheses.forEach(h => {
+    conditions.forEach(h => {
       if (!hypsByPart.has(h.partRef)) hypsByPart.set(h.partRef, []);
       hypsByPart.get(h.partRef).push(h);
     });
@@ -77,15 +77,15 @@ export function createSpatialGraph(container, { onDetail, onBackgroundTap }) {
       });
     });
 
-    hypotheses.forEach(h => {
+    conditions.forEach(h => {
       const parentRank = rankByPart.get(h.partRef) ?? 0;
       nodes.push({
         data: {
-          id: `hyp:${h.id}`,
-          label: (h.type || 'hypothesis').toLowerCase(),
-          kind: 'hyp',
+          id: `cond:${h.id}`,
+          label: (h.type || 'condition').toLowerCase(),
+          kind: 'cond',
           status: h.status,
-          // Place hypothesis one rank to the left of its parent (or right
+          // Place condition one rank to the left of its parent (or right
           // if parent is leftmost), so it sits adjacent in the dagre layout
           rank: parentRank === 0 ? 1 : parentRank - 1
         }
@@ -107,14 +107,14 @@ export function createSpatialGraph(container, { onDetail, onBackgroundTap }) {
         }
       });
     }));
-    hypotheses.forEach(h => {
+    conditions.forEach(h => {
       if (!h.partRef || !partIds.has(h.partRef)) return;
       edges.push({
         data: {
           id: `eh_${h.id}`,
-          source: `hyp:${h.id}`,
+          source: `cond:${h.id}`,
           target: `part:${h.partRef}`,
-          kind: 'hyp'
+          kind: 'cond'
         }
       });
     });
@@ -147,7 +147,7 @@ export function createSpatialGraph(container, { onDetail, onBackgroundTap }) {
         { selector: 'node[status = "new"]',       style: { 'background-color': '#f0d8ff' } },
         { selector: 'node[status = "repaired"]',  style: { 'background-color': '#d8f0e0' } },
         {
-          selector: 'node[kind = "hyp"]',
+          selector: 'node[kind = "cond"]',
           style: {
             'shape': 'ellipse',
             'background-color': '#c1272d',
@@ -165,8 +165,8 @@ export function createSpatialGraph(container, { onDetail, onBackgroundTap }) {
             'height': 56
           }
         },
-        { selector: 'node[kind = "hyp"][status = "refuted"]',  style: { 'background-color': '#8a8a83', 'opacity': 0.6 } },
-        { selector: 'node[kind = "hyp"][status = "confirmed"]', style: { 'border-color': '#fff', 'border-width': 2.5 } },
+        { selector: 'node[kind = "cond"][status = "refuted"]',  style: { 'background-color': '#8a8a83', 'opacity': 0.6 } },
+        { selector: 'node[kind = "cond"][status = "confirmed"]', style: { 'border-color': '#fff', 'border-width': 2.5 } },
         {
           selector: 'edge[kind = "connection"]',
           style: {
@@ -176,7 +176,7 @@ export function createSpatialGraph(container, { onDetail, onBackgroundTap }) {
           }
         },
         {
-          selector: 'edge[kind = "hyp"]',
+          selector: 'edge[kind = "cond"]',
           style: {
             'curve-style': 'straight',
             'line-color': '#c1272d',
@@ -199,15 +199,15 @@ export function createSpatialGraph(container, { onDetail, onBackgroundTap }) {
     },
       minZoom: 0.3,
       maxZoom: 3,
-      // Earlier 0.2 was too sluggish; 0.5 keeps the same feel as the
-      // action graph (see action-graph.js for rationale).
-      wheelSensitivity: 0.5
+      // Cytoscape default is 1.0; matches the action graph and feels
+      // natural on trackpad/mouse. Earlier 0.2 / 0.5 felt sluggish.
+      wheelSensitivity: 1.0
     });
 
     cy.on('tap', 'node', evt => {
       const id = evt.target.id();
       if (id.startsWith('part:'))      onDetail?.({ type: 'part',       id: id.slice(5) });
-      else if (id.startsWith('hyp:'))  onDetail?.({ type: 'hypothesis', id: id.slice(4) });
+      else if (id.startsWith('cond:')) onDetail?.({ type: 'condition', id: id.slice(5) });
     });
 
     // Tapping empty graph background → clear selection (caller decides what

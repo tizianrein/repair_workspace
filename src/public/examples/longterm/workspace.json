@@ -177,8 +177,8 @@
       "url": null,
       "text": "Walk-around inspection. Chair frame is sound. Hairline crack at the front right leg's top, near the seat joint — could propagate. Seat surface shows scuffing, staining, and a long scratch — finish is worn. Minor dent on the backrest, scuff marks on the front left leg. Plastic gliders are intact but disposable.",
       "measurement": null,
-      "confirmsHypothesisRef": null,
-      "refutesHypothesisRef": null
+      "confirmsConditionRef": null,
+      "refutesConditionRef": null
     },
     {
       "id": "ev_mp63iqa301d",
@@ -189,15 +189,15 @@
       "url": "idb://ev_mp63iqa301d",
       "text": null,
       "measurement": null,
-      "confirmsHypothesisRef": null,
-      "refutesHypothesisRef": null,
+      "confirmsConditionRef": null,
+      "refutesConditionRef": null,
       "fileName": "santo_04.jpg",
       "byteSize": 160327
     }
   ],
-  "hypotheses": [
+  "conditions": [
     {
-      "id": "hyp_front_right_crack",
+      "id": "cond_front_right_crack",
       "type": "Crack",
       "description": "Hairline crack on the top surface of the front right leg, near the front. Moderate severity — could propagate under load if not stabilized.",
       "partRef": "front_right_leg",
@@ -209,7 +209,7 @@
       "updatedAt": "2026-05-14T09:35:00.000Z"
     },
     {
-      "id": "hyp_seat_scuff",
+      "id": "cond_seat_scuff",
       "type": "Scuff Mark",
       "description": "Noticeable scuffing and discoloration along the front edge of the seat.",
       "partRef": "seat",
@@ -221,7 +221,7 @@
       "updatedAt": "2026-05-14T09:36:00.000Z"
     },
     {
-      "id": "hyp_seat_stain",
+      "id": "cond_seat_stain",
       "type": "Stain",
       "description": "Cluster of small, dark stains on the top surface of the seat.",
       "partRef": "seat",
@@ -233,7 +233,7 @@
       "updatedAt": "2026-05-14T09:37:00.000Z"
     },
     {
-      "id": "hyp_seat_scratch",
+      "id": "cond_seat_scratch",
       "type": "Scratch",
       "description": "Long, light-coloured scratch on the seat's top surface toward the left side.",
       "partRef": "seat",
@@ -245,7 +245,7 @@
       "updatedAt": "2026-05-14T09:38:00.000Z"
     },
     {
-      "id": "hyp_backrest_dent",
+      "id": "cond_backrest_dent",
       "type": "Dent",
       "description": "Small circular dent on the front face of the backrest, near the top right corner.",
       "partRef": "backrest",
@@ -257,7 +257,7 @@
       "updatedAt": "2026-05-14T09:39:00.000Z"
     },
     {
-      "id": "hyp_front_left_scuff",
+      "id": "cond_front_left_scuff",
       "type": "Scuff Mark",
       "description": "Multiple horizontal scuff marks on the front face of the front left leg.",
       "partRef": "front_left_leg",

@@ -2,11 +2,11 @@
  * POST /api/enrich-plan
  *
  * Phase B of plan generation. Takes an already-generated plan skeleton
- * (steps with id/title/description/affectedPartRefs/addressesHypothesisRefs)
+ * (steps with id/title/description/affectedPartRefs/addressesConditionRefs)
  * and fills in the operational + reflective fields:
  *   - toolsRequired, materialsRequired, estimatedMinutes
  *   - expectedOutcome, safetyNotes
- *   - justification with rationale and driving axes/hypotheses
+ *   - justification with rationale and driving axes/conditions
  *   - confidence
  *
  * Uses gemini-2.5-flash because this is straightforward field-filling
@@ -56,7 +56,7 @@ export default async function handler(req, res) {
           title: s.title,
           description: s.description,
           affectedPartRefs: s.affectedPartRefs || [],
-          addressesHypothesisRefs: s.addressesHypothesisRefs || []
+          addressesConditionRefs: s.addressesConditionRefs || []
         }))
       }
     };
@@ -91,7 +91,7 @@ export default async function handler(req, res) {
         safetyNotes: typeof e.safetyNotes === 'string' ? e.safetyNotes : '',
         justification: {
           drivingIntentAxes: Array.isArray(e.justification?.drivingIntentAxes) ? e.justification.drivingIntentAxes : [],
-          drivingHypotheses: Array.isArray(e.justification?.drivingHypotheses) ? e.justification.drivingHypotheses : [],
+          drivingConditions: Array.isArray(e.justification?.drivingConditions) ? e.justification.drivingConditions : [],
           drivingConstraints: Array.isArray(e.justification?.drivingConstraints) ? e.justification.drivingConstraints : [],
           rationale: typeof e.justification?.rationale === 'string' ? e.justification.rationale : ''
         },
@@ -112,7 +112,7 @@ function leanWorkspace(ws) {
     parts: (ws.instance?.parts || []).map(p => ({
       id: p.id, name: p.name, material: p.material
     })),
-    conditions: (ws.hypotheses || []).map(h => ({
+    conditions: (ws.conditions || []).map(h => ({
       id: h.id, type: h.type, partRef: h.partRef, status: h.status
     })),
     intent: ws.intent,

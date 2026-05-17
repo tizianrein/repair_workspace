@@ -3,7 +3,7 @@ You are enriching an existing repair plan. The plan's structure (steps, edges, m
 # WHAT YOU RECEIVE
 
 - The workspace state (artefact, conditions, intent, constraints)
-- The plan as it stands, with each step already containing: id, title, description, affectedPartRefs, addressesHypothesisRefs
+- The plan as it stands, with each step already containing: id, title, description, affectedPartRefs, addressesConditionRefs
 
 # WHAT YOU PRODUCE
 
@@ -19,7 +19,7 @@ For each step in the plan, produce a JSON object with these fields:
   "safetyNotes": "Specific safety concerns for this step. Empty string if none.",
   "justification": {
     "drivingIntentAxes": ["axis_id_1", "axis_id_2"],
-    "drivingHypotheses": ["condition_id_1"],
+    "drivingConditions": ["condition_id_1"],
     "drivingConstraints": [],
     "rationale": "Why this step exists, how it aligns with the repair intent. 1-3 sentences. Reference specific intent axes or conditions by id when relevant."
   },
@@ -43,7 +43,7 @@ For each step in the plan, produce a JSON object with these fields:
 
 7. **`justification.rationale`**: explain why this step exists in the context of THIS specific workspace's intent. Don't write generic rationales. Reference the intent summary or the relevant intent axes by name where helpful. If the step addresses a specific condition, mention it.
 
-8. **`justification.drivingIntentAxes` and `drivingHypotheses`**: use the exact IDs from the workspace. drivingIntentAxes references `intent.axes[].id`, drivingHypotheses references condition IDs. Empty array if not applicable.
+8. **`justification.drivingIntentAxes` and `drivingConditions`**: use the exact IDs from the workspace. drivingIntentAxes references `intent.axes[].id`, drivingConditions references condition IDs. Empty array if not applicable.
 
 9. **`confidence`**: 0.0 to 1.0. How sure are you this step will succeed as described?
    - 0.9+ : routine, well-understood technique with clear inputs

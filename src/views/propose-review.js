@@ -93,14 +93,14 @@ function summarizeCommand(cmd) {
     case 'replace-assembly': return `Replace assembly: ${p.objectName || '?'} (${p.parts?.length || 0} parts)`;
     case 'upsert-part': return `Add or update part "${p.part?.id}" (${p.part?.status || '?'})`;
     case 'remove-part': return `Remove part "${p.partId}"`;
-    case 'add-hypothesis': {
-      const h = p.hypothesis || {};
-      return `Add ${h.status || 'suspected'} hypothesis: ${h.type || '?'} on ${h.partRef || '?'}`;
+    case 'add-condition': {
+      const h = p.condition || {};
+      return `Add ${h.status || 'suspected'} condition: ${h.type || '?'} on ${h.partRef || '?'}`;
     }
-    case 'update-hypothesis': return `Update hypothesis ${p.hypothesisId}`;
-    case 'remove-hypothesis': return `Remove hypothesis ${p.hypothesisId}`;
-    case 'confirm-hypothesis': return `Confirm hypothesis ${p.hypothesisId}`;
-    case 'refute-hypothesis': return `Refute hypothesis ${p.hypothesisId}`;
+    case 'update-condition': return `Update condition ${p.conditionId}`;
+    case 'remove-condition': return `Remove condition ${p.conditionId}`;
+    case 'confirm-condition': return `Confirm condition ${p.conditionId}`;
+    case 'refute-condition': return `Refute condition ${p.conditionId}`;
     case 'set-intent': return `Update repair intent${p.intent?.summary ? ` — "${truncate(p.intent.summary, 60)}"` : ''}`;
     case 'set-constraints': return `Update constraints`;
     case 'add-plan': {

@@ -2,7 +2,7 @@
  * Chat sheet view.
  *
  * Wires the bottom-sheet chat input to /api/chat. Maintains conversation
- * threads scoped to global / part / hypothesis / step. Renders message
+ * threads scoped to global / part / condition / step. Renders message
  * bubbles. Handles attached photos as multimodal input.
  *
  * The chat endpoint never mutates — it returns a reply, optional suggested
@@ -81,7 +81,7 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
       global: 'Discuss the repair',
       instance: 'About the artefact',
       part: `About ${currentRef || 'part'}`,
-      hypothesis: `About ${currentRef || 'condition'}`,
+      condition: `About ${currentRef || 'condition'}`,
       step: `About ${currentRef || 'step'}`
     };
     titleEl.textContent = map[currentScope] || 'Discuss';
@@ -110,7 +110,7 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     global: 'global',
     instance: 'artefact',
     part: 'part',
-    hypothesis: 'condition',
+    condition: 'condition',
     step: 'step',
     plan: 'strategy'
   };
@@ -399,12 +399,12 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     // the rest (e.g. "remove part X and update plan Y" picked 'interventions'
     // when 'plan' matched first, then the AI had no remove-part available).
     const mentionsPlan = /\bplan\b|\bstep\b|\bintervention\b/.test(lower);
-    const mentionsHypothesis = /\bhypothes\w*\b|\bdamag\w*\b|\bcrack\b|\bcondition\b/.test(lower);
+    const mentionsCondition = /\bcondition\w*\b|\bdamag\w*\b|\bcrack\b|\bcondition\b/.test(lower);
     const mentionsAssembly = /\bpart\b|\bassembly\b|\bcomponent\b|\bartefact\b/.test(lower);
-    const domainCount = [mentionsPlan, mentionsHypothesis, mentionsAssembly].filter(Boolean).length;
+    const domainCount = [mentionsPlan, mentionsCondition, mentionsAssembly].filter(Boolean).length;
     if (domainCount >= 2) return 'all';
     if (mentionsPlan) return 'interventions';
-    if (mentionsHypothesis) return 'hypotheses';
+    if (mentionsCondition) return 'conditions';
     if (mentionsAssembly) return 'assembly';
     return 'all';
   }

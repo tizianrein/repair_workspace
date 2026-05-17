@@ -468,7 +468,7 @@ test('add_condition computes coordinates from part bbox center', () => {
     {}, ws, [], { pendingPlanId: null }
   );
   assert.equal(r.ok, true);
-  const c = r.command.payload.hypothesis.coordinates;
+  const c = r.command.payload.condition.coordinates;
   assert.deepEqual(c, { x: 3, y: 5, z: 4 },
     `Expected center {3,5,4}, got ${JSON.stringify(c)}`);
 });
@@ -481,7 +481,7 @@ test('add_condition without part still works (coordinates null)', () => {
   );
   assert.equal(r.ok, true);
   // Coordinates should be null when part doesn't exist — not crash
-  assert.equal(r.command.payload.hypothesis.coordinates, null);
+  assert.equal(r.command.payload.condition.coordinates, null);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

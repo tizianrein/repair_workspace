@@ -3,7 +3,7 @@
  *
  * Body:
  *   {
- *     scope: "assembly" | "hypotheses" | "interventions" | "all",
+ *     scope: "assembly" | "conditions" | "interventions" | "all",
  *     userMessage: string,
  *     workspace: <current workspace>,
  *     files?: [{ name, mimeType, data: base64 }]
@@ -29,8 +29,8 @@ export const config = { maxDuration: 60 };
 const KNOWN_COMMAND_TYPES = new Set([
   'set-object-name',
   'upsert-part', 'remove-part', 'replace-assembly',
-  'add-hypothesis', 'update-hypothesis', 'remove-hypothesis',
-  'confirm-hypothesis', 'refute-hypothesis',
+  'add-condition', 'update-condition', 'remove-condition',
+  'confirm-condition', 'refute-condition',
   'add-evidence', 'remove-evidence',
   'set-intent', 'set-constraints',
   'add-plan', 'remove-plan', 'set-current-plan', 'set-plan-status',
@@ -75,7 +75,7 @@ export default async function handler(req, res) {
     }
 
     // Build a set of valid part ids from the workspace so we can validate
-    // partRef on add-hypothesis. Used by the fan-out logic below.
+    // partRef on add-condition. Used by the fan-out logic below.
     const validPartIds = new Set((workspace.instance?.parts || []).map(p => p.id));
     // Full part lookup, used by the coordinate-rescue path below to read
     // a part's origin and dimensions when fixing degenerate coordinates.
@@ -135,15 +135,15 @@ export default async function handler(req, res) {
           continue;
         }
       }
-      // add-hypothesis: the model occasionally collapses "condition applies
+      // add-condition: the model occasionally collapses "condition applies
       // to many parts" into a single command with partRef like
       // "back_left_leg,back_right_leg,..." or an array, even though the
-      // prompt forbids it. Detect and fan out — one hypothesis per part —
+      // prompt forbids it. Detect and fan out — one condition per part —
       // so the UI renders them correctly. Drop unrecognised refs.
-      if (cmd.type === 'add-hypothesis') {
-        const h = cmd.payload?.hypothesis;
+      if (cmd.type === 'add-condition') {
+        const h = cmd.payload?.condition;
         if (!h) {
-          malformed.push('add-hypothesis (missing hypothesis payload)');
+          malformed.push('add-condition (missing condition payload)');
           continue;
         }
         const refs = expandPartRef(h.partRef, validPartIds);
@@ -155,23 +155,23 @@ export default async function handler(req, res) {
           continue;
         }
         if (refs.length === 1 && refs[0] === h.partRef) {
-          // Well-formed single-part hypothesis. Still run the coordinate
+          // Well-formed single-part condition. Still run the coordinate
           // rescue: the model often emits {0,0,0} or omits the field,
           // which lands the marker at the world origin instead of on
           // the part.
           known.push({
-            type: 'add-hypothesis',
-            payload: { hypothesis: rescueCoordinates(h, partById.get(refs[0])) }
+            type: 'add-condition',
+            payload: { condition: rescueCoordinates(h, partById.get(refs[0])) }
           });
           continue;
         }
-        // Fan out: one add-hypothesis per resolved partRef. Each gets its
-        // own hypothesis object — and crucially its own coordinate rescue
+        // Fan out: one add-condition per resolved partRef. Each gets its
+        // own condition object — and crucially its own coordinate rescue
         // anchored to THAT part, not a shared default.
         for (const partId of refs) {
           known.push({
-            type: 'add-hypothesis',
-            payload: { hypothesis: rescueCoordinates({ ...h, partRef: partId }, partById.get(partId)) }
+            type: 'add-condition',
+            payload: { condition: rescueCoordinates({ ...h, partRef: partId }, partById.get(partId)) }
           });
         }
         fannedOut.push(`condition "${h.description || h.type}" → ${refs.length} parts`);
@@ -190,7 +190,7 @@ export default async function handler(req, res) {
       result.summary = (result.summary || '') + note;
     }
     if (fannedOut.length) {
-      console.info('[propose] Fanned out multi-part hypotheses:', fannedOut);
+      console.info('[propose] Fanned out multi-part conditions:', fannedOut);
       const note = ` (Expanded ${fannedOut.length === 1 ? 'a' : fannedOut.length} multi-part condition${fannedOut.length === 1 ? '' : 's'} into per-part entries: ${fannedOut.join('; ')}.)`;
       result.summary = (result.summary || '') + note;
     }
@@ -207,14 +207,14 @@ function redactWorkspace(ws) {
   return {
     schemaVersion: ws.schemaVersion,
     instance: { ...ws.instance },
-    hypotheses: ws.hypotheses || [],
+    conditions: ws.conditions || [],
     intent: ws.intent,
     constraints: ws.constraints,
     plans: (ws.plans || []).map(p => ({
       id: p.id, label: p.label, status: p.status,
       steps: (p.steps || []).map(s => ({
         id: s.id, title: s.title, status: s.status,
-        affectedPartRefs: s.affectedPartRefs, addressesHypothesisRefs: s.addressesHypothesisRefs
+        affectedPartRefs: s.affectedPartRefs, addressesConditionRefs: s.addressesConditionRefs
       })),
       edges: p.edges, mutexGroups: p.mutexGroups
     })),
@@ -261,7 +261,7 @@ function expandPartRef(partRef, validPartIds) {
 }
 
 /**
- * Return a hypothesis with sane coordinates, anchored to its part when
+ * Return a condition with sane coordinates, anchored to its part when
  * the model gave us something useless. The model frequently emits
  * `{x:0, y:0, z:0}` regardless of the part's actual position, which
  * lands the marker at the world origin instead of on the part. The

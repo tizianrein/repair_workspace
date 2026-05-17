@@ -403,8 +403,8 @@
       "url": null,
       "text": "Walk-around inspection. Chair sits stable on its gliders. Joints feel snug. Damage concentrated on the legs (breakout, crack, chip, scratches) and seat surface (worn lacquer).",
       "measurement": null,
-      "confirmsHypothesisRef": null,
-      "refutesHypothesisRef": null
+      "confirmsConditionRef": null,
+      "refutesConditionRef": null
     },
     {
       "id": "ev_mp63iqa301d",
@@ -415,15 +415,15 @@
       "url": "idb://ev_mp63iqa301d",
       "text": null,
       "measurement": null,
-      "confirmsHypothesisRef": null,
-      "refutesHypothesisRef": null,
+      "confirmsConditionRef": null,
+      "refutesConditionRef": null,
       "fileName": "santo_02.jpg",
       "byteSize": 160327
     }
   ],
-  "hypotheses": [
+  "conditions": [
     {
-      "id": "hyp_front_left_breakout",
+      "id": "cond_front_left_breakout",
       "type": "Breakout",
       "description": "Severe breakout of wood on the front left leg near the top, where it meets the apron and seat. Structural impact likely; requires patching.",
       "partRef": "front_left_leg",
@@ -441,7 +441,7 @@
       "updatedAt": "2026-05-14T09:35:00.000Z"
     },
     {
-      "id": "hyp_front_right_crack",
+      "id": "cond_front_right_crack",
       "type": "Crack",
       "description": "Large crack on the top surface of the front right leg. Compromises the joint area; should be patched out.",
       "partRef": "front_right_leg",
@@ -459,7 +459,7 @@
       "updatedAt": "2026-05-14T09:36:00.000Z"
     },
     {
-      "id": "hyp_back_right_chip",
+      "id": "cond_back_right_chip",
       "type": "Chipping",
       "description": "Big wood chipping on the top surface of the back right leg, near the backrest joint.",
       "partRef": "back_right_leg",
@@ -477,7 +477,7 @@
       "updatedAt": "2026-05-14T09:37:00.000Z"
     },
     {
-      "id": "hyp_seat_rough",
+      "id": "cond_seat_rough",
       "type": "Rough Surface",
       "description": "Rough surface texture on top of the seat where the lacquer has worn through. Cosmetic; panel is structurally sound.",
       "partRef": "seat",
@@ -495,7 +495,7 @@
       "updatedAt": "2026-05-14T09:38:00.000Z"
     },
     {
-      "id": "hyp_back_left_scratch",
+      "id": "cond_back_left_scratch",
       "type": "Scratches",
       "description": "Scratches in the middle of the left side of the back left leg. Surface only, no structural impact.",
       "partRef": "back_left_leg",
@@ -571,7 +571,7 @@
           "description": "Clear and protect the work surface. Gather all necessary tools and materials for the repair process. Ensure good lighting and ventilation for precision work.",
           "status": "pending",
           "affectedPartRefs": [],
-          "addressesHypothesisRefs": [],
+          "addressesConditionRefs": [],
           "toolsRequired": [
             "Workbench",
             "Drop cloths",
@@ -586,7 +586,7 @@
             "drivingIntentAxes": [
               "axis_2"
             ],
-            "drivingHypotheses": [],
+            "drivingConditions": [],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
           },
@@ -604,7 +604,7 @@
             "back_left_glider",
             "back_right_glider"
           ],
-          "addressesHypothesisRefs": [],
+          "addressesConditionRefs": [],
           "toolsRequired": [
             "Pliers",
             "Screwdriver (if applicable)",
@@ -618,7 +618,7 @@
             "drivingIntentAxes": [
               "axis_2"
             ],
-            "drivingHypotheses": [],
+            "drivingConditions": [],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
           },
@@ -633,8 +633,8 @@
           "affectedPartRefs": [
             "front_left_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_left_breakout"
+          "addressesConditionRefs": [
+            "cond_front_left_breakout"
           ],
           "toolsRequired": [
             "Pencil",
@@ -651,8 +651,8 @@
               "axis_1",
               "axis_2"
             ],
-            "drivingHypotheses": [
-              "hyp_front_left_breakout"
+            "drivingConditions": [
+              "cond_front_left_breakout"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -668,8 +668,8 @@
           "affectedPartRefs": [
             "front_left_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_left_breakout"
+          "addressesConditionRefs": [
+            "cond_front_left_breakout"
           ],
           "toolsRequired": [
             "Fine-toothed hand saw",
@@ -685,8 +685,8 @@
               "axis_1",
               "axis_2"
             ],
-            "drivingHypotheses": [
-              "hyp_front_left_breakout"
+            "drivingConditions": [
+              "cond_front_left_breakout"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -702,8 +702,8 @@
           "affectedPartRefs": [
             "front_left_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_left_breakout"
+          "addressesConditionRefs": [
+            "cond_front_left_breakout"
           ],
           "toolsRequired": [
             "Hand saw",
@@ -720,8 +720,8 @@
               "axis_1",
               "axis_4"
             ],
-            "drivingHypotheses": [
-              "hyp_front_left_breakout"
+            "drivingConditions": [
+              "cond_front_left_breakout"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -737,8 +737,8 @@
           "affectedPartRefs": [
             "front_left_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_left_breakout"
+          "addressesConditionRefs": [
+            "cond_front_left_breakout"
           ],
           "toolsRequired": [
             "Fine-toothed hand saw",
@@ -755,8 +755,8 @@
               "axis_1",
               "axis_2"
             ],
-            "drivingHypotheses": [
-              "hyp_front_left_breakout"
+            "drivingConditions": [
+              "cond_front_left_breakout"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -772,8 +772,8 @@
           "affectedPartRefs": [
             "front_left_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_left_breakout"
+          "addressesConditionRefs": [
+            "cond_front_left_breakout"
           ],
           "toolsRequired": [
             "Clamps",
@@ -790,8 +790,8 @@
               "axis_2",
               "axis_4"
             ],
-            "drivingHypotheses": [
-              "hyp_front_left_breakout"
+            "drivingConditions": [
+              "cond_front_left_breakout"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -807,8 +807,8 @@
           "affectedPartRefs": [
             "front_left_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_left_breakout"
+          "addressesConditionRefs": [
+            "cond_front_left_breakout"
           ],
           "toolsRequired": [
             "Chisel",
@@ -824,8 +824,8 @@
               "axis_1",
               "axis_4"
             ],
-            "drivingHypotheses": [
-              "hyp_front_left_breakout"
+            "drivingConditions": [
+              "cond_front_left_breakout"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -841,8 +841,8 @@
           "affectedPartRefs": [
             "front_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_right_crack"
+          "addressesConditionRefs": [
+            "cond_front_right_crack"
           ],
           "toolsRequired": [
             "Pencil",
@@ -859,8 +859,8 @@
               "axis_1",
               "axis_2"
             ],
-            "drivingHypotheses": [
-              "hyp_front_right_crack"
+            "drivingConditions": [
+              "cond_front_right_crack"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -876,8 +876,8 @@
           "affectedPartRefs": [
             "front_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_right_crack"
+          "addressesConditionRefs": [
+            "cond_front_right_crack"
           ],
           "toolsRequired": [
             "Fine chisels",
@@ -893,8 +893,8 @@
               "axis_1",
               "axis_2"
             ],
-            "drivingHypotheses": [
-              "hyp_front_right_crack"
+            "drivingConditions": [
+              "cond_front_right_crack"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -910,8 +910,8 @@
           "affectedPartRefs": [
             "front_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_right_crack"
+          "addressesConditionRefs": [
+            "cond_front_right_crack"
           ],
           "toolsRequired": [
             "Hand saw",
@@ -930,8 +930,8 @@
               "axis_1",
               "axis_4"
             ],
-            "drivingHypotheses": [
-              "hyp_front_right_crack"
+            "drivingConditions": [
+              "cond_front_right_crack"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -947,8 +947,8 @@
           "affectedPartRefs": [
             "front_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_right_crack"
+          "addressesConditionRefs": [
+            "cond_front_right_crack"
           ],
           "toolsRequired": [
             "Chisels"
@@ -964,8 +964,8 @@
               "axis_1",
               "axis_4"
             ],
-            "drivingHypotheses": [
-              "hyp_front_right_crack"
+            "drivingConditions": [
+              "cond_front_right_crack"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -981,8 +981,8 @@
           "affectedPartRefs": [
             "front_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_right_crack"
+          "addressesConditionRefs": [
+            "cond_front_right_crack"
           ],
           "toolsRequired": [
             "Mallet",
@@ -1000,8 +1000,8 @@
               "axis_2",
               "axis_4"
             ],
-            "drivingHypotheses": [
-              "hyp_front_right_crack"
+            "drivingConditions": [
+              "cond_front_right_crack"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -1017,8 +1017,8 @@
           "affectedPartRefs": [
             "front_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_right_crack"
+          "addressesConditionRefs": [
+            "cond_front_right_crack"
           ],
           "toolsRequired": [
             "Chisel",
@@ -1034,8 +1034,8 @@
               "axis_1",
               "axis_4"
             ],
-            "drivingHypotheses": [
-              "hyp_front_right_crack"
+            "drivingConditions": [
+              "cond_front_right_crack"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -1051,8 +1051,8 @@
           "affectedPartRefs": [
             "back_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_back_right_chip"
+          "addressesConditionRefs": [
+            "cond_back_right_chip"
           ],
           "toolsRequired": [
             "Pencil",
@@ -1068,8 +1068,8 @@
               "axis_1",
               "axis_2"
             ],
-            "drivingHypotheses": [
-              "hyp_back_right_chip"
+            "drivingConditions": [
+              "cond_back_right_chip"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -1085,8 +1085,8 @@
           "affectedPartRefs": [
             "back_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_back_right_chip"
+          "addressesConditionRefs": [
+            "cond_back_right_chip"
           ],
           "toolsRequired": [
             "Fine chisels",
@@ -1102,8 +1102,8 @@
               "axis_1",
               "axis_2"
             ],
-            "drivingHypotheses": [
-              "hyp_back_right_chip"
+            "drivingConditions": [
+              "cond_back_right_chip"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -1119,8 +1119,8 @@
           "affectedPartRefs": [
             "back_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_back_right_chip"
+          "addressesConditionRefs": [
+            "cond_back_right_chip"
           ],
           "toolsRequired": [
             "Hand saw",
@@ -1138,8 +1138,8 @@
               "axis_1",
               "axis_4"
             ],
-            "drivingHypotheses": [
-              "hyp_back_right_chip"
+            "drivingConditions": [
+              "cond_back_right_chip"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -1155,8 +1155,8 @@
           "affectedPartRefs": [
             "back_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_back_right_chip"
+          "addressesConditionRefs": [
+            "cond_back_right_chip"
           ],
           "toolsRequired": [
             "Chisels"
@@ -1172,8 +1172,8 @@
               "axis_1",
               "axis_4"
             ],
-            "drivingHypotheses": [
-              "hyp_back_right_chip"
+            "drivingConditions": [
+              "cond_back_right_chip"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -1189,8 +1189,8 @@
           "affectedPartRefs": [
             "back_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_back_right_chip"
+          "addressesConditionRefs": [
+            "cond_back_right_chip"
           ],
           "toolsRequired": [
             "Mallet",
@@ -1208,8 +1208,8 @@
               "axis_2",
               "axis_4"
             ],
-            "drivingHypotheses": [
-              "hyp_back_right_chip"
+            "drivingConditions": [
+              "cond_back_right_chip"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -1225,8 +1225,8 @@
           "affectedPartRefs": [
             "back_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_back_right_chip"
+          "addressesConditionRefs": [
+            "cond_back_right_chip"
           ],
           "toolsRequired": [
             "Chisel",
@@ -1242,8 +1242,8 @@
               "axis_1",
               "axis_4"
             ],
-            "drivingHypotheses": [
-              "hyp_back_right_chip"
+            "drivingConditions": [
+              "cond_back_right_chip"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -1261,10 +1261,10 @@
             "front_right_leg",
             "back_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_left_breakout",
-            "hyp_front_right_crack",
-            "hyp_back_right_chip"
+          "addressesConditionRefs": [
+            "cond_front_left_breakout",
+            "cond_front_right_crack",
+            "cond_back_right_chip"
           ],
           "toolsRequired": [
             "Cabinet scraper",
@@ -1279,10 +1279,10 @@
               "axis_1",
               "axis_6"
             ],
-            "drivingHypotheses": [
-              "hyp_front_left_breakout",
-              "hyp_front_right_crack",
-              "hyp_back_right_chip"
+            "drivingConditions": [
+              "cond_front_left_breakout",
+              "cond_front_right_crack",
+              "cond_back_right_chip"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -1300,10 +1300,10 @@
             "front_right_leg",
             "back_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_left_breakout",
-            "hyp_front_right_crack",
-            "hyp_back_right_chip"
+          "addressesConditionRefs": [
+            "cond_front_left_breakout",
+            "cond_front_right_crack",
+            "cond_back_right_chip"
           ],
           "toolsRequired": [
             "Sanding block"
@@ -1319,10 +1319,10 @@
               "axis_1",
               "axis_6"
             ],
-            "drivingHypotheses": [
-              "hyp_front_left_breakout",
-              "hyp_front_right_crack",
-              "hyp_back_right_chip"
+            "drivingConditions": [
+              "cond_front_left_breakout",
+              "cond_front_right_crack",
+              "cond_back_right_chip"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -1340,10 +1340,10 @@
             "front_right_leg",
             "back_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_left_breakout",
-            "hyp_front_right_crack",
-            "hyp_back_right_chip"
+          "addressesConditionRefs": [
+            "cond_front_left_breakout",
+            "cond_front_right_crack",
+            "cond_back_right_chip"
           ],
           "toolsRequired": [
             "Sanding block"
@@ -1359,10 +1359,10 @@
               "axis_1",
               "axis_6"
             ],
-            "drivingHypotheses": [
-              "hyp_front_left_breakout",
-              "hyp_front_right_crack",
-              "hyp_back_right_chip"
+            "drivingConditions": [
+              "cond_front_left_breakout",
+              "cond_front_right_crack",
+              "cond_back_right_chip"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -1380,7 +1380,7 @@
             "front_right_leg",
             "back_right_leg"
           ],
-          "addressesHypothesisRefs": [],
+          "addressesConditionRefs": [],
           "toolsRequired": [
             "Compressed air",
             "Lint-free cloths"
@@ -1395,7 +1395,7 @@
             "drivingIntentAxes": [
               "axis_2"
             ],
-            "drivingHypotheses": [],
+            "drivingConditions": [],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
           },
@@ -1412,10 +1412,10 @@
             "front_right_leg",
             "back_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_left_breakout",
-            "hyp_front_right_crack",
-            "hyp_back_right_chip"
+          "addressesConditionRefs": [
+            "cond_front_left_breakout",
+            "cond_front_right_crack",
+            "cond_back_right_chip"
           ],
           "toolsRequired": [
             "Brush"
@@ -1433,10 +1433,10 @@
               "axis_4",
               "axis_6"
             ],
-            "drivingHypotheses": [
-              "hyp_front_left_breakout",
-              "hyp_front_right_crack",
-              "hyp_back_right_chip"
+            "drivingConditions": [
+              "cond_front_left_breakout",
+              "cond_front_right_crack",
+              "cond_back_right_chip"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -1454,10 +1454,10 @@
             "front_right_leg",
             "back_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_left_breakout",
-            "hyp_front_right_crack",
-            "hyp_back_right_chip"
+          "addressesConditionRefs": [
+            "cond_front_left_breakout",
+            "cond_front_right_crack",
+            "cond_back_right_chip"
           ],
           "toolsRequired": [
             "Sanding block"
@@ -1475,10 +1475,10 @@
               "axis_2",
               "axis_6"
             ],
-            "drivingHypotheses": [
-              "hyp_front_left_breakout",
-              "hyp_front_right_crack",
-              "hyp_back_right_chip"
+            "drivingConditions": [
+              "cond_front_left_breakout",
+              "cond_front_right_crack",
+              "cond_back_right_chip"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -1496,10 +1496,10 @@
             "front_right_leg",
             "back_right_leg"
           ],
-          "addressesHypothesisRefs": [
-            "hyp_front_left_breakout",
-            "hyp_front_right_crack",
-            "hyp_back_right_chip"
+          "addressesConditionRefs": [
+            "cond_front_left_breakout",
+            "cond_front_right_crack",
+            "cond_back_right_chip"
           ],
           "toolsRequired": [
             "Brush"
@@ -1517,10 +1517,10 @@
               "axis_4",
               "axis_6"
             ],
-            "drivingHypotheses": [
-              "hyp_front_left_breakout",
-              "hyp_front_right_crack",
-              "hyp_back_right_chip"
+            "drivingConditions": [
+              "cond_front_left_breakout",
+              "cond_front_right_crack",
+              "cond_back_right_chip"
             ],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
@@ -1539,7 +1539,7 @@
             "back_left_glider",
             "back_right_glider"
           ],
-          "addressesHypothesisRefs": [],
+          "addressesConditionRefs": [],
           "toolsRequired": [
             "Pliers",
             "Screwdriver (if applicable)"
@@ -1552,7 +1552,7 @@
             "drivingIntentAxes": [
               "axis_2"
             ],
-            "drivingHypotheses": [],
+            "drivingConditions": [],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
           },
@@ -1565,7 +1565,7 @@
           "description": "Clean the work area thoroughly, properly store all tools and materials, and dispose of waste responsibly, leaving the workspace tidy and organized.",
           "status": "pending",
           "affectedPartRefs": [],
-          "addressesHypothesisRefs": [],
+          "addressesConditionRefs": [],
           "toolsRequired": [
             "Broom",
             "Dustpan"
@@ -1581,7 +1581,7 @@
             "drivingIntentAxes": [
               "axis_2"
             ],
-            "drivingHypotheses": [],
+            "drivingConditions": [],
             "drivingConstraints": [],
             "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
           },

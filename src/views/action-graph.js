@@ -20,6 +20,16 @@ cytoscape.use(dagre);
 export function createActionGraph(container, { onSelect, onDetail }) {
   let cy = null;
   let currentStepId = null;
+  // Per-plan viewport memory. When you switch strategies and come back,
+  // the strategy you were just on remembers where you'd zoomed/panned to.
+  // Without this, a single shared previousView leaked between strategies:
+  // strategy A's zoom got "restored" onto strategy B's freshly laid-out
+  // graph, leaving B at the wrong scale. Keyed by plan id.
+  const viewportByPlan = new Map();
+  // The plan we rendered last time. Lets us decide whether a render is
+  // "same plan, restore zoom" or "different plan, use that plan's saved
+  // zoom (or default fit if it has none)".
+  let lastPlanId = null;
 
   function render(workspace) {
     const plan = (workspace.plans || []).find(p => p.id === workspace.currentPlanId);
@@ -33,16 +43,15 @@ export function createActionGraph(container, { onSelect, onDetail }) {
       return;
     }
 
-    // Capture the user's current view (zoom + pan) before rebuilding, so
-    // we can restore it after the new layout settles. Without this, every
-    // workspace update — even ones unrelated to the plan — yanks the user
-    // back to the default fit. The user has a Fit button for the case
-    // where they want to recenter; automatic re-fitting on every render
-    // makes the graph unusable for medium-to-long sessions.
-    let previousView = null;
-    if (cy) {
-      previousView = { zoom: cy.zoom(), pan: { ...cy.pan() } };
+    // Before tearing down the current cy, snapshot its viewport into the
+    // map under the *previous* plan's id — that's the plan it was showing.
+    // Then look up the *incoming* plan's saved viewport for restore. If
+    // there is none (first time we're showing this plan), we'll fall
+    // through to default fit.
+    if (cy && lastPlanId) {
+      viewportByPlan.set(lastPlanId, { zoom: cy.zoom(), pan: { ...cy.pan() } });
     }
+    const targetView = viewportByPlan.get(plan.id) || null;
 
     container.innerHTML = '';
 
@@ -160,10 +169,10 @@ export function createActionGraph(container, { onSelect, onDetail }) {
         }
       ],
       layout: { name: 'dagre', rankDir: 'LR', nodeSep: 50, rankSep: 80, padding: 30 },
-      // Cytoscape's default wheelSensitivity is 1.0 but that overshoots
-      // on most trackpads. 0.5 lands at "one notch ≈ one comfortable zoom
-      // step" without feeling sluggish. Earlier 0.2 was much too slow.
-      wheelSensitivity: 0.5,
+      // Cytoscape's default wheelSensitivity is 1.0. We use the default
+      // so trackpad/mouse scroll-zoom feels native — earlier values of
+      // 0.2 and 0.5 felt sluggish to users.
+      wheelSensitivity: 1.0,
       minZoom: 0.3, maxZoom: 3
     });
 
@@ -183,12 +192,13 @@ export function createActionGraph(container, { onSelect, onDetail }) {
     });
     cy.on('dbltap', 'node[!isMutex]', evt => onDetail?.(evt.target.id()));
 
-    // Restore the user's previous zoom/pan if they had one. The dagre
-    // layout above ran synchronously (no `animate`), so cy.pan()/cy.zoom()
-    // currently reflect the default fit — we override that now.
-    if (previousView) {
-      cy.viewport({ zoom: previousView.zoom, pan: previousView.pan });
+    // Restore this plan's saved viewport if it has one. Otherwise the
+    // dagre layout's default fit stands. (lastPlanId is updated AFTER
+    // a successful render so failures don't poison the map.)
+    if (targetView) {
+      cy.viewport({ zoom: targetView.zoom, pan: targetView.pan });
     }
+    lastPlanId = plan.id;
 
     startPulse();
   }

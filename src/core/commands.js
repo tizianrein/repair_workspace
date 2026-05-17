@@ -8,7 +8,7 @@
  *
  * Usage:
  *   import { apply, undo, redo, defineCommand } from './commands.js';
- *   apply(state, { type: 'add-hypothesis', payload: {...} });
+ *   apply(state, { type: 'add-condition', payload: {...} });
  *   undo(state);
  *
  * AI-proposed changes go through the same path: the model returns a list of
@@ -17,7 +17,7 @@
  */
 
 import {
-  newHypothesis, newEvidence, newPlan, newStep, newEdge, newMutexGroup,
+  newCondition, newEvidence, newPlan, newStep, newEdge, newMutexGroup,
   newExecutionEntry, newConversation, newMessage,
   newIntent, newConstraints, pickStrategyColor
 } from './schema.js';
@@ -121,46 +121,46 @@ defineCommand('replace-assembly', (ws, { parts, objectName }) => {
   };
 });
 
-defineCommand('add-hypothesis', (ws, { hypothesis }) => {
-  const h = { ...newHypothesis(), ...hypothesis };
+defineCommand('add-condition', (ws, { condition }) => {
+  const h = { ...newCondition(), ...condition };
   return {
-    workspace: { ...ws, hypotheses: [...(ws.hypotheses || []), h] },
-    inverse: { type: 'remove-hypothesis', payload: { hypothesisId: h.id } }
+    workspace: { ...ws, conditions: [...(ws.conditions || []), h] },
+    inverse: { type: 'remove-condition', payload: { conditionId: h.id } }
   };
 });
 
-defineCommand('update-hypothesis', (ws, { hypothesisId, patch }) => {
-  const idx = ws.hypotheses.findIndex(h => h.id === hypothesisId);
+defineCommand('update-condition', (ws, { conditionId, patch }) => {
+  const idx = ws.conditions.findIndex(h => h.id === conditionId);
   if (idx < 0) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
-  const prev = ws.hypotheses[idx];
+  const prev = ws.conditions[idx];
   const next = { ...prev, ...patch, updatedAt: new Date().toISOString() };
   return {
-    workspace: { ...ws, hypotheses: ws.hypotheses.map((h, i) => i === idx ? next : h) },
-    inverse: { type: 'update-hypothesis', payload: { hypothesisId, patch: prev } }
+    workspace: { ...ws, conditions: ws.conditions.map((h, i) => i === idx ? next : h) },
+    inverse: { type: 'update-condition', payload: { conditionId, patch: prev } }
   };
 });
 
-defineCommand('remove-hypothesis', (ws, { hypothesisId }) => {
-  const removed = ws.hypotheses.find(h => h.id === hypothesisId);
+defineCommand('remove-condition', (ws, { conditionId }) => {
+  const removed = ws.conditions.find(h => h.id === conditionId);
   if (!removed) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
   return {
-    workspace: { ...ws, hypotheses: ws.hypotheses.filter(h => h.id !== hypothesisId) },
-    inverse: { type: 'add-hypothesis', payload: { hypothesis: removed } }
+    workspace: { ...ws, conditions: ws.conditions.filter(h => h.id !== conditionId) },
+    inverse: { type: 'add-condition', payload: { condition: removed } }
   };
 });
 
-defineCommand('confirm-hypothesis', (ws, { hypothesisId, evidenceId }) => {
-  const prev = ws.hypotheses.find(h => h.id === hypothesisId);
+defineCommand('confirm-condition', (ws, { conditionId, evidenceId }) => {
+  const prev = ws.conditions.find(h => h.id === conditionId);
   if (!prev) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
   const next = { ...prev, status: 'confirmed', confidence: 1.0, evidenceRefs: [...(prev.evidenceRefs || []), evidenceId].filter(Boolean), updatedAt: new Date().toISOString() };
   return {
-    workspace: { ...ws, hypotheses: ws.hypotheses.map(h => h.id === hypothesisId ? next : h) },
-    inverse: { type: 'update-hypothesis', payload: { hypothesisId, patch: prev } }
+    workspace: { ...ws, conditions: ws.conditions.map(h => h.id === conditionId ? next : h) },
+    inverse: { type: 'update-condition', payload: { conditionId, patch: prev } }
   };
 });
 
-defineCommand('refute-hypothesis', (ws, { hypothesisId, evidenceId, note }) => {
-  const prev = ws.hypotheses.find(h => h.id === hypothesisId);
+defineCommand('refute-condition', (ws, { conditionId, evidenceId, note }) => {
+  const prev = ws.conditions.find(h => h.id === conditionId);
   if (!prev) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
   const next = {
     ...prev,
@@ -171,8 +171,8 @@ defineCommand('refute-hypothesis', (ws, { hypothesisId, evidenceId, note }) => {
     updatedAt: new Date().toISOString()
   };
   return {
-    workspace: { ...ws, hypotheses: ws.hypotheses.map(h => h.id === hypothesisId ? next : h) },
-    inverse: { type: 'update-hypothesis', payload: { hypothesisId, patch: prev } }
+    workspace: { ...ws, conditions: ws.conditions.map(h => h.id === conditionId ? next : h) },
+    inverse: { type: 'update-condition', payload: { conditionId, patch: prev } }
   };
 });
 
@@ -308,7 +308,7 @@ defineCommand('set-current-plan', (ws, { planId }) => {
 // comes along: intent (deep-cloned so edits don't leak between
 // strategies), constraints, steps, edges, mutexGroups. Step IDs are
 // remapped to fresh ones so the original and the copy can coexist and
-// be edited independently. Hypotheses, parts, and evidence are
+// be edited independently. Conditions, parts, and evidence are
 // artefact-scoped and untouched. Renderings (evidence kind='rendering')
 // that point at the source plan get cloned references so the copy
 // starts with the same imagined results.

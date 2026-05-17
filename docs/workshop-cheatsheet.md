@@ -9,7 +9,7 @@ A one-page guide for participants. Print one per station.
 - Either describe your object ("1960s wooden chair, front leg wobbles, scratches on seat") or tap 📷 to attach photos.
 - Hit Send. The AI replies with what it thinks it sees.
 - Tap the **🧱 Extract assembly** chip below the chat input. Review the proposed parts in the modal. Accept → 3D view fills in.
-- Tap **📍 Catalog hypotheses** to register what might be wrong.
+- Tap **📍 Catalog conditions** to register what might be wrong.
 
 ### 2 · Set priorities and generate a plan
 - Open the left drawer (☰). Drag the **intent radar** to weight what matters: authenticity, structure, cost, reversibility, etc.
@@ -27,8 +27,8 @@ A one-page guide for participants. Print one per station.
 ## Visual cues to know
 | Color | Meaning |
 |---|---|
-| Red (💢) | Defective part / confirmed hypothesis / signal action |
-| Yellow | Missing part / suspected hypothesis |
+| Red (💢) | Defective part / confirmed condition / signal action |
+| Yellow | Missing part / suspected condition |
 | Purple | New replacement part |
 | Green | Repaired part / completed step |
 | Blue | Currently selected |

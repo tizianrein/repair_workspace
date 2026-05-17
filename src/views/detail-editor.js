@@ -3,19 +3,19 @@
  *
  * Three entity types share this surface:
  *   - part: id, label, material, status, notes, dimensions, connections
- *   - hypothesis: type, description, status, confidence, partRef, coordinates
+ *   - condition: type, description, status, confidence, partRef, coordinates
  *   - step: title, description, status, estimatedMinutes, expectedOutcome,
  *           tools, materials, rationale
  *
  * Each change is dispatched through the apply() pipeline so undo works.
- * Photos attached to a hypothesis (via add-evidence with attachedTo) are
+ * Photos attached to a condition (via add-evidence with attachedTo) are
  * rendered as thumbnails below the form; clicking opens a full-size view.
  *
- * The Delete button on hypotheses dispatches remove-hypothesis with a
+ * The Delete button on conditions dispatches remove-condition with a
  * confirmation prompt.
  */
 
-import { PART_STATUS, HYPOTHESIS_STATUS, STEP_STATUS } from '../core/schema.js';
+import { PART_STATUS, CONDITION_STATUS, STEP_STATUS } from '../core/schema.js';
 import { createMiniViewer3D } from './mini-viewer-3d.js';
 
 export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, getPhotoBlob, dispatch, onAttachPhoto }) {
@@ -112,7 +112,7 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     if (!target) return;
     const ws = getWorkspace();
     if (target.type === 'part') openPart(target.id, ws, opts);
-    else if (target.type === 'hypothesis') openHypothesis(target.id, ws, opts);
+    else if (target.type === 'condition') openCondition(target.id, ws, opts);
     else if (target.type === 'step') openStep(target.id, ws, opts);
   }
 
@@ -136,7 +136,7 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     //   • parts in `connections`:   blue
     //   • everything else:          dim grey
     // Clicking a non-current part toggles connection symmetrically.
-    const relatedHypIds = (ws.hypotheses || []).filter(h => h.partRef === id).map(h => h.id);
+    const relatedHypIds = (ws.conditions || []).filter(h => h.partRef === id).map(h => h.id);
     const currentConnections = Array.isArray(p.connections) ? p.connections : [];
     buildMiniViewer3D(bodyEl, `part:${id}`, [id], relatedHypIds, {
       connectedPartIds: currentConnections,
@@ -166,26 +166,26 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
 
     bodyEl.appendChild(form);
 
-    // Related hypotheses, quick navigation
-    const hyps = (ws.hypotheses || []).filter(x => x.partRef === id);
+    // Related conditions, quick navigation
+    const hyps = (ws.conditions || []).filter(x => x.partRef === id);
     if (hyps.length) {
       const list = el('div', 'detail-section');
       list.appendChild(el('div', 'detail-section-label', 'Conditions on this part'));
       hyps.forEach(h => {
         const row = el('div', 'detail-link-row');
         row.textContent = `${h.type} (${h.status})`;
-        row.onclick = () => openHypothesis(h.id, getWorkspace());
+        row.onclick = () => openCondition(h.id, getWorkspace());
         list.appendChild(row);
       });
       bodyEl.appendChild(list);
     }
 
-    // Photos attached to this part (directly or via a hypothesis on it)
+    // Photos attached to this part (directly or via a condition on it)
     const photos = (ws.evidence || []).filter(e => {
       if (e.kind !== 'photo') return false;
       if (e.attachedTo?.type === 'part' && e.attachedTo.id === id) return true;
-      if (e.attachedTo?.type === 'hypothesis') {
-        const h = (ws.hypotheses || []).find(x => x.id === e.attachedTo.id);
+      if (e.attachedTo?.type === 'condition') {
+        const h = (ws.conditions || []).find(x => x.id === e.attachedTo.id);
         if (h?.partRef === id) return true;
       }
       return false;
@@ -248,50 +248,50 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     });
   }
 
-  // -------------------------------------------------------- hypotheses
-  function openHypothesis(id, ws) {
-    const h = (ws.hypotheses || []).find(x => x.id === id);
+  // -------------------------------------------------------- conditions
+  function openCondition(id, ws) {
+    const h = (ws.conditions || []).find(x => x.id === id);
     if (!h) return;
     titleEl.textContent = `Condition: ${h.type || h.id}`;
     bodyEl.innerHTML = '';
 
     // Mini 3D-Preview: highlight the affected part + this condition's marker
-    buildMiniViewer3D(bodyEl, `hyp:${id}`, h.partRef ? [h.partRef] : [], [id]);
+    buildMiniViewer3D(bodyEl, `cond:${id}`, h.partRef ? [h.partRef] : [], [id]);
 
     const form = el('div', 'detail-form');
-    form.appendChild(field('Type', input(h.type || '', v => patchHypothesis(id, { type: v }))));
-    form.appendChild(field('Description', textarea(h.description || '', v => patchHypothesis(id, { description: v }))));
+    form.appendChild(field('Type', input(h.type || '', v => patchCondition(id, { type: v }))));
+    form.appendChild(field('Description', textarea(h.description || '', v => patchCondition(id, { description: v }))));
 
     const meta = el('div', 'detail-form-row');
-    meta.appendChild(field('Status', selectInput(HYPOTHESIS_STATUS, h.status || 'suspected', v => patchHypothesis(id, { status: v }))));
+    meta.appendChild(field('Status', selectInput(CONDITION_STATUS, h.status || 'suspected', v => patchCondition(id, { status: v }))));
     meta.appendChild(field('Confidence',
-      rangeInput(h.confidence ?? 0.5, v => patchHypothesis(id, { confidence: v }))));
+      rangeInput(h.confidence ?? 0.5, v => patchCondition(id, { confidence: v }))));
     form.appendChild(meta);
 
     form.appendChild(field('Part ref',
-      partRefSelect(h.partRef || '', ws, v => patchHypothesis(id, { partRef: v || null }))));
+      partRefSelect(h.partRef || '', ws, v => patchCondition(id, { partRef: v || null }))));
 
     // Coordinates editor
     const c = h.coordinates || { x: 0, y: 0, z: 0 };
     const coordRow = el('div', 'detail-form-row');
-    coordRow.appendChild(field('X', numInput(c.x, v => patchHypothesis(id, { coordinates: { ...c, x: v } }))));
-    coordRow.appendChild(field('Y', numInput(c.y, v => patchHypothesis(id, { coordinates: { ...c, y: v } }))));
-    coordRow.appendChild(field('Z', numInput(c.z, v => patchHypothesis(id, { coordinates: { ...c, z: v } }))));
+    coordRow.appendChild(field('X', numInput(c.x, v => patchCondition(id, { coordinates: { ...c, x: v } }))));
+    coordRow.appendChild(field('Y', numInput(c.y, v => patchCondition(id, { coordinates: { ...c, y: v } }))));
+    coordRow.appendChild(field('Z', numInput(c.z, v => patchCondition(id, { coordinates: { ...c, z: v } }))));
     form.appendChild(coordRow);
 
     bodyEl.appendChild(form);
 
-    // Photo gallery for this hypothesis (direct attachments only)
+    // Photo gallery for this condition (direct attachments only)
     const photos = (ws.evidence || []).filter(e =>
-      e.kind === 'photo' && e.attachedTo?.type === 'hypothesis' && e.attachedTo.id === id);
-    appendPhotoSection(bodyEl, photos, { type: 'hypothesis', id });
+      e.kind === 'photo' && e.attachedTo?.type === 'condition' && e.attachedTo.id === id);
+    appendPhotoSection(bodyEl, photos, { type: 'condition', id });
 
     // Delete button
     const actions = el('div', 'detail-actions');
     const del = el('button', 'detail-delete', 'Delete condition');
     del.onclick = () => {
       if (!confirm(`Delete condition "${h.type}"? This can be undone with Ctrl+Z.`)) return;
-      dispatch({ type: 'remove-hypothesis', payload: { hypothesisId: id } });
+      dispatch({ type: 'remove-condition', payload: { conditionId: id } });
       hideModal();
     };
     actions.appendChild(del);
@@ -300,8 +300,8 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     showModal();
   }
 
-  function patchHypothesis(id, patch) {
-    dispatch({ type: 'update-hypothesis', payload: { hypothesisId: id, patch } });
+  function patchCondition(id, patch) {
+    dispatch({ type: 'update-condition', payload: { conditionId: id, patch } });
   }
 
   function partRefSelect(value, ws, onChange) {
@@ -337,7 +337,7 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
 
     // Mini 3D-Preview: highlight affected parts + condition markers for
     // conditions this step addresses. Gives spatial context at a glance.
-    buildMiniViewer3D(bodyEl, `step:${id}`, s.affectedPartRefs || [], s.addressesHypothesisRefs || []);
+    buildMiniViewer3D(bodyEl, `step:${id}`, s.affectedPartRefs || [], s.addressesConditionRefs || []);
 
     // If this step is inside a mutex group (i.e. one of several alternatives),
     // show a banner at the top with a button to commit to this branch.
@@ -448,7 +448,7 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
   const objectUrls = [];
 
   /**
-   * Always-rendered photo section for an entity (part or hypothesis):
+   * Always-rendered photo section for an entity (part or condition):
    *   - section label with count
    *   - thumbnail grid (if any photos)
    *   - "+ Add photo" button at the bottom

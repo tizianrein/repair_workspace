@@ -507,7 +507,7 @@ function renderZine() {
 
   const artefactName = ws.instance?.name || 'Unnamed artefact';
   const description = ws.instance?.provenance || ws.instance?.description || '';
-  const conditions = ws.hypotheses || [];
+  const conditions = ws.conditions || [];
   const intent = ws.intent || { axes: [], summary: '' };
   const constraints = ws.constraints || {};
   const plan = (ws.plans || []).find(p => p.id === ws.currentPlanId) || (ws.plans || [])[0] || null;
@@ -729,7 +729,7 @@ const EXAMPLE_WORKSPACE = {
     provenance: 'A minimalist wooden stacking chair from c.1970s Central European industrial design, made of beech with a clear lacquer finish. Sentimental to its owner but no longer comfortable as a chair.',
     parts: Array(14).fill().map((_, i) => ({ id: 'p' + i }))
   },
-  hypotheses: [
+  conditions: [
     { id: 'h1', type: 'Chipping',     status: 'confirmed', confidence: 0.95, partRef: 'back_right_leg', description: 'Large wood chip on the top surface of the back right leg.' },
     { id: 'h2', type: 'Breakout',     status: 'confirmed', confidence: 0.9,  partRef: 'front_left_leg', description: 'Severe wood breakout mid-shaft on the front left leg.' },
     { id: 'h3', type: 'Crack',        status: 'suspected', confidence: 0.65, partRef: 'front_right_leg', description: '~8 cm crack running from the top edge of the front right leg.' },

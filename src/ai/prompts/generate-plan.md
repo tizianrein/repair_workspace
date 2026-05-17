@@ -53,7 +53,7 @@ Each step MUST have this exact shape:
   "title": "Short action title, max 5 words",
   "description": "Precise, detailed step-by-step description of the manual technique. Be specific about HOW the action is performed: which side to start from, which direction to apply pressure, what grit progression, what consistency of glue, etc. This is the most important field — a craftsperson should be able to execute the step from this text alone. Include wait times for curing/drying as part of this text. Do not mention the intent or rationale here — keep this purely about manual technique.",
   "affectedPartRefs": ["part_id_from_workspace"],
-  "addressesHypothesisRefs": ["condition_id_from_workspace"]
+  "addressesConditionRefs": ["condition_id_from_workspace"]
 }
 ```
 
@@ -149,7 +149,7 @@ If a step's success is uncertain (e.g., "this glue may not hold if the crack is 
 
 ## 9. Reference workspace IDs exactly
 
-When referencing parts in `affectedPartRefs`, use the exact `id` field from the workspace's parts list. Same for `addressesHypothesisRefs` — use the exact condition IDs. Do not invent IDs. Do not abbreviate or paraphrase them.
+When referencing parts in `affectedPartRefs`, use the exact `id` field from the workspace's parts list. Same for `addressesConditionRefs` — use the exact condition IDs. Do not invent IDs. Do not abbreviate or paraphrase them.
 
 # WORKFLOW RULES
 

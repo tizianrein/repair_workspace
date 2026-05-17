@@ -1,14 +1,14 @@
 /**
- * Parts & hypotheses list.
+ * Parts & conditions list.
  *
  * Renders into the right drawer. Filter dropdown swaps between all / parts /
- * hypotheses / specific statuses. Search is substring across id, type,
+ * conditions / specific statuses. Search is substring across id, type,
  * material, description. Tap a card → onDetail callback.
  */
 
 export function createEntityList(container, searchInput, filterSelect, countEl, footerEl, { onDetail }) {
   let workspace = null;
-  let selection = { partId: null, hypothesisId: null };
+  let selection = { partId: null, conditionId: null };
 
   function render(ws) { workspace = ws; refresh(); }
   function setSelection(sel) { selection = { ...selection, ...sel }; refresh(); }
@@ -18,10 +18,10 @@ export function createEntityList(container, searchInput, filterSelect, countEl, 
     const q = (searchInput.value || '').toLowerCase().trim();
     const filter = filterSelect.value;
     const parts = workspace.instance?.parts || [];
-    const hypotheses = workspace.hypotheses || [];
+    const conditions = workspace.conditions || [];
 
     const showParts = ['all', 'parts', 'defective', 'missing'].includes(filter);
-    const showHyps = ['all', 'hypotheses', 'suspected', 'confirmed'].includes(filter);
+    const showHyps = ['all', 'conditions', 'suspected', 'confirmed'].includes(filter);
 
     const matchedParts = !showParts ? [] : parts.filter(p => {
       if (filter === 'defective' && p.status !== 'defective') return false;
@@ -29,7 +29,7 @@ export function createEntityList(container, searchInput, filterSelect, countEl, 
       if (!q) return true;
       return p.id.toLowerCase().includes(q) || (p.material || '').toLowerCase().includes(q) || (p.status || '').toLowerCase().includes(q);
     });
-    const matchedHyps = !showHyps ? [] : hypotheses.filter(h => {
+    const matchedHyps = !showHyps ? [] : conditions.filter(h => {
       if (filter === 'suspected' && h.status !== 'suspected') return false;
       if (filter === 'confirmed' && h.status !== 'confirmed') return false;
       if (!q) return true;
@@ -45,7 +45,7 @@ export function createEntityList(container, searchInput, filterSelect, countEl, 
       container.innerHTML = `<div class="entity-empty">${workspace.instance?.parts?.length ? 'No matches.' : 'Load an example or workspace JSON.'}</div>`;
     } else {
       const hypsByPart = new Map();
-      hypotheses.forEach(h => {
+      conditions.forEach(h => {
         if (!hypsByPart.has(h.partRef)) hypsByPart.set(h.partRef, []);
         hypsByPart.get(h.partRef).push(h);
       });
@@ -69,9 +69,8 @@ export function createEntityList(container, searchInput, filterSelect, countEl, 
       });
 
       matchedHyps.forEach(h => {
-        if (matchedParts.find(p => p.id === h.partRef)) return;
         const card = document.createElement('div');
-        card.className = 'entity-card dmg' + (h.id === selection.hypothesisId ? ' selected' : '');
+        card.className = 'entity-card dmg' + (h.id === selection.conditionId ? ' selected' : '');
         const statusBadge = `<span class="ec-status ${h.status}">${h.status.toUpperCase()}</span>`;
         card.innerHTML = `
           <div class="ec-row">
@@ -80,15 +79,15 @@ export function createEntityList(container, searchInput, filterSelect, countEl, 
           </div>
           <div class="ec-meta">on ${escapeHtml(h.partRef || '—')}${h.description ? ' · ' + escapeHtml(h.description.slice(0, 80)) : ''}</div>
         `;
-        card.onclick = () => onDetail?.({ type: 'hypothesis', id: h.id });
+        card.onclick = () => onDetail?.({ type: 'condition', id: h.id });
         container.appendChild(card);
       });
     }
 
     const totalParts = parts.length;
-    const totalHyps = hypotheses.length;
+    const totalHyps = conditions.length;
     countEl.textContent = totalHyps;
-    footerEl.textContent = `${totalParts} parts · ${totalHyps} hypotheses · ${hypotheses.filter(h => h.status === 'suspected').length} suspected`;
+    footerEl.textContent = `${totalParts} parts · ${totalHyps} condition${totalHyps === 1 ? '' : 's'} · ${conditions.filter(h => h.status === 'suspected').length} suspected`;
   }
 
   searchInput.addEventListener('input', refresh);

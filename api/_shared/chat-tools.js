@@ -42,8 +42,8 @@ export const CHAT_TOOLS = [
     description: 'Remove a condition by its id.',
     parameters: {
       type: 'object',
-      properties: { hypothesisId: { type: 'string' } },
-      required: ['hypothesisId']
+      properties: { conditionId: { type: 'string' } },
+      required: ['conditionId']
     }
   },
   {
@@ -52,7 +52,7 @@ export const CHAT_TOOLS = [
     parameters: {
       type: 'object',
       properties: {
-        hypothesisId: { type: 'string' },
+        conditionId: { type: 'string' },
         patch: {
           type: 'object',
           properties: {
@@ -63,7 +63,7 @@ export const CHAT_TOOLS = [
           }
         }
       },
-      required: ['hypothesisId', 'patch']
+      required: ['conditionId', 'patch']
     }
   },
   {
@@ -123,7 +123,7 @@ export const CHAT_TOOLS = [
               title: { type: 'string', description: 'Short action title, max 5 words' },
               description: { type: 'string', description: 'Detailed handwerklich/procedural description of the action — specific enough that someone could execute it. Include wait times for curing/drying.' },
               affectedPartRefs: { type: 'array', items: { type: 'string' }, description: 'IDs of parts this step touches' },
-              addressesHypothesisRefs: { type: 'array', items: { type: 'string' }, description: 'IDs of conditions this step addresses' },
+              addressesConditionRefs: { type: 'array', items: { type: 'string' }, description: 'IDs of conditions this step addresses' },
               toolsRequired: { type: 'array', items: { type: 'string' } },
               materialsRequired: { type: 'array', items: { type: 'string' } },
               estimatedMinutes: { type: 'number' }
@@ -168,7 +168,7 @@ export const CHAT_TOOLS = [
         title: { type: 'string' },
         description: { type: 'string' },
         affectedPartRefs: { type: 'array', items: { type: 'string' } },
-        addressesHypothesisRefs: { type: 'array', items: { type: 'string' } },
+        addressesConditionRefs: { type: 'array', items: { type: 'string' } },
         toolsRequired: { type: 'array', items: { type: 'string' } },
         materialsRequired: { type: 'array', items: { type: 'string' } },
         estimatedMinutes: { type: 'number' },
@@ -191,7 +191,7 @@ export const CHAT_TOOLS = [
             title: { type: 'string' },
             description: { type: 'string' },
             affectedPartRefs: { type: 'array', items: { type: 'string' } },
-            addressesHypothesisRefs: { type: 'array', items: { type: 'string' } },
+            addressesConditionRefs: { type: 'array', items: { type: 'string' } },
             toolsRequired: { type: 'array', items: { type: 'string' } },
             materialsRequired: { type: 'array', items: { type: 'string' } },
             estimatedMinutes: { type: 'number' }

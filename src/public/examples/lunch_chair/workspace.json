@@ -379,13 +379,13 @@
       "url": "idb://ev_7f43309a26f",
       "text": null,
       "measurement": null,
-      "confirmsHypothesisRef": null,
-      "refutesHypothesisRef": null,
+      "confirmsConditionRef": null,
+      "refutesConditionRef": null,
       "fileName": "IMG_6692.JPG",
       "byteSize": 2552032
     }
   ],
-  "hypotheses": [],
+  "conditions": [],
   "intent": {
     "axes": [
       {

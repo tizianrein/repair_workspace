@@ -101,7 +101,7 @@ export function createMiniViewer3D(container) {
    * Render the artefact with optional highlights.
    * @param ws workspace
    * @param opts.highlightPartIds   parts rendered in highlight (red) color
-   * @param opts.highlightHypIds    hypothesis ids whose markers to draw
+   * @param opts.highlightHypIds    condition ids whose markers to draw
    * @param opts.connectedPartIds   parts rendered in connection (blue) color
    * @param opts.onPartClick        (partId) => void; if set, parts become clickable via raycast
    */
@@ -152,7 +152,7 @@ export function createMiniViewer3D(container) {
       partIdToObjects.set(part.id, { mesh, lines });
     }
 
-    // Hypothesis markers — small red spheres. Sized proportionally to the
+    // Condition markers — small red spheres. Sized proportionally to the
     // bounding box, computed after parts are added.
     const objBox = new THREE.Box3().setFromObject(objectGroup);
     const objExtent = objBox.isEmpty()
@@ -164,7 +164,7 @@ export function createMiniViewer3D(container) {
     const markerMat = new THREE.MeshBasicMaterial({
       color: 0xc1272d, depthTest: false, transparent: true, opacity: 0.95
     });
-    for (const h of (ws.hypotheses || [])) {
+    for (const h of (ws.conditions || [])) {
       const shouldShow = hypSet.has(h.id) || highlightSet.has(h.partRef);
       if (!shouldShow) continue;
       const c = h.coordinates;

@@ -7,7 +7,7 @@
  *
  * The new shape: see schema.js. The mapping is:
  *   - assembly.parts          → instance.parts (status enum tightened)
- *   - damages                 → hypotheses (each gets status='suspected', evidence=[])
+ *   - damages                 → conditions (each gets status='suspected', evidence=[])
  *   - plan.steps              → plans[currentPlanIdx].steps (prerequisites → edges)
  *   - planVersions            → plans[]
  *   - intent, constraints      → in v2.0 these lived at workspace root; in
@@ -21,7 +21,7 @@
  */
 
 import {
-  newWorkspace, newInstance, newPart, newHypothesis,
+  newWorkspace, newInstance, newPart, newCondition,
   newPlan, newStep, newEdge, newIntent, newConstraints,
   pickStrategyColor, PART_STATUS, SCHEMA_VERSION
 } from './schema.js';
@@ -63,11 +63,11 @@ export function migrateV1ToV2(v1) {
     });
   });
 
-  // Hypotheses — old "damages"
+  // Conditions — old "damages"
   const v1Damages = Array.isArray(v1.damages) ? v1.damages : [];
-  const oldToNewHypothesisId = new Map();
+  const oldToNewConditionId = new Map();
   v1Damages.forEach(d => {
-    const h = newHypothesis({
+    const h = newCondition({
       type: d.type || 'observation',
       description: d.description || '',
       partRef: d.part_id || null,
@@ -75,8 +75,8 @@ export function migrateV1ToV2(v1) {
       status: 'suspected',
       confidence: 0.6
     });
-    oldToNewHypothesisId.set(d.id, h.id);
-    ws.hypotheses.push(h);
+    oldToNewConditionId.set(d.id, h.id);
+    ws.conditions.push(h);
   });
 
   // Intent — in v1 it lived at the workspace root. In v2.1 it lives on
@@ -107,7 +107,7 @@ export function migrateV1ToV2(v1) {
   const currentPlanRef = v1.plan || v1Versions[v1Versions.length - 1]?.plan || null;
 
   if (v1Versions.length === 0 && currentPlanRef && currentPlanRef.steps?.length) {
-    const p = migratePlan(currentPlanRef, 'Imported strategy', oldToNewHypothesisId, warnings);
+    const p = migratePlan(currentPlanRef, 'Imported strategy', oldToNewConditionId, warnings);
     p.intent = cloneDeep(intent);
     p.constraints = { ...constraints };
     p.color = pickStrategyColor(ws.plans);
@@ -115,7 +115,7 @@ export function migrateV1ToV2(v1) {
     ws.currentPlanId = p.id;
   } else if (v1Versions.length) {
     v1Versions.forEach(v => {
-      const p = migratePlan(v.plan, v.label || 'Imported strategy', oldToNewHypothesisId, warnings);
+      const p = migratePlan(v.plan, v.label || 'Imported strategy', oldToNewConditionId, warnings);
       // Each migrated strategy gets its own copy of the intent/constraints
       // so the user can diverge them independently from here on.
       p.intent = cloneDeep(intent);
@@ -150,7 +150,7 @@ export function migrateV1ToV2(v1) {
   return { workspace: ws, warnings };
 }
 
-function migratePlan(v1Plan, label, oldToNewHypothesisId, warnings) {
+function migratePlan(v1Plan, label, oldToNewConditionId, warnings) {
   const plan = newPlan({ label, status: 'draft' });
   const oldToNewStepId = new Map();
 
@@ -161,7 +161,7 @@ function migratePlan(v1Plan, label, oldToNewHypothesisId, warnings) {
       return;
     }
     const addressed = (s.affected_damages || s.addresses_damages || [])
-      .map(oid => oldToNewHypothesisId.get(oid))
+      .map(oid => oldToNewConditionId.get(oid))
       .filter(Boolean);
 
     const step = newStep({
@@ -170,7 +170,7 @@ function migratePlan(v1Plan, label, oldToNewHypothesisId, warnings) {
       description: s.description || '',
       status: s.completed ? 'completed' : 'pending',
       affectedPartRefs: s.affected_parts || [],
-      addressesHypothesisRefs: addressed,
+      addressesConditionRefs: addressed,
       toolsRequired: s.tools_required || [],
       materialsRequired: s.materials_required || [],
       estimatedMinutes: s.estimated_minutes || null,
@@ -179,7 +179,7 @@ function migratePlan(v1Plan, label, oldToNewHypothesisId, warnings) {
       optional: !!s.optional,
       justification: {
         drivingIntentAxes: [],
-        drivingHypotheses: addressed,
+        drivingConditions: addressed,
         drivingConstraints: [],
         rationale: 'Migrated from v1; rationale not recorded.'
       },

@@ -22,7 +22,7 @@ const validation = validateWorkspace(workspace);
 console.log('=== MIGRATION SUMMARY ===');
 console.log(`Instance: ${workspace.instance.name}`);
 console.log(`Parts:    ${workspace.instance.parts.length}`);
-console.log(`Hypotheses: ${workspace.hypotheses.length}`);
+console.log(`Conditions: ${workspace.conditions.length}`);
 console.log(`Plans:    ${workspace.plans.length} (current: ${workspace.currentPlanId})`);
 if (workspace.plans.length) {
   workspace.plans.forEach((p, i) => {

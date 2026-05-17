@@ -2,7 +2,7 @@
  * 3D viewer view.
  *
  * Reads from workspace.instance.parts. Renders each part as a BoxGeometry with
- * status-colored material plus an outline. Renders each hypothesis at its
+ * status-colored material plus an outline. Renders each condition at its
  * coordinates as a small red sphere. Click → open detail modal.
  *
  * Lazy-initialized when the 3D tab is first activated — Three.js + a WebGL
@@ -14,14 +14,14 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const materials = {
-  // Box-part materials. depthWrite stays ON so that hypothesis spheres
+  // Box-part materials. depthWrite stays ON so that condition spheres
   // sitting behind a part are correctly occluded — the previous
   // depthWrite:false meant the box did not contribute to the Z buffer,
   // and the marker would arbitrarily appear in front of or behind the
   // box depending on Three.js's sort order. The slight tradeoff:
   // transparent parts stacked back-to-back may now occlude each other
   // sharply rather than blending. polygonOffset nudges box surfaces
-  // slightly back in depth so a hypothesis placed AT the box origin
+  // slightly back in depth so a condition placed AT the box origin
   // (the new common case after coordinate-rescue) doesn't z-fight with
   // the surface.
   intact:    new THREE.MeshBasicMaterial({ color: 0xd0d0d0, transparent: true, opacity: 0.75, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }),
@@ -32,19 +32,19 @@ const materials = {
   discarded: new THREE.MeshBasicMaterial({ color: 0x111111, transparent: true, opacity: 0.18, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }),
   selected:  new THREE.MeshBasicMaterial({ color: 0x2f6bff, transparent: true, opacity: 0.85, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 }),
   outline: new THREE.LineBasicMaterial({ color: 0x1a1a1a }),
-  // Hypothesis main sphere: opaque-feeling marker that participates in
+  // Condition main sphere: opaque-feeling marker that participates in
   // depth testing. When in front of a part, the user sees this kräftig
   // red dot. When behind, this gets occluded — and the ghost (below)
   // is what shows through.
-  hypothesis: new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.95 }),
+  condition: new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.95 }),
   // Ghost overlay: same geometry, drawn last (renderOrder 999) with
   // depthTest off so it's ALWAYS visible. Opacity is just high enough
   // to be clearly visible through a translucent box but low enough
   // that it visibly differs from the main sphere — that contrast is
   // how the user reads "this marker is currently occluded".
-  hypothesisGhost: new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.35, depthTest: false, depthWrite: false }),
-  selectedHypothesis: new THREE.MeshBasicMaterial({ color: 0x2f6bff, transparent: true, opacity: 0.95 }),
-  selectedHypothesisGhost: new THREE.MeshBasicMaterial({ color: 0x2f6bff, transparent: true, opacity: 0.35, depthTest: false, depthWrite: false })
+  conditionGhost: new THREE.MeshBasicMaterial({ color: 0xff1744, transparent: true, opacity: 0.35, depthTest: false, depthWrite: false }),
+  selectedCondition: new THREE.MeshBasicMaterial({ color: 0x2f6bff, transparent: true, opacity: 0.95 }),
+  selectedConditionGhost: new THREE.MeshBasicMaterial({ color: 0x2f6bff, transparent: true, opacity: 0.35, depthTest: false, depthWrite: false })
 };
 
 export function createViewer3D(canvas, infoBox, onSelect) {
@@ -93,7 +93,7 @@ export function createViewer3D(canvas, infoBox, onSelect) {
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
   let exploded = false;
-  let selection = { partId: null, hypothesisId: null };
+  let selection = { partId: null, conditionId: null };
   let downPos = null;
 
   function materialForPart(status) { return materials[status] || materials.intact; }
@@ -123,16 +123,16 @@ export function createViewer3D(canvas, infoBox, onSelect) {
 
     hypSpheres.forEach(s => scene.remove(s));
     hypSpheres.length = 0;
-    (workspace.hypotheses || []).forEach(h => {
+    (workspace.conditions || []).forEach(h => {
       if (!h.coordinates) return;
       const geo = new THREE.SphereGeometry(sphereRadius, 18, 18);
-      const sphere = new THREE.Mesh(geo, materials.hypothesis);
+      const sphere = new THREE.Mesh(geo, materials.condition);
       sphere.position.set(h.coordinates.x || 0, h.coordinates.y || 0, h.coordinates.z || 0);
-      sphere.userData.hypothesis = h;
+      sphere.userData.condition = h;
 
-      const ghost = new THREE.Mesh(geo, materials.hypothesisGhost);
+      const ghost = new THREE.Mesh(geo, materials.conditionGhost);
       ghost.renderOrder = 999;
-      ghost.userData.hypothesisGhost = true;
+      ghost.userData.conditionGhost = true;
       sphere.add(ghost);
 
       hypSpheres.push(sphere);
@@ -175,11 +175,11 @@ export function createViewer3D(canvas, infoBox, onSelect) {
       mesh.material = id === selection.partId ? materials.selected : materialForPart(mesh.userData.part.status);
     });
     hypSpheres.forEach(s => {
-      const isSelected = s.userData.hypothesis.id === selection.hypothesisId;
-      s.material = isSelected ? materials.selectedHypothesis : materials.hypothesis;
+      const isSelected = s.userData.condition.id === selection.conditionId;
+      s.material = isSelected ? materials.selectedCondition : materials.condition;
       // First child is the ghost overlay
-      const ghost = s.children.find(c => c.userData.hypothesisGhost);
-      if (ghost) ghost.material = isSelected ? materials.selectedHypothesisGhost : materials.hypothesisGhost;
+      const ghost = s.children.find(c => c.userData.conditionGhost);
+      if (ghost) ghost.material = isSelected ? materials.selectedConditionGhost : materials.conditionGhost;
     });
     updateInfoBox();
   }
@@ -196,8 +196,8 @@ export function createViewer3D(canvas, infoBox, onSelect) {
         return;
       }
     }
-    if (selection.hypothesisId) {
-      const h = (currentWorkspace?.hypotheses || []).find(x => x.id === selection.hypothesisId);
+    if (selection.conditionId) {
+      const h = (currentWorkspace?.conditions || []).find(x => x.id === selection.conditionId);
       if (h) {
         infoBox.textContent = `Condition: ${h.type}\nStatus: ${h.status}\nPart: ${h.partRef || '—'}\n${h.description || ''}`;
         return;
@@ -220,8 +220,8 @@ export function createViewer3D(canvas, infoBox, onSelect) {
       .filter(h => h.object.type !== 'LineSegments');
     for (const h of hits) {
       let item = h.object;
-      while (item && !item.userData.part && !item.userData.hypothesis && item.parent && item.parent !== scene) item = item.parent;
-      if (item?.userData?.hypothesis) return { type: 'hypothesis', data: item.userData.hypothesis };
+      while (item && !item.userData.part && !item.userData.condition && item.parent && item.parent !== scene) item = item.parent;
+      if (item?.userData?.condition) return { type: 'condition', data: item.userData.condition };
       if (item?.userData?.part) return { type: 'part', data: item.userData.part };
     }
     return null;
@@ -372,8 +372,8 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     }
 
     // For selection (not placement) we keep the existing hitTest which
-    // also picks up hypothesis spheres. When the mesh is visible and
-    // the user clicks on bare mesh (no hypothesis, no box ray-hit), we
+    // also picks up condition spheres. When the mesh is visible and
+    // the user clicks on bare mesh (no condition, no box ray-hit), we
     // resolve the click to the nearest part via the mesh hit so they
     // still get a selection.
     let hit = hitTest(e);
@@ -381,9 +381,9 @@ export function createViewer3D(canvas, infoBox, onSelect) {
       const meshHit = hitTestMesh(e);
       if (meshHit) hit = { type: 'part', data: meshHit.part };
     }
-    if (!hit) { selection = { partId: null, hypothesisId: null }; applySelection(); onSelect?.(null); return; }
-    if (hit.type === 'part') { selection = { partId: hit.data.id, hypothesisId: null }; }
-    else { selection = { hypothesisId: hit.data.id, partId: hit.data.partRef }; }
+    if (!hit) { selection = { partId: null, conditionId: null }; applySelection(); onSelect?.(null); return; }
+    if (hit.type === 'part') { selection = { partId: hit.data.id, conditionId: null }; }
+    else { selection = { conditionId: hit.data.id, partId: hit.data.partRef }; }
     applySelection();
     onSelect?.(hit);
   });
@@ -411,7 +411,7 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     });
 
     hypSpheres.forEach(sphere => {
-      const h = sphere.userData.hypothesis;
+      const h = sphere.userData.condition;
       const offset = offsetByPart.get(h.partRef);
       if (!offset) return;
       activeAnims.push({ mesh: sphere, start: sphere.position.clone(), end: sphere.position.clone().add(offset), startTime: performance.now() });
@@ -430,7 +430,7 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     });
 
     hypSpheres.forEach(sphere => {
-      const h = sphere.userData.hypothesis;
+      const h = sphere.userData.condition;
       if (!h.coordinates) return;
       activeAnims.push({ mesh: sphere, start: sphere.position.clone(), end: new THREE.Vector3(h.coordinates.x || 0, h.coordinates.y || 0, h.coordinates.z || 0), startTime: performance.now() });
     });
@@ -477,7 +477,7 @@ export function createViewer3D(canvas, infoBox, onSelect) {
       const o = p.origin || {};
       return `${p.id}|${p.status}|${o.x},${o.y},${o.z}|${d.width},${d.height},${d.depth}`;
     }).join(';');
-    const hyps = (ws.hypotheses || []).map(h => {
+    const hyps = (ws.conditions || []).map(h => {
       const c = h.coordinates;
       const k = c ? `${c.x},${c.y},${c.z}` : '_';
       return `${h.id}|${h.partRef || '_'}|${k}`;
@@ -609,17 +609,17 @@ export function createViewer3D(canvas, infoBox, onSelect) {
         if (!lastGeometryKey) frame();
         lastGeometryKey = key;
       } else {
-        // Geometry unchanged — update part/hypothesis references in
+        // Geometry unchanged — update part/condition references in
         // userData so click handlers still match latest state, then
         // re-apply selection styling.
         (workspace.instance?.parts || []).forEach(p => {
           const m = partMeshes.get(p.id);
           if (m) m.userData.part = p;
         });
-        const hypById = new Map((workspace.hypotheses || []).map(h => [h.id, h]));
+        const hypById = new Map((workspace.conditions || []).map(h => [h.id, h]));
         hypSpheres.forEach(s => {
-          const fresh = hypById.get(s.userData.hypothesis.id);
-          if (fresh) s.userData.hypothesis = fresh;
+          const fresh = hypById.get(s.userData.condition.id);
+          if (fresh) s.userData.condition = fresh;
         });
         applySelection();
       }
@@ -628,8 +628,8 @@ export function createViewer3D(canvas, infoBox, onSelect) {
       // Manual reframe — for the user to recenter when they want to.
       frame();
     },
-    select({ partId = null, hypothesisId = null }) {
-      selection = { partId, hypothesisId };
+    select({ partId = null, conditionId = null }) {
+      selection = { partId, conditionId };
       applySelection();
     },
     resize() {

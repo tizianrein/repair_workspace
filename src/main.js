@@ -21,7 +21,7 @@
 import { createState, subscribe, autoPersist, restore } from './core/state.js';
 import { apply, undo, redo } from './core/commands.js';
 import { migrateV1ToV2 } from './core/migrate.js';
-import { newWorkspace, validateWorkspace, SCHEMA_VERSION, newEvidence, newHypothesis,
+import { newWorkspace, validateWorkspace, SCHEMA_VERSION, newEvidence, newCondition,
          newIntent, getCurrentPlan, getCurrentIntent, getCurrentConstraints } from './core/schema.js';
 import { PhotoStorage } from './core/photo-storage.js';
 import { compressImage, blobToBase64, formatBytes } from './core/image-compress.js';
@@ -68,8 +68,8 @@ actionGraph = createActionGraph($('action-graph-canvas'), {
       openDetail({ type: 'step', id: stepId });
     } else {
       // Full reset matching the 3D background-click behaviour
-      entityList.setSelection({ partId: null, hypothesisId: null });
-      if (viewer3D) viewer3D.select({ partId: null, hypothesisId: null });
+      entityList.setSelection({ partId: null, conditionId: null });
+      if (viewer3D) viewer3D.select({ partId: null, conditionId: null });
       chatSheet.setScope('global');
     }
     quickActions.render();
@@ -80,8 +80,8 @@ actionGraph = createActionGraph($('action-graph-canvas'), {
 spatialGraph = createSpatialGraph($('spatial-graph-canvas'), {
   onDetail: target => openDetail(target),
   onBackgroundTap: () => {
-    entityList.setSelection({ partId: null, hypothesisId: null });
-    if (viewer3D) viewer3D.select({ partId: null, hypothesisId: null });
+    entityList.setSelection({ partId: null, conditionId: null });
+    if (viewer3D) viewer3D.select({ partId: null, conditionId: null });
     selectedStepId = null;
     chatSheet.setScope('global');
     quickActions.render();
@@ -154,7 +154,7 @@ viewer3D = createViewer3D(
       openDetail({ type: target.type, id: target.data.id });
     } else {
       // Background click → clear selection, return to global chat scope
-      entityList.setSelection({ partId: null, hypothesisId: null });
+      entityList.setSelection({ partId: null, conditionId: null });
       chatSheet.setScope('global');
       quickActions.render();
     }
@@ -199,8 +199,8 @@ $('display-mode-btn').onclick = () => {
 //   1. Switch to Proxy/3D tab (if not already)
 //   2. Activate place mode in viewer-3d → crosshair cursor, banner appears
 //   3. User clicks on a part in the 3D view
-//   4. We dispatch add-hypothesis with partRef + world coordinates
-//   5. Exit place mode, then open the detail editor on the new hypothesis
+//   4. We dispatch add-condition with partRef + world coordinates
+//   5. Exit place mode, then open the detail editor on the new condition
 //      so the user can fill in type, description, status, attach photos.
 // Cancel: Esc, or click the Cancel button in the banner, or click the
 //   "+ New condition" button again (toggle).
@@ -227,7 +227,7 @@ function enterPlaceMode() {
   if (viewer3D) {
     viewer3D.setPlaceMode(true, ({ part, point }) => {
       // Build the new condition with sensible defaults
-      const newHyp = newHypothesis({
+      const newHyp = newCondition({
         type: 'New condition',
         description: '',
         partRef: part.id,
@@ -235,11 +235,11 @@ function enterPlaceMode() {
         status: 'suspected',
         confidence: 0.5
       });
-      apply(state, { type: 'add-hypothesis', payload: { hypothesis: newHyp } });
+      apply(state, { type: 'add-condition', payload: { condition: newHyp } });
       exitPlaceMode();
       log(`Added new condition on ${part.id}. Edit it below.`);
-      // Open the detail editor on the new hypothesis so the user can fill it in
-      openDetail({ type: 'hypothesis', id: newHyp.id });
+      // Open the detail editor on the new condition so the user can fill it in
+      openDetail({ type: 'condition', id: newHyp.id });
     });
   }
 }
@@ -273,7 +273,7 @@ document.addEventListener('keydown', e => {
 function renderAll() {
   const ws = state.workspace;
   $('object-name').value = ws.instance?.name || '';
-  $('object-stats').textContent = `${ws.instance?.parts?.length || 0} parts · ${ws.hypotheses?.length || 0} hypotheses`;
+  $('object-stats').textContent = `${ws.instance?.parts?.length || 0} parts · ${ws.conditions?.length || 0} condition${(ws.conditions?.length || 0) === 1 ? '' : 's'}`;
   // Constraints are per-strategy. Read from the current plan; getCurrentConstraints
   // falls back to defaults if no plan is current yet (empty workspace).
   const cons = getCurrentConstraints(ws);
@@ -319,7 +319,7 @@ function renderAll() {
     detailEditor.open(lastDetailTarget, { preserveViewer: true });
   }
 
-  const hypCount = (ws.hypotheses || []).length;
+  const hypCount = (ws.conditions || []).length;
   $('fab-right-badge').hidden = hypCount === 0;
   $('fab-right-badge').textContent = hypCount;
 
@@ -380,7 +380,7 @@ function renderStrategies(ws) {
     };
     div.querySelector('[data-act="delete"]').onclick = (e) => {
       e.stopPropagation();
-      const ok = confirm(`Delete strategy "${p.label}"?\n\nThis only removes the strategy. The artefact, hypotheses, and evidence are not affected.`);
+      const ok = confirm(`Delete strategy "${p.label}"?\n\nThis only removes the strategy. The artefact, conditions, and evidence are not affected.`);
       if (ok) {
         // If the chat is currently scoped to this strategy's thread, fall
         // back to global before the strategy disappears — otherwise the
@@ -451,7 +451,7 @@ function switchTab(paneId) {
         if (target) {
           openDetail({ type: target.type, id: target.data.id });
         } else {
-          entityList.setSelection({ partId: null, hypothesisId: null });
+          entityList.setSelection({ partId: null, conditionId: null });
           chatSheet.setScope('global');
           quickActions.render();
         }
@@ -678,7 +678,7 @@ $('load-example-select').onchange = async (e) => {
 })();
 
 $('reset-btn').onclick = () => {
-  if (!confirm('Reset workspace? This clears all parts, hypotheses, and plans.')) return;
+  if (!confirm('Reset workspace? This clears all parts, conditions, and plans.')) return;
   state.workspace = newWorkspace();
   state.history = [];
   state.future = [];
@@ -743,7 +743,7 @@ $('chat-photo-file').addEventListener('change', async e => {
       const { scope, ref } = chatSheet.getCurrentScope();
       // Map chat scope to evidence attachment.
       // 'global' / 'instance' → null (attached to workspace at large)
-      // 'part' / 'hypothesis' / 'step' → { type, id }
+      // 'part' / 'condition' / 'step' → { type, id }
       const attachedTo = (ref && scope !== 'global' && scope !== 'instance')
         ? { type: scope, id: ref }
         : null;
@@ -794,7 +794,7 @@ detailPhotoInput.addEventListener('change', async e => {
 });
 
 function attachPhotoToEntity(target) {
-  // target is { type: 'part'|'hypothesis', id }
+  // target is { type: 'part'|'condition', id }
   pendingDetailAttachTarget = target ? { type: target.type, id: target.id } : null;
   detailPhotoInput.click();
 }
@@ -845,13 +845,13 @@ function openDetail(target) {
   // Update selections in the rest of the UI as a side effect
   if (target.type === 'part') {
     if (viewer3D) viewer3D.select({ partId: target.id });
-    entityList.setSelection({ partId: target.id, hypothesisId: null });
+    entityList.setSelection({ partId: target.id, conditionId: null });
     chatSheet.setScope('part', target.id);
-  } else if (target.type === 'hypothesis') {
-    const h = (state.workspace.hypotheses || []).find(x => x.id === target.id);
-    if (viewer3D) viewer3D.select({ hypothesisId: target.id, partId: h?.partRef });
-    entityList.setSelection({ partId: null, hypothesisId: target.id });
-    chatSheet.setScope('hypothesis', target.id);
+  } else if (target.type === 'condition') {
+    const h = (state.workspace.conditions || []).find(x => x.id === target.id);
+    if (viewer3D) viewer3D.select({ conditionId: target.id, partId: h?.partRef });
+    entityList.setSelection({ partId: null, conditionId: target.id });
+    chatSheet.setScope('condition', target.id);
   } else if (target.type === 'step') {
     selectedStepId = target.id;
     actionGraph.setCurrentStep(target.id);

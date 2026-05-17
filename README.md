@@ -1,17 +1,17 @@
 # Repair Workspace v2
 
-A representation-based workflow for repair design. Coupling spatial models, hypothesis cataloguing, and procedural action graphs with multimodal AI assistance — without giving up human authorship.
+A representation-based workflow for repair design. Coupling spatial models, condition cataloguing, and procedural action graphs with multimodal AI assistance — without giving up human authorship.
 
 Built for a workshop deploy on Vercel. Each participant works on a different object on their own laptop or phone. All workspace data lives in browser `localStorage`; AI calls go through Vercel serverless functions to Google Gemini.
 
 ## What works now (pass 2b complete)
 
 - **Shell**: three-tab viewer (Action / Spatial / 3D), FAB-driven layout that collapses to drawers on mobile, workshop typography (Inter Tight / Fraunces / JetBrains Mono).
-- **Data model**: parts, hypotheses with suspected/confirmed/refuted lifecycle, plans with steps + prerequisites + mutex groups for alternatives, execution log, conversation threads.
+- **Data model**: parts, conditions with suspected/confirmed/refuted lifecycle, plans with steps + prerequisites + mutex groups for alternatives, execution log, conversation threads.
 - **Command pattern**: every mutation is reversible, full undo via Ctrl+Z.
 - **AI loop**: chat for thinking, propose for state changes. Review modal with collapsible per-command checkboxes — partial acceptance is one click away.
 - **Quick-action chips**: scope-aware verbs that bundle the chat input with a propose call.
-- **Justification panel**: tap any step → traces back to the driving hypotheses (clickable), intent axes (with current values), and rationale.
+- **Justification panel**: tap any step → traces back to the driving conditions (clickable), intent axes (with current values), and rationale.
 - **Execution log**: marking a step complete opens a form for actual time, deviation, and rationale.
 - **Photo attachments**: snap or upload, attached as multimodal input to chat or propose.
 - **Migration**: v1 workspace JSON loads and converts automatically.
@@ -70,7 +70,7 @@ repair-workspace-v2/
 │   │   ├── action-graph.js      cytoscape, mutex groups visualized
 │   │   ├── spatial-graph.js
 │   │   ├── radar.js             intent editor
-│   │   ├── entity-list.js       right-drawer parts & hypotheses
+│   │   ├── entity-list.js       right-drawer parts & conditions
 │   │   ├── chat-sheet.js        ← pass 2b
 │   │   ├── quick-actions.js     ← pass 2b
 │   │   ├── propose-review.js    ← pass 2b
@@ -94,7 +94,7 @@ repair-workspace-v2/
 
 A focused smoke test on every device participants will use:
 
-1. **Load the example** (left drawer → 🪑 Load example). 3D view should show a door with red defective parts and a yellow missing pane. Spatial graph should show parts + 1 hypothesis. Action graph should say "No plan yet."
+1. **Load the example** (left drawer → 🪑 Load example). 3D view should show a door with red defective parts and a yellow missing pane. Spatial graph should show parts + 1 condition. Action graph should say "No plan yet."
 2. **Drag the intent radar.** Bottom-left console should show "set-intent" messages.
 3. **Open chat** (💬 button). Type "Generate a plan that preserves as much of the original as possible." Wait 10–30s for the propose modal. Accept. Action graph should fill with steps.
 4. **Tap a step in the Action graph.** Justification panel slides in on the right showing rationale.

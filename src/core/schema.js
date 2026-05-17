@@ -8,12 +8,12 @@
  *
  * Design principles:
  *   1. Templates are reusable, instances are specific.
- *   2. Hypotheses (the old "damages") have a lifecycle: suspected → confirmed
+ *   2. Conditions (the old "damages") have a lifecycle: suspected → confirmed
  *      or refuted. A refutation is a finding, not a deletion.
  *   3. Evidence is first-class. Photos, measurements, notes — all anchored to
- *      a part, a hypothesis, or a step, with a timestamp.
+ *      a part, a condition, or a step, with a timestamp.
  *   4. Intervention steps carry justifications back to the intent axes and
- *      hypotheses that produced them. "Why is this step here?" is answerable.
+ *      conditions that produced them. "Why is this step here?" is answerable.
  *   5. Alternative branches are edges, not flags. A mutex group is explicit.
  *   6. Execution log is separate from plan. The plan is what you intend; the
  *      log is what actually happened, including deviations.
@@ -32,11 +32,11 @@ export const SCHEMA_VERSION = '2.1.0';
 // ============================================================================
 
 export const PART_STATUS = ['intact', 'defective', 'missing', 'new', 'repaired', 'discarded'];
-export const HYPOTHESIS_STATUS = ['suspected', 'confirmed', 'refuted'];
+export const CONDITION_STATUS = ['suspected', 'confirmed', 'refuted'];
 export const STEP_STATUS = ['pending', 'in-progress', 'completed', 'skipped', 'blocked'];
 export const PLAN_STATUS = ['draft', 'active', 'completed', 'archived'];
 export const EVIDENCE_KIND = ['photo', 'measurement', 'note', 'document', 'rendering'];
-export const CHAT_SCOPE = ['global', 'instance', 'part', 'hypothesis', 'step', 'plan'];
+export const CHAT_SCOPE = ['global', 'instance', 'part', 'condition', 'step', 'plan'];
 
 // Fixed palette for strategies. Picked for legibility against the cream
 // panel background, with each color reading clearly at small sizes (the
@@ -73,7 +73,7 @@ export function newWorkspace() {
     template: null,
     instance: newInstance(),
     evidence: [],
-    hypotheses: [],
+    conditions: [],
     // intent + constraints are no longer here — they live on each plan
     // (strategy). See newPlan().
     plans: [],
@@ -116,9 +116,9 @@ export function newPart(id, opts = {}) {
   };
 }
 
-export function newHypothesis(opts = {}) {
+export function newCondition(opts = {}) {
   return {
-    id: uid('hyp'),
+    id: uid('cond'),
     type: opts.type || 'observation',
     description: opts.description || '',
     partRef: opts.partRef || null,
@@ -142,8 +142,8 @@ export function newEvidence(kind, opts = {}) {
     url: opts.url || null,
     text: opts.text || null,
     measurement: opts.measurement || null,
-    confirmsHypothesisRef: opts.confirmsHypothesisRef || null,
-    refutesHypothesisRef: opts.refutesHypothesisRef || null
+    confirmsConditionRef: opts.confirmsConditionRef || null,
+    refutesConditionRef: opts.refutesConditionRef || null
   };
 }
 
@@ -211,7 +211,7 @@ export function newStep(opts = {}) {
     description: opts.description || '',
     status: opts.status || 'pending',
     affectedPartRefs: opts.affectedPartRefs || [],
-    addressesHypothesisRefs: opts.addressesHypothesisRefs || [],
+    addressesConditionRefs: opts.addressesConditionRefs || [],
     toolsRequired: opts.toolsRequired || [],
     materialsRequired: opts.materialsRequired || [],
     estimatedMinutes: opts.estimatedMinutes || null,
@@ -226,7 +226,7 @@ export function newStep(opts = {}) {
 export function newJustification(opts = {}) {
   return {
     drivingIntentAxes: opts.drivingIntentAxes || [],
-    drivingHypotheses: opts.drivingHypotheses || [],
+    drivingConditions: opts.drivingConditions || [],
     drivingConstraints: opts.drivingConstraints || [],
     rationale: opts.rationale || ''
   };
@@ -327,13 +327,13 @@ export function validateWorkspace(ws) {
   if (ws.schemaVersion !== SCHEMA_VERSION) errors.push(`Schema version mismatch: ${ws.schemaVersion} vs ${SCHEMA_VERSION}`);
   if (!ws.instance) errors.push('Missing instance');
   if (ws.instance && !Array.isArray(ws.instance.parts)) errors.push('instance.parts must be an array');
-  if (!Array.isArray(ws.hypotheses)) errors.push('hypotheses must be an array');
+  if (!Array.isArray(ws.conditions)) errors.push('conditions must be an array');
   if (!Array.isArray(ws.evidence)) errors.push('evidence must be an array');
   if (!Array.isArray(ws.plans)) errors.push('plans must be an array');
   if (!Array.isArray(ws.executionLog)) errors.push('executionLog must be an array');
 
-  (ws.hypotheses || []).forEach((h, i) => {
-    if (!HYPOTHESIS_STATUS.includes(h.status)) errors.push(`hypotheses[${i}].status invalid: ${h.status}`);
+  (ws.conditions || []).forEach((h, i) => {
+    if (!CONDITION_STATUS.includes(h.status)) errors.push(`conditions[${i}].status invalid: ${h.status}`);
   });
   (ws.plans || []).forEach((p, i) => {
     if (!PLAN_STATUS.includes(p.status)) errors.push(`plans[${i}].status invalid: ${p.status}`);

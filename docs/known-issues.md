@@ -5,7 +5,7 @@ Living list. Add to it freely. Items removed only when shipped or formally cut.
 ## v1.0 — Workshop release
 
 ### Won't fix before workshop
-- **Redo across ID-regenerating commands.** Undo always works. Redo works for single commands but breaks if you undo `add-hypothesis` (which generated id `hyp_X`) and then redo: the redo creates a new hypothesis with id `hyp_Y`, but any subsequent commands in the history that referenced `hyp_X` still point to the deleted one. *Workaround:* tell participants undo is reliable, redo is best-effort. **To fix later:** commands should preserve generated IDs from their first application, replaying them on redo instead of regenerating.
+- **Redo across ID-regenerating commands.** Undo always works. Redo works for single commands but breaks if you undo `add-condition` (which generated id `hyp_X`) and then redo: the redo creates a new condition with id `hyp_Y`, but any subsequent commands in the history that referenced `hyp_X` still point to the deleted one. *Workaround:* tell participants undo is reliable, redo is best-effort. **To fix later:** commands should preserve generated IDs from their first application, replaying them on redo instead of regenerating.
 - **Concurrent edits across browser tabs.** localStorage isn't synchronized across tabs. If a participant opens two tabs on the same machine, they fight. *Workaround:* one tab per workspace. Detect and warn via `storage` event.
 - **Photo uploads on flaky networks.** Uploads aren't retried. *Workaround:* take photos before generating plans when bandwidth is best.
 
