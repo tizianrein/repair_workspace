@@ -337,11 +337,43 @@ export async function runChat({ thread, userMessage, workspace, files }) {
   }
 
   return {
-    reply: result.text || '',
+    reply: stripChatMarkdown(result.text || ''),
     commands: collectedCommands,
     toolCalls: toolCallTrace,
     plannedSummary: buildSummary(collectedCommands)
   };
+}
+
+// ----------------------------------------------------------------------------
+// Chat-markdown stripping
+//
+// The chat UI doesn't render markdown. The prompt forbids it, but the model
+// leaks **bold**, headings, and bullet markers anyway. We strip the common
+// patterns server-side as a safety net so the user never sees literal
+// asterisks or hashes. Conservative — only obvious markup, never touch tool
+// arg text or punctuation that might be load-bearing.
+// ----------------------------------------------------------------------------
+
+function stripChatMarkdown(text) {
+  if (!text || typeof text !== 'string') return text;
+  return text
+    // **bold** and __bold__ → bold (keep the words, drop the markers)
+    .replace(/\*\*([^*\n]+?)\*\*/g, '$1')
+    .replace(/__([^_\n]+?)__/g, '$1')
+    // *italic* and _italic_ → italic. Careful: only when surrounded by
+    // whitespace/punctuation, so we don't break "x*y" in math or "snake_case".
+    .replace(/(^|[\s(])\*([^*\n]{1,80}?)\*(?=[\s.,!?;:)]|$)/g, '$1$2')
+    .replace(/(^|[\s(])_([^_\n]{1,80}?)_(?=[\s.,!?;:)]|$)/g, '$1$2')
+    // Heading markers at start of line → drop the marker, keep the line
+    .replace(/^#{1,6}[ \t]+/gm, '')
+    // Bullet markers at start of line: "- foo" / "* foo" → "foo"
+    // (numeric "1. foo" lists are left alone — they're often intentional)
+    .replace(/^[ \t]*[-*][ \t]+/gm, '')
+    // Inline code `…` → just the contents
+    .replace(/`([^`\n]+?)`/g, '$1')
+    // Trailing whitespace
+    .replace(/[ \t]+\n/g, '\n')
+    .trim();
 }
 
 // ----------------------------------------------------------------------------
@@ -448,6 +480,20 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
   switch (name) {
     case 'add_condition': {
       const id = newId('hyp');
+      // Compute default coordinates at the centre of the referenced part's
+      // bounding box. Without this, the 3D viewer skips rendering a sphere
+      // for the condition (it only renders hypotheses that have coordinates),
+      // so AI-added conditions are invisible in the 3D proxy even though
+      // they appear in the right-side list and detail modal.
+      let coordinates = null;
+      const part = (fullWorkspace.instance?.parts || []).find(p => p.id === args.partRef);
+      if (part?.origin && part?.dimensions) {
+        coordinates = {
+          x: (part.origin.x || 0) + (part.dimensions.width || 0) / 2,
+          y: (part.origin.y || 0) + (part.dimensions.height || 0) / 2,
+          z: (part.origin.z || 0) + (part.dimensions.depth || 0) / 2
+        };
+      }
       return {
         ok: true, hypothesisId: id,
         message: `Added ${args.type} on ${args.partRef}`,
@@ -457,6 +503,7 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
             hypothesis: {
               id, type: args.type, description: args.description,
               partRef: args.partRef,
+              coordinates,
               status: args.status || 'suspected',
               confidence: args.confidence ?? 0.7
             }

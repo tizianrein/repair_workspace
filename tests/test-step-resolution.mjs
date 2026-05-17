@@ -40,10 +40,10 @@ const stripped = src
   .replace(/^import .*?;$/gm, '')
   .replace(/^export /gm, '');
 const harness = `${stripped}
-return { normalizeSlug, buildStepAliasMap, resolveStepRef, mapToolToCommand, containsActionClaim };
+return { normalizeSlug, buildStepAliasMap, resolveStepRef, mapToolToCommand, containsActionClaim, stripChatMarkdown };
 `;
 const factory = new Function(harness);
-const { normalizeSlug, buildStepAliasMap, resolveStepRef, mapToolToCommand, containsActionClaim } = factory();
+const { normalizeSlug, buildStepAliasMap, resolveStepRef, mapToolToCommand, containsActionClaim, stripChatMarkdown } = factory();
 
 let passed = 0;
 let failed = 0;
@@ -451,6 +451,87 @@ test('does NOT flag null or empty', () => {
   assert.equal(containsActionClaim(null), false);
   assert.equal(containsActionClaim(''), false);
   assert.equal(containsActionClaim('   '), false);
+});
+
+console.log('\nstripChatMarkdown:');
+test('strips **bold** but keeps the words', () => {
+  assert.equal(
+    stripChatMarkdown('Die Verwendung von **bunten Farben** betont'),
+    'Die Verwendung von bunten Farben betont'
+  );
+});
+
+test('strips multiple **bold** in one line', () => {
+  assert.equal(
+    stripChatMarkdown('**Dokumentation:** Jeder **Schritt** ist wichtig.'),
+    'Dokumentation: Jeder Schritt ist wichtig.'
+  );
+});
+
+test('strips heading markers', () => {
+  assert.equal(stripChatMarkdown('## Plan\nDer Plan ist gut.'), 'Plan\nDer Plan ist gut.');
+});
+
+test('strips bullet list markers', () => {
+  assert.equal(stripChatMarkdown('- Erstens\n- Zweitens'), 'Erstens\nZweitens');
+});
+
+test('does NOT eat snake_case identifiers', () => {
+  // Critical: front_left_leg, repair_feet_ends, etc must survive
+  assert.equal(
+    stripChatMarkdown('Use front_left_leg as the partRef'),
+    'Use front_left_leg as the partRef'
+  );
+});
+
+test('strips inline `code` backticks', () => {
+  assert.equal(stripChatMarkdown('Call `add_step` next.'), 'Call add_step next.');
+});
+
+test('leaves normal prose untouched', () => {
+  const prose = 'Ich habe die Bedingung entfernt. Was machen wir als nächstes?';
+  assert.equal(stripChatMarkdown(prose), prose);
+});
+
+test('handles null/empty/non-string', () => {
+  assert.equal(stripChatMarkdown(null), null);
+  assert.equal(stripChatMarkdown(''), '');
+  assert.equal(stripChatMarkdown(undefined), undefined);
+});
+
+console.log('\nadd_condition coordinates default:');
+test('add_condition computes coordinates from part bbox center', () => {
+  // Real screenshot scenario: AI calls add_condition for backrest, the
+  // condition should appear as a red sphere at the backrest's centre in
+  // the 3D viewer. Before the fix, coordinates was null → no sphere.
+  const ws = {
+    instance: {
+      parts: [{
+        id: 'backrest',
+        origin: { x: 1, y: 2, z: 3 },
+        dimensions: { width: 4, height: 6, depth: 2 }
+      }]
+    }
+  };
+  const r = mapToolToCommand('add_condition',
+    { type: 'Weathering', description: 'Visible greying', partRef: 'backrest' },
+    {}, ws, [], { pendingPlanId: null }
+  );
+  assert.equal(r.ok, true);
+  const c = r.command.payload.hypothesis.coordinates;
+  assert.deepEqual(c, { x: 3, y: 5, z: 4 },
+    `Expected center {3,5,4}, got ${JSON.stringify(c)}`);
+});
+
+test('add_condition without part still works (coordinates null)', () => {
+  const ws = { instance: { parts: [] } };
+  const r = mapToolToCommand('add_condition',
+    { type: 'Crack', description: 'mystery part', partRef: 'unknown_part' },
+    {}, ws, [], { pendingPlanId: null }
+  );
+  assert.equal(r.ok, true);
+  // Coordinates should be null when part doesn't exist — not crash
+  assert.equal(r.command.payload.hypothesis.coordinates, null);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
