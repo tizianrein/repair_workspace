@@ -50,6 +50,28 @@ let viewerDirty = {};
 const $ = id => document.getElementById(id);
 function log(msg) { $('console-output').textContent = msg; }
 
+// The chat's "default" scope used to mean global, but that fights the
+// way the user actually works: most chatting is about whatever strategy
+// is current, not the project as a whole. So when we reset the chat
+// scope (background click in the 3D viewer, clearing selection, app
+// boot, loading a workspace), we resolve to the current plan's thread
+// if a plan exists, and fall back to global only when there's no plan
+// to talk about. Global is then reserved for cross-cutting
+// conversations the user explicitly opens (e.g. by clicking the
+// scope pill — wired separately).
+function defaultChatScope() {
+  const ws = state.workspace;
+  const planId = ws?.currentPlanId;
+  if (planId && (ws.plans || []).some(p => p.id === planId)) {
+    return { scope: 'plan', ref: planId };
+  }
+  return { scope: 'global', ref: null };
+}
+function resetChatScope() {
+  const s = defaultChatScope();
+  chatSheet.setScope(s.scope, s.ref);
+}
+
 restore(state);
 autoPersist(state);
 
@@ -70,7 +92,7 @@ actionGraph = createActionGraph($('action-graph-canvas'), {
       // Full reset matching the 3D background-click behaviour
       entityList.setSelection({ partId: null, conditionId: null });
       if (viewer3D) viewer3D.select({ partId: null, conditionId: null });
-      chatSheet.setScope('global');
+      resetChatScope();
     }
     quickActions.render();
   },
@@ -83,7 +105,7 @@ spatialGraph = createSpatialGraph($('spatial-graph-canvas'), {
     entityList.setSelection({ partId: null, conditionId: null });
     if (viewer3D) viewer3D.select({ partId: null, conditionId: null });
     selectedStepId = null;
-    chatSheet.setScope('global');
+    resetChatScope();
     quickActions.render();
   }
 });
@@ -127,6 +149,13 @@ chatSheet = createChatSheet(
     // can Ctrl+Z the whole conversational change in one go.
     onApplyCommands: ({ commands, summary }) => {
       if (!Array.isArray(commands) || commands.length === 0) return;
+      // If the AI created a new plan in this batch, we'll switch the chat
+      // scope to that plan's thread after the batch applies. set-current-plan
+      // (emitted by the AI when it wants to switch) is also honored. The
+      // intent is that "create a new strategy doing the opposite" lands the
+      // user in the new strategy's chat with the conversation that follows.
+      const planCreate = commands.find(c => c.type === 'create-plan' && c.payload?.plan?.id);
+      const setActive  = commands.find(c => c.type === 'set-current-plan' && c.payload?.planId);
       apply(state, {
         type: 'batch',
         payload: {
@@ -134,6 +163,13 @@ chatSheet = createChatSheet(
           label: `AI: ${summary || (commands.length + ' changes')}`
         }
       });
+      // Pick the target: an explicit set-current-plan wins, otherwise a
+      // newly-created plan, otherwise no scope change.
+      const newPlanId = setActive?.payload?.planId || planCreate?.payload?.plan?.id || null;
+      if (newPlanId) {
+        chatSheet.setScope('plan', newPlanId);
+        quickActions?.render();
+      }
     }
   }
 );
@@ -155,7 +191,7 @@ viewer3D = createViewer3D(
     } else {
       // Background click → clear selection, return to global chat scope
       entityList.setSelection({ partId: null, conditionId: null });
-      chatSheet.setScope('global');
+      resetChatScope();
       quickActions.render();
     }
   }
@@ -382,14 +418,15 @@ function renderStrategies(ws) {
       e.stopPropagation();
       const ok = confirm(`Delete strategy "${p.label}"?\n\nThis only removes the strategy. The artefact, conditions, and evidence are not affected.`);
       if (ok) {
-        // If the chat is currently scoped to this strategy's thread, fall
-        // back to global before the strategy disappears — otherwise the
-        // chat would be staring at a now-orphaned thread.
+        // If the chat is currently scoped to this strategy's thread, we
+        // need to move it elsewhere before its thread disappears. We do
+        // that AFTER the remove-plan applies, because remove-plan falls
+        // currentPlanId back to the next surviving plan — resetChatScope
+        // then naturally lands on that plan (or global if none remain).
         const cur = chatSheet?.getCurrentScope?.();
-        if (cur?.scope === 'plan' && cur.ref === p.id) {
-          chatSheet.setScope('global');
-        }
+        const wasOnDeletedPlan = cur?.scope === 'plan' && cur.ref === p.id;
         apply(state, { type: 'remove-plan', payload: { planId: p.id } });
+        if (wasOnDeletedPlan) resetChatScope();
       }
     };
     c.appendChild(div);
@@ -452,7 +489,7 @@ function switchTab(paneId) {
           openDetail({ type: target.type, id: target.data.id });
         } else {
           entityList.setSelection({ partId: null, conditionId: null });
-          chatSheet.setScope('global');
+          resetChatScope();
           quickActions.render();
         }
       }
@@ -608,7 +645,7 @@ function loadWorkspaceJson(parsed) {
   state.listeners.forEach(fn => fn(ws, { type: 'load-workspace' }));
   // Reset chat to global scope and pick up any seeded conversation in the
   // freshly loaded workspace.
-  chatSheet.setScope('global');
+  resetChatScope();
   chatSheet.refresh();
 }
 
@@ -689,7 +726,7 @@ $('reset-btn').onclick = () => {
   forgetExampleSlug();
   syncDisplayModeBtn();
   state.listeners.forEach(fn => fn(state.workspace, { type: 'reset' }));
-  chatSheet.setScope('global');
+  resetChatScope();
   chatSheet.refresh();
   log('Workspace reset.');
 };
@@ -1816,7 +1853,7 @@ async function dataUrlToBlob(dataUrl) {
 
 renderAll();
 setTimeout(() => viewer3D.resize(), 50);
-chatSheet.setScope('global');
+resetChatScope();
 
 // Rehydrate the textured mesh overlay if the previous session loaded
 // an example. The slug lives in localStorage (not the workspace JSON)
