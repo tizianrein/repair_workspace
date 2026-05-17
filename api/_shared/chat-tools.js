@@ -152,7 +152,7 @@ export const CHAT_TOOLS = [
   },
   {
     name: 'add_step',
-    description: 'Add a single step to the current plan. CRITICAL: when adding to a plan that already has steps, you MUST specify either afterStepId or beforeStepId (or both) so the new step is wired into the execution chain. Orphan steps with no edges are not useful and confuse the user. Look at the current plan\'s existing edges and steps before deciding placement.',
+    description: 'Add a single step to the current plan. CRITICAL: when adding to a plan that already has steps, you MUST specify either afterStepId or beforeStepId (or both) so the new step is wired into the execution chain. Orphan steps with no edges are not useful and confuse the user. Look at the current plan\'s existing edges and steps before deciding placement. If you need to add MULTIPLE related steps in one turn and want to wire edges between them, prefer to chain via afterStepId on each subsequent add_step call rather than calling add_edge separately — the server assigns each new step a fresh id you cannot predict.',
     parameters: {
       type: 'object',
       properties: {
@@ -163,8 +163,8 @@ export const CHAT_TOOLS = [
         toolsRequired: { type: 'array', items: { type: 'string' } },
         materialsRequired: { type: 'array', items: { type: 'string' } },
         estimatedMinutes: { type: 'number' },
-        afterStepId: { type: 'string', description: 'Step id this new step must come AFTER. Adds an edge automatically. Strongly recommended when there is an existing chain.' },
-        beforeStepId: { type: 'string', description: 'Step id this new step must come BEFORE. Adds an edge automatically.' }
+        afterStepId: { type: 'string', description: 'Step id (or title) this new step must come AFTER. Adds an edge automatically. Strongly recommended when there is an existing chain.' },
+        beforeStepId: { type: 'string', description: 'Step id (or title) this new step must come BEFORE. Adds an edge automatically.' }
       },
       required: ['title', 'description']
     }
@@ -203,12 +203,12 @@ export const CHAT_TOOLS = [
   },
   {
     name: 'add_edge',
-    description: 'Add a prerequisite edge between two steps: source must finish before target can start.',
+    description: 'Add a prerequisite edge between two EXISTING steps in the current plan: source must finish before target can start. Pass exact step ids — not titles, not slugs. Only use this for connecting steps that already exist in the workspace. When you have just created a step via add_step in the same turn and want to wire it in, use add_step\'s afterStepId/beforeStepId parameters instead — the server assigns fresh ids that you cannot predict before the call returns.',
     parameters: {
       type: 'object',
       properties: {
-        source: { type: 'string' },
-        target: { type: 'string' }
+        source: { type: 'string', description: 'Exact id of an existing step (e.g. "clean_parts" or "step_mp9abc..."). The step title is accepted as a fallback but ids are preferred.' },
+        target: { type: 'string', description: 'Exact id of an existing step that depends on source.' }
       },
       required: ['source', 'target']
     }

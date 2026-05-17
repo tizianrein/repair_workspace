@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "verify": "node verify-setup.mjs",
     "test:migrate": "node tests/test-migration.mjs",
-    "test:commands": "node tests/test-commands.mjs"
+    "test:commands": "node tests/test-commands.mjs",
+    "test:step-resolution": "node tests/test-step-resolution.mjs"
   },
   "dependencies": {
     "three": "^0.160.0",

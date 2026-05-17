@@ -28,6 +28,77 @@ function newId(prefix) {
   return `${prefix}_${Date.now().toString(36)}${serverCounter.toString(36).padStart(3, '0')}`;
 }
 
+// ----------------------------------------------------------------------------
+// Step-reference resolution
+//
+// Workshop bug: Gemini frequently calls add_edge with step "ids" that don't
+// match the real ids in the plan — typically because (a) it invents a
+// snake_case slug like "repair_feet_ends" from a step it created in the
+// same turn (and where the server assigned an ephemeral id like step_mp9...),
+// or (b) it passes the step's display title ("Grundierung auftragen") instead
+// of an id. The batch then fails at apply-time on the client, the user sees
+// the step never showed up, and there's no way for the model to recover.
+//
+// Fix: track every step the model creates within this chat turn, keyed by
+// every alias the model might plausibly reference it by (server id, original
+// requested slug if any, title, normalized title). When we see an add_edge,
+// resolve source/target against the live workspace AND this pending-steps
+// registry. If neither matches, return an error to the model — Gemini will
+// see it in the functionResponse and gets a chance to fix itself.
+// ----------------------------------------------------------------------------
+
+function normalizeSlug(s) {
+  if (s == null) return '';
+  return String(s)
+    .toLowerCase()
+    // Pre-expand German digraphs that NFKD does NOT decompose (ä/ö/ü do
+    // decompose, but ß stays as ß and would otherwise be stripped). Doing
+    // this before NFKD covers the common workshop case where a step title
+    // is "Reparatur der Fußenden" and the model references it by
+    // "reparatur_der_fussenden".
+    .replace(/ß/g, 'ss')
+    .replace(/æ/g, 'ae')
+    .replace(/œ/g, 'oe')
+    .normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+// Build a Map<alias, realStepId> from the live workspace plan AND any steps
+// added in the current chat turn.
+function buildStepAliasMap(currentPlan, pendingSteps) {
+  const aliases = new Map();
+  const add = (alias, realId) => {
+    if (!alias || !realId) return;
+    const a = String(alias).trim();
+    if (!a) return;
+    if (!aliases.has(a)) aliases.set(a, realId);
+    const slug = normalizeSlug(a);
+    if (slug && !aliases.has(slug)) aliases.set(slug, realId);
+  };
+  for (const s of (currentPlan?.steps || [])) {
+    add(s.id, s.id);
+    add(s.title, s.id);
+  }
+  for (const p of pendingSteps) {
+    add(p.realId, p.realId);
+    if (p.requestedSlug) add(p.requestedSlug, p.realId);
+    if (p.title) add(p.title, p.realId);
+  }
+  return aliases;
+}
+
+// Try to resolve a step reference (id-or-slug-or-title) to a real step id.
+// Returns null if it can't be resolved.
+function resolveStepRef(ref, aliases) {
+  if (!ref) return null;
+  const raw = String(ref).trim();
+  if (aliases.has(raw)) return aliases.get(raw);
+  const slug = normalizeSlug(raw);
+  if (slug && aliases.has(slug)) return aliases.get(slug);
+  return null;
+}
+
 export async function runChat({ thread, userMessage, workspace, files }) {
   const systemPrompt = loadPrompt('chat');
 
@@ -45,13 +116,22 @@ export async function runChat({ thread, userMessage, workspace, files }) {
   const snapshot = leanWorkspace(workspace);
   const collectedCommands = [];
   const toolCallTrace = [];
+  // Steps created during *this* chat turn. Used to resolve add_edge refs that
+  // point at a sibling step the model just created (where the model knows the
+  // step by a slug or title, but the server assigned a fresh id).
+  const pendingSteps = [];
 
   async function executeTool(name, args) {
-    const result = mapToolToCommand(name, args, snapshot, workspace);
+    const result = mapToolToCommand(name, args, snapshot, workspace, pendingSteps);
     toolCallTrace.push({ name, args, result });
-    if (result.command) collectedCommands.push(result.command);
-    if (Array.isArray(result.commands)) {
-      for (const c of result.commands) collectedCommands.push(c);
+    // Only add commands when the tool actually succeeded. A result with
+    // `error` means we rejected the call (e.g. add_edge to an unknown step)
+    // and the model will see the error and get to try again.
+    if (!result.error) {
+      if (result.command) collectedCommands.push(result.command);
+      if (Array.isArray(result.commands)) {
+        for (const c of result.commands) collectedCommands.push(c);
+      }
     }
     return result;
   }
@@ -180,8 +260,16 @@ function leanWorkspace(ws) {
 /**
  * Translate one tool call from the AI's vocabulary into a workspace
  * command. Returns { ok|error, command?, ...details }.
+ *
+ * `pendingSteps` is a shared mutable array carrying step-id information for
+ * steps created earlier in the same chat turn — so add_edge can resolve refs
+ * that point at a step the model just created via add_step.
  */
-function mapToolToCommand(name, args, snapshot, fullWorkspace) {
+function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []) {
+  // Build the alias map once per call. Cheap; few dozen entries at most.
+  const currentPlan = (fullWorkspace.plans || []).find(p => p.id === fullWorkspace.currentPlanId) || null;
+  const aliases = buildStepAliasMap(currentPlan, pendingSteps);
+
   switch (name) {
     case 'add_condition': {
       const id = newId('hyp');
@@ -231,22 +319,54 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace) {
       };
     case 'create_plan': {
       const planId = newId('plan');
-      const steps = (args.steps || []).map(s => ({
-        id: s.id || newId('step'),
-        title: s.title, description: s.description,
-        affectedPartRefs: s.affectedPartRefs || [],
-        addressesHypothesisRefs: s.addressesHypothesisRefs || [],
-        toolsRequired: s.toolsRequired || [],
-        materialsRequired: s.materialsRequired || [],
-        estimatedMinutes: s.estimatedMinutes || null
-      }));
-      const edges = (args.edges || []).map(e => ({ id: newId('edge'), source: e.source, target: e.target }));
+      // First pass: stamp every step with a real id, register it in
+      // pendingSteps so subsequent tool calls (and internal edge resolution
+      // below) can find it by the slug/title the model originally used.
+      const steps = (args.steps || []).map(s => {
+        const realId = s.id && /^step_/.test(s.id) ? s.id : newId('step');
+        pendingSteps.push({
+          realId,
+          requestedSlug: s.id || null,  // model's intended slug, if any
+          title: s.title || null
+        });
+        return {
+          id: realId,
+          title: s.title, description: s.description,
+          affectedPartRefs: s.affectedPartRefs || [],
+          addressesHypothesisRefs: s.addressesHypothesisRefs || [],
+          toolsRequired: s.toolsRequired || [],
+          materialsRequired: s.materialsRequired || [],
+          estimatedMinutes: s.estimatedMinutes || null
+        };
+      });
+      // Rebuild alias map now that the new steps are registered.
+      const localAliases = buildStepAliasMap(currentPlan, pendingSteps);
+      // Second pass: resolve every edge's source/target. Skip silently-broken
+      // edges instead of failing the whole plan — a partial plan is better
+      // than no plan when participants are watching.
+      const edges = [];
+      const droppedEdges = [];
+      for (const e of (args.edges || [])) {
+        const src = resolveStepRef(e.source, localAliases);
+        const tgt = resolveStepRef(e.target, localAliases);
+        if (src && tgt) {
+          edges.push({ id: newId('edge'), source: src, target: tgt });
+        } else {
+          droppedEdges.push({ source: e.source, target: e.target, srcOk: !!src, tgtOk: !!tgt });
+        }
+      }
       const mutexGroups = (args.mutexGroups || []).map(g => ({
-        id: newId('mutex'), label: g.label || '', stepIds: g.stepIds || []
-      }));
+        id: newId('mutex'), label: g.label || '',
+        stepIds: (g.stepIds || []).map(id => resolveStepRef(id, localAliases)).filter(Boolean)
+      })).filter(g => g.stepIds.length >= 2);
+      if (droppedEdges.length) {
+        console.warn('[chat-engine] create_plan: dropped', droppedEdges.length, 'unresolvable edge(s):', droppedEdges);
+      }
       return {
         ok: true, planId, stepIds: steps.map(s => s.id),
-        message: `Created plan "${args.label}" with ${steps.length} steps`,
+        message: `Created plan "${args.label}" with ${steps.length} steps`
+          + (droppedEdges.length ? ` (${droppedEdges.length} edge(s) skipped: referenced unknown steps)` : ''),
+        droppedEdges: droppedEdges.length || undefined,
         command: {
           type: 'add-plan',
           payload: { plan: { id: planId, label: args.label, status: 'draft', steps, edges, mutexGroups } }
@@ -257,6 +377,14 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace) {
       const currentPlanId = fullWorkspace.currentPlanId;
       if (!currentPlanId) return { error: 'No active plan. Call create_plan first.' };
       const stepId = newId('step');
+      // Register this step BEFORE resolving after/before refs — covers the
+      // odd case where the model passes the just-created step's title as
+      // afterStepId, and lets later tool calls in this turn reference it.
+      pendingSteps.push({
+        realId: stepId,
+        requestedSlug: args.slug || null,
+        title: args.title || null
+      });
       const commands = [{
         type: 'upsert-step',
         payload: {
@@ -271,52 +399,93 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace) {
           }
         }
       }];
-      // Auto-wire the new step into the plan's flow. If afterStepId is
-      // given, add an edge so this step depends on that one. Same for
-      // beforeStepId. Without this, the user gets orphan steps floating
-      // disconnected from the main chain.
+      // Auto-wire the new step into the plan's flow. afterStepId/beforeStepId
+      // may be a real id, a slug, or a title; resolve against the alias map
+      // (which now includes this step + any earlier ones from this turn).
+      const localAliases = buildStepAliasMap(currentPlan, pendingSteps);
+      const warnings = [];
       if (args.afterStepId) {
-        commands.push({
-          type: 'add-edge',
-          payload: { planId: currentPlanId, source: args.afterStepId, target: stepId }
-        });
+        const src = resolveStepRef(args.afterStepId, localAliases);
+        if (src) {
+          commands.push({
+            type: 'add-edge',
+            payload: { planId: currentPlanId, source: src, target: stepId }
+          });
+        } else {
+          warnings.push(`afterStepId "${args.afterStepId}" did not match any step — edge skipped`);
+        }
       }
       if (args.beforeStepId) {
-        commands.push({
-          type: 'add-edge',
-          payload: { planId: currentPlanId, source: stepId, target: args.beforeStepId }
-        });
+        const tgt = resolveStepRef(args.beforeStepId, localAliases);
+        if (tgt) {
+          commands.push({
+            type: 'add-edge',
+            payload: { planId: currentPlanId, source: stepId, target: tgt }
+          });
+        } else {
+          warnings.push(`beforeStepId "${args.beforeStepId}" did not match any step — edge skipped`);
+        }
       }
       return {
         ok: true, stepId,
-        message: `Added step "${args.title}"`,
-        // Multi-command result: engine will push all of these into the
-        // collectedCommands array.
+        message: `Added step "${args.title}"`
+          + (warnings.length ? ` (${warnings.join('; ')})` : ''),
+        warnings: warnings.length ? warnings : undefined,
         commands
       };
     }
     case 'update_step': {
       const currentPlanId = fullWorkspace.currentPlanId;
       if (!currentPlanId) return { error: 'No active plan' };
+      const resolvedId = resolveStepRef(args.stepId, aliases);
+      if (!resolvedId) {
+        const known = (currentPlan?.steps || []).map(s => s.id).join(', ');
+        return { error: `update_step: step "${args.stepId}" not found. Known step ids: ${known || '(none)'}` };
+      }
       return {
-        ok: true, message: `Updated ${args.stepId}`,
-        command: { type: 'upsert-step', payload: { planId: currentPlanId, step: { id: args.stepId, ...(args.patch || {}) } } }
+        ok: true, message: `Updated ${resolvedId}`,
+        command: { type: 'upsert-step', payload: { planId: currentPlanId, step: { id: resolvedId, ...(args.patch || {}) } } }
       };
     }
     case 'remove_step': {
       const currentPlanId = fullWorkspace.currentPlanId;
       if (!currentPlanId) return { error: 'No active plan' };
+      const resolvedId = resolveStepRef(args.stepId, aliases);
+      if (!resolvedId) {
+        const known = (currentPlan?.steps || []).map(s => s.id).join(', ');
+        return { error: `remove_step: step "${args.stepId}" not found. Known step ids: ${known || '(none)'}` };
+      }
       return {
-        ok: true, message: `Removed ${args.stepId}`,
-        command: { type: 'remove-step', payload: { planId: currentPlanId, stepId: args.stepId } }
+        ok: true, message: `Removed ${resolvedId}`,
+        command: { type: 'remove-step', payload: { planId: currentPlanId, stepId: resolvedId } }
       };
     }
     case 'add_edge': {
       const currentPlanId = fullWorkspace.currentPlanId;
       if (!currentPlanId) return { error: 'No active plan' };
+      const src = resolveStepRef(args.source, aliases);
+      const tgt = resolveStepRef(args.target, aliases);
+      if (!src || !tgt) {
+        // Return a tool-level error so Gemini sees it in the functionResponse
+        // and can correct itself in the same turn (rather than the whole
+        // batch dying on the client at apply time).
+        const known = (currentPlan?.steps || [])
+          .map(s => `${s.id} ("${s.title}")`)
+          .concat(pendingSteps.map(p => `${p.realId} ("${p.title || p.requestedSlug || ''}") [created this turn]`))
+          .join(', ');
+        const what = !src && !tgt ? `source "${args.source}" and target "${args.target}"`
+                   : !src ? `source "${args.source}"`
+                   : `target "${args.target}"`;
+        return {
+          error: `add_edge: ${what} did not match any step in the current plan. ` +
+                 `Use exact step ids (not titles, not slugs). Known steps: ${known || '(none)'}. ` +
+                 `If you intended to reference a step you created earlier in this turn via add_step, ` +
+                 `the server assigned it a real id starting with "step_" — use that.`
+        };
+      }
       return {
-        ok: true, message: `Linked ${args.source} → ${args.target}`,
-        command: { type: 'add-edge', payload: { planId: currentPlanId, source: args.source, target: args.target } }
+        ok: true, message: `Linked ${src} → ${tgt}`,
+        command: { type: 'add-edge', payload: { planId: currentPlanId, source: src, target: tgt } }
       };
     }
     case 'remove_edge': {
