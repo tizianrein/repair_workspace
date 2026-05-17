@@ -593,7 +593,9 @@
 }
 @keyframes chat-cursor { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
 
-/* Inline action card — shown after AI bubble text, lists what was done */
+/* Inline action card — shown after AI bubble text, lists what was done.
+   Click to expand and inspect each tool call. Collapsed state matches
+   the previous one-line look. */
 .chat-actions-card {
   margin-top: 8px;
   padding: 8px 10px;
@@ -603,8 +605,88 @@
   font-size: 12px;
   line-height: 1.5;
 }
+.chat-actions-card > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+/* Hide the browser's default disclosure triangle so we control it. */
+.chat-actions-card > summary::-webkit-details-marker { display: none; }
+.chat-actions-card > summary::marker { content: ''; }
+.csa-arrow {
+  display: inline-block;
+  color: var(--ok, #2a8a4a);
+  font-size: 10px;
+  transition: transform 120ms ease;
+  width: 10px;
+}
+.chat-actions-card[open] .csa-arrow {
+  transform: rotate(90deg);
+}
 .chat-actions-card .csa-label {
   color: var(--ok, #2a8a4a);
+}
+/* Expanded log — one row per tool call. Dense, technical. */
+.csa-log {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(42, 138, 74, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.csa-log-row {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+.csa-log-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+.csa-log-head code {
+  background: rgba(42, 138, 74, 0.08);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10.5px;
+}
+.csa-row-status {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+.csa-row-ok {
+  background: rgba(42, 138, 74, 0.18);
+  color: var(--ok, #2a8a4a);
+}
+.csa-row-error {
+  background: rgba(193, 39, 45, 0.16);
+  color: var(--danger, #c1272d);
+}
+.csa-log-args {
+  margin: 0;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 3px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--ink, #1a1a1a);
+}
+.csa-log-err {
+  margin-top: 4px;
+  padding: 4px 8px;
+  background: rgba(193, 39, 45, 0.08);
+  border-left: 2px solid var(--danger, #c1272d);
+  border-radius: 2px;
+  color: var(--danger, #c1272d);
+  font-family: var(--sans, inherit);
+  font-size: 11px;
 }
 .csa-items {
   display: inline;

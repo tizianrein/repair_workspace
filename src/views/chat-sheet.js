@@ -158,17 +158,42 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
         div.appendChild(un);
       }
       // New conversational mode: the AI directly performed tool calls.
-      // Render a compact summary card listing what was done. This replaces
-      // the old "Suggested action / Propose this →" affordance for tool
-      // results — the actions have already been applied, so we just show
-      // them as a record.
+      // Render a compact summary card listing what was done. Click to
+      // expand — each row shows the tool name, whether it landed or was
+      // rejected, the args the model passed, and any error message.
+      // Technical but readable; useful when auditing why a change
+      // didn't behave as expected.
       if (Array.isArray(msg.toolCalls) && msg.toolCalls.length > 0) {
-        const card = document.createElement('div');
+        const card = document.createElement('details');
         card.className = 'chat-actions-card';
         const summary = msg.plannedSummary
           ? msg.plannedSummary
           : `${msg.toolCalls.length} action${msg.toolCalls.length === 1 ? '' : 's'}`;
-        card.innerHTML = `<span class="csa-label">✓ Applied:</span> ${escapeHtml(summary)}`;
+        const sumEl = document.createElement('summary');
+        sumEl.innerHTML =
+          `<span class="csa-arrow" aria-hidden="true">▸</span>` +
+          `<span class="csa-label">✓ Applied:</span> ${escapeHtml(summary)}`;
+        card.appendChild(sumEl);
+
+        const log = document.createElement('div');
+        log.className = 'csa-log';
+        for (const ev of msg.toolCalls) {
+          const row = document.createElement('div');
+          row.className = 'csa-log-row';
+          const isError = !!(ev.result && ev.result.error);
+          const label = friendlyActionLabel(ev) || ev.name;
+          const status = isError
+            ? '<span class="csa-row-status csa-row-error">rejected</span>'
+            : '<span class="csa-row-status csa-row-ok">ok</span>';
+          row.innerHTML =
+            `<div class="csa-log-head">${status} <code>${escapeHtml(label)}</code></div>` +
+            `<pre class="csa-log-args">${escapeHtml(formatArgsForLog(ev.args))}</pre>` +
+            (isError
+              ? `<div class="csa-log-err">${escapeHtml(ev.result.error)}</div>`
+              : '');
+          log.appendChild(row);
+        }
+        card.appendChild(log);
         div.appendChild(card);
       }
       // Legacy suggested-action path — only show when there are no tool
@@ -565,4 +590,36 @@ function friendlyActionLabel(ev) {
     case 'remove_plan': return `− plan`;
     default: return name;
   }
+}
+
+/**
+ * Render a tool call's args for the expandable log. Compact, technical,
+ * readable: one `key: value` per line. Long strings get an ellipsis so
+ * a single row doesn't dominate the bubble. Arrays/objects get a single
+ * JSON line. The aim is "auditable" — full info is in the workspace
+ * anyway, this just shows what the model passed.
+ */
+function formatArgsForLog(args) {
+  if (!args || typeof args !== 'object') return '(no args)';
+  const keys = Object.keys(args);
+  if (keys.length === 0) return '(no args)';
+  const lines = [];
+  for (const k of keys) {
+    const v = args[k];
+    let rendered;
+    if (v == null) {
+      rendered = String(v);
+    } else if (typeof v === 'string') {
+      rendered = v.length > 240 ? v.slice(0, 240) + '…' : v;
+    } else if (Array.isArray(v)) {
+      const preview = v.length > 6 ? v.slice(0, 6).concat(['…(' + (v.length - 6) + ' more)']) : v;
+      rendered = JSON.stringify(preview);
+    } else if (typeof v === 'object') {
+      rendered = JSON.stringify(v);
+    } else {
+      rendered = String(v);
+    }
+    lines.push(`${k}: ${rendered}`);
+  }
+  return lines.join('\n');
 }
