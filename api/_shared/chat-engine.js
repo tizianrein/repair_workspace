@@ -304,18 +304,39 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
   switch (name) {
     case 'add_condition': {
       const id = newId('hyp');
-      // Compute default coordinates at the centre of the referenced part's
-      // bounding box. Without this, the 3D viewer skips rendering a sphere
-      // for the condition (it only renders hypotheses that have
-      // coordinates), so AI-added conditions are invisible in the 3D
-      // proxy even though they appear in the right-side list and detail.
+      // Default coordinates: anchor to the part's origin.
+      //
+      // In this workspace, a part's `origin` is the position of its mesh
+      // in world space (see views/viewer-3d.js: mesh.position.set(o.x,
+      // o.y, o.z)). The box geometry extends symmetrically around that
+      // origin, so the origin is effectively the part's anchor point —
+      // not a corner. The viewer also skips rendering hypothesis spheres
+      // that have no coordinates at all, so we need *some* coordinate.
+      //
+      // For an unlocated condition (e.g. "weathering across the whole
+      // leg") the right default is the part origin itself. That keeps
+      // the marker visually attached to its part instead of floating
+      // away by half a bounding box, which is what a naive
+      // origin + dim/2 calculation produced. propose.js uses the same
+      // convention in rescueCoordinates(): when a hypothesis has no
+      // meaningful location, snap it to the part origin.
+      //
+      // If the model has a real spatial cue from the user ("crack on
+      // the upper-left of the seat"), it can pass an explicit
+      // `coordinates` argument and we honour it.
       let coordinates = null;
       const part = (fullWorkspace.instance?.parts || []).find(p => p.id === args.partRef);
-      if (part?.origin && part?.dimensions) {
+      if (args.coordinates && typeof args.coordinates === 'object') {
         coordinates = {
-          x: (part.origin.x || 0) + (part.dimensions.width || 0) / 2,
-          y: (part.origin.y || 0) + (part.dimensions.height || 0) / 2,
-          z: (part.origin.z || 0) + (part.dimensions.depth || 0) / 2
+          x: Number(args.coordinates.x) || 0,
+          y: Number(args.coordinates.y) || 0,
+          z: Number(args.coordinates.z) || 0
+        };
+      } else if (part?.origin) {
+        coordinates = {
+          x: part.origin.x || 0,
+          y: part.origin.y || 0,
+          z: part.origin.z || 0
         };
       }
       return {

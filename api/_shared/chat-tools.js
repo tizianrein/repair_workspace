@@ -15,7 +15,7 @@
 export const CHAT_TOOLS = [
   {
     name: 'add_condition',
-    description: 'Register a new observed condition (damage/defect/feature) on a specific artefact part. Use one call per affected part — never collapse multiple parts into one call.',
+    description: 'Register a new observed condition (damage/defect/feature) on a specific artefact part. Use one call per affected part — never collapse multiple parts into one call. By default the marker is anchored to the part itself (its origin point), which is correct for non-localised conditions like weathering, discolouration, or general wear that affect the whole part. Only pass explicit `coordinates` when the user has indicated a specific spot on the part (e.g. "crack on the upper edge of the seat"). When in doubt, omit coordinates.',
     parameters: {
       type: 'object',
       properties: {
@@ -23,7 +23,16 @@ export const CHAT_TOOLS = [
         description: { type: 'string', description: 'Concise description of what was observed' },
         partRef: { type: 'string', description: 'ID of the affected part' },
         status: { type: 'string', enum: ['suspected', 'confirmed', 'refuted'], description: 'Confidence status. Default "suspected" unless the user has clear visual confirmation.' },
-        confidence: { type: 'number', description: 'Confidence 0..1. Default 0.7.' }
+        confidence: { type: 'number', description: 'Confidence 0..1. Default 0.7.' },
+        coordinates: {
+          type: 'object',
+          description: 'OPTIONAL. World-space (x,y,z) location of the condition marker. Omit this for whole-part conditions (weathering, discolouration, surface wear) so the marker anchors to the part. Only set it when the user has identified a specific spot on the part.',
+          properties: {
+            x: { type: 'number' },
+            y: { type: 'number' },
+            z: { type: 'number' }
+          }
+        }
       },
       required: ['type', 'description', 'partRef']
     }
