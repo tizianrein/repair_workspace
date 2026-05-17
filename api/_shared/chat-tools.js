@@ -266,5 +266,22 @@ export const CHAT_TOOLS = [
       properties: { planId: { type: 'string' } },
       required: ['planId']
     }
+  },
+  {
+    name: 'propose_options',
+    description: 'Attach tappable short-answer options to your reply, so the user can click instead of typing. Use ONLY when your reply ends with a discrete choice between 2-4 alternatives — e.g. "preservation, light restoration, or full restoration?", "hardwax oil or satin varnish?", "go top-to-bottom, or flesh out one phase first?". Do NOT use for open-ended questions ("what are you trying to achieve here?"), for yes/no questions (already trivial to type), or when your reply isn\'t ending with a question. The user can also still type a free answer; the buttons are just a shortcut. Call this AFTER any workspace-changing tools in the same turn, so the buttons appear under the final reply.',
+    parameters: {
+      type: 'object',
+      properties: {
+        options: {
+          type: 'array',
+          description: '2 to 4 short labels (2-6 words each). Each label is what the user sees on the button AND what gets sent as their next message when they tap.',
+          items: { type: 'string' },
+          minItems: 2,
+          maxItems: 4
+        }
+      },
+      required: ['options']
+    }
   }
 ];

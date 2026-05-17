@@ -101,12 +101,12 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
         : `Scoped to this ${SCOPE_DISPLAY[currentScope] || currentScope} — questions and changes apply here`;
       history.appendChild(sys);
     } else {
-      msgs.forEach(m => appendBubble(m));
+      msgs.forEach((m, idx) => appendBubble(m, { isLatest: idx === msgs.length - 1 }));
     }
     history.scrollTop = history.scrollHeight;
   }
 
-  function appendBubble(msg) {
+  function appendBubble(msg, { isLatest = true } = {}) {
     const div = document.createElement('div');
     if (msg.role === 'system') {
       div.className = 'chat-system';
@@ -159,13 +159,47 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
         sa.appendChild(btn);
         div.appendChild(sa);
       }
+      // Follow-up answer chips — populated by the model's propose_options
+      // tool. Render as tappable buttons that send the option label as
+      // the user's next message. Chips remain visible after use but the
+      // tap handlers are removed by deactivatePreviousChips() before the
+      // next user message dispatches, so old chips become inert records.
+      if (Array.isArray(msg.followUpOptions) && msg.followUpOptions.length > 0) {
+        const chipsRow = document.createElement('div');
+        chipsRow.className = isLatest ? 'chat-chips chat-chips-active' : 'chat-chips';
+        for (const opt of msg.followUpOptions) {
+          const chip = document.createElement('button');
+          chip.className = 'chat-chip';
+          chip.type = 'button';
+          chip.textContent = opt.label;
+          chip.onclick = () => {
+            // Only fire if the chips block is still active.
+            if (!chipsRow.classList.contains('chat-chips-active')) return;
+            input.value = opt.value || opt.label;
+            send();
+          };
+          chipsRow.appendChild(chip);
+        }
+        div.appendChild(chipsRow);
+      }
     }
     history.appendChild(div);
+  }
+
+  // Deactivate any previously-rendered chip block. Called before a new
+  // user message dispatches so stale chips from older turns don't fire.
+  // We keep the visual block (history is a useful record) but strip
+  // the active class so the click handler short-circuits.
+  function deactivatePreviousChips() {
+    history.querySelectorAll('.chat-chips-active').forEach(el => {
+      el.classList.remove('chat-chips-active');
+    });
   }
 
   async function send() {
     const text = input.value.trim();
     if (!text && !pendingPhotos.length) return;
+    deactivatePreviousChips();
     setBusy(true);
 
     // Ensure the thread exists before we push anything — first-message
@@ -264,6 +298,7 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
       const assistantMsg = newMessage('assistant', replyText);
       assistantMsg.toolCalls = payload.toolCalls || [];
       assistantMsg.plannedSummary = payload.plannedSummary || '';
+      assistantMsg.followUpOptions = payload.followUpOptions || null;
 
       const t2 = currentThread();
       if (t2) onAppendMessage?.({ threadId: t2.id, message: assistantMsg });

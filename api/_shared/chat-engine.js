@@ -198,7 +198,10 @@ export async function runChat({ thread, userMessage, workspace, files }) {
   // currentPlanId after the whole batch is applied, so without this a
   // sequence like create_plan + add_step would route the add_step to the
   // *old* current plan (or fail with "no active plan").
-  const turnContext = { pendingPlanId: null };
+  // proposedOptions is filled in by the propose_options tool — the model
+  // calls it when it wants to attach tappable answer chips to its reply.
+  // Last call wins if the model calls it more than once in a turn.
+  const turnContext = { pendingPlanId: null, proposedOptions: null };
 
   async function executeTool(name, args) {
     const result = mapToolToCommand(name, args, snapshot, workspace, pendingSteps, turnContext);
@@ -348,8 +351,107 @@ export async function runChat({ thread, userMessage, workspace, files }) {
     reply: stripChatMarkdown(stripToolCodeLeak(result.text || '')),
     commands: collectedCommands,
     toolCalls: toolCallTrace,
-    plannedSummary: buildSummary(collectedCommands)
+    plannedSummary: buildSummary(collectedCommands),
+    // Tappable answer chips, populated by the propose_options tool. Null
+    // when the model didn't call it (most turns).
+    followUpOptions: turnContext.proposedOptions || null
   };
+}
+
+/**
+ * Lean workspace snapshot — the slice the chat AI actually needs.
+ * Drops large/noisy fields like full part geometry, edge metadata,
+ * past conversation threads. The AI gets enough to reason about
+ * the artefact, its conditions, intent, constraints, and the
+ * current strategy.
+ */
+/**
+ * Compute scaffolding gaps in the workspace — empty fields the user might
+ * want to fill in before going deeper. The result lives at the top of the
+ * lean snapshot so the model can see it every turn without having to
+ * derive it from the data each time.
+ *
+ * IMPORTANT: this is *information*, not a to-do list. The prompt instructs
+ * the model to mention at most one gap per turn, only when it's relevant,
+ * and not to nag. Gaps that disappear (because the user filled them in)
+ * naturally stop showing up on subsequent turns.
+ *
+ * Each flag is a short, dotted key + a one-line "what it means" message.
+ * Keeping these terse so the model can scan them quickly.
+ */
+function computeGaps(ws) {
+  const gaps = [];
+  const intent = ws.intent || {};
+  const constraints = ws.constraints || {};
+  const plan = (ws.plans || []).find(p => p.id === ws.currentPlanId);
+
+  // Intent gaps
+  if (!intent.summary || !intent.summary.trim()) {
+    gaps.push({
+      key: 'intent.summary_missing',
+      hint: 'no intent summary written — the project has no stated goal yet'
+    });
+  }
+  // Axes default to 0.5 in the schema. If all of them are still at 0.5,
+  // the user hasn't expressed any priorities yet.
+  const axes = Array.isArray(intent.axes) ? intent.axes : [];
+  if (axes.length && axes.every(a => Math.abs((a.value ?? 0.5) - 0.5) < 0.01)) {
+    gaps.push({
+      key: 'intent.axes_all_default',
+      hint: 'all intent axes are at the 0.5 default — no priorities expressed (sustainability vs cost, authenticity vs intervention, etc.)'
+    });
+  }
+
+  // Constraints: empty if every known field is null/undefined/empty.
+  const constraintFields = [
+    'tools_available', 'materials_available', 'time_budget_minutes',
+    'budget_limit', 'skill_level', 'safety_level',
+    'allowed_operations', 'avoid_operations', 'additional_constraints'
+  ];
+  const hasAnyConstraint = constraintFields.some(f => {
+    const v = constraints[f];
+    return v !== null && v !== undefined && v !== '' && v !== 0;
+  });
+  if (!hasAnyConstraint) {
+    gaps.push({
+      key: 'constraints.empty',
+      hint: 'no practical constraints set (tools available, time budget, skill level, etc.)'
+    });
+  }
+
+  // Artefact gaps
+  if ((ws.hypotheses || []).length === 0) {
+    gaps.push({
+      key: 'conditions.none',
+      hint: 'no conditions registered on the artefact yet — nothing to plan around'
+    });
+  }
+
+  // Plan gaps
+  if (!plan) {
+    gaps.push({
+      key: 'plan.none',
+      hint: 'no current plan exists — only relevant once intent + conditions are clear enough to plan around'
+    });
+  } else {
+    const steps = plan.steps || [];
+    if (steps.length > 0) {
+      const skeletal = steps.filter(s => !s.description || s.description.trim().length < 20);
+      if (skeletal.length === steps.length) {
+        gaps.push({
+          key: 'plan.skeletal',
+          hint: `current plan is a skeleton — all ${steps.length} steps have no real description yet (tools, materials, timing absent)`
+        });
+      } else if (skeletal.length >= steps.length * 0.6) {
+        gaps.push({
+          key: 'plan.mostly_skeletal',
+          hint: `most steps in the current plan still lack detail (${skeletal.length} of ${steps.length} have descriptions under 20 chars)`
+        });
+      }
+    }
+  }
+
+  return gaps;
 }
 
 /**
@@ -362,6 +464,10 @@ export async function runChat({ thread, userMessage, workspace, files }) {
 function leanWorkspace(ws) {
   const plan = (ws.plans || []).find(p => p.id === ws.currentPlanId);
   return {
+    // Gaps come first so the model encounters them while scanning the
+    // snapshot. See computeGaps() for the contract — these are
+    // informational, not a checklist.
+    gaps: computeGaps(ws),
     instance: {
       id: ws.instance?.id,
       name: ws.instance?.name,
@@ -757,6 +863,33 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
       // turn-local pointer so later tool calls don't write into the void.
       if (turnContext.pendingPlanId === args.planId) turnContext.pendingPlanId = null;
       return { ok: true, command: { type: 'remove-plan', payload: { planId: args.planId } } };
+    case 'propose_options': {
+      // This tool doesn't produce a workspace command — it captures
+      // tappable answer chips into the turn context, to be attached to
+      // the final reply. We still validate so the model can self-correct
+      // via the error path.
+      const opts = Array.isArray(args.options) ? args.options : null;
+      if (!opts) {
+        return { error: 'propose_options: `options` must be an array of 2-4 short string labels.' };
+      }
+      if (opts.length < 2) {
+        return { error: 'propose_options: need at least 2 options. If the question only has one obvious answer, ask plainly instead.' };
+      }
+      if (opts.length > 4) {
+        return { error: 'propose_options: at most 4 options. If you have more than 4 alternatives, ask an open question instead.' };
+      }
+      const labels = opts.map(o => String(o).trim()).filter(Boolean);
+      if (labels.length !== opts.length) {
+        return { error: 'propose_options: every option must be a non-empty string.' };
+      }
+      // Last call wins if the model calls more than once. Each label
+      // becomes both the chip text and the message sent when tapped.
+      turnContext.proposedOptions = labels.map(label => ({ label, value: label }));
+      return {
+        ok: true,
+        message: `Options attached: ${labels.join(' | ')}`
+      };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }

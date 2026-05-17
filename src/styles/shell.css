@@ -420,6 +420,38 @@ body.chat-open .chat-sheet { transform: translateY(0); }
   padding: 4px 0;
 }
 
+/* Tappable answer chips, populated by the AI's propose_options tool.
+   Rendered below the assistant bubble. Once a chip is tapped (or the
+   user types something else), the chip block gets `chat-chips-active`
+   stripped — it stays visible as a record but the buttons are inert. */
+.chat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.chat-chip {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 80ms ease, border-color 80ms ease;
+}
+.chat-chips-active .chat-chip:hover {
+  background: var(--info-soft);
+  border-color: var(--info);
+}
+/* Inert state — chip block stripped of `chat-chips-active`. The buttons
+   look slightly faded so the user can tell they're no longer live. */
+.chat-chips:not(.chat-chips-active) .chat-chip {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .chat-input-row {
   padding: 10px 12px;
   border-top: 1px solid var(--line-soft);
