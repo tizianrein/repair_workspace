@@ -187,7 +187,7 @@ export async function runChat({ thread, userMessage, workspace, files }) {
     }
   }
 
-  const snapshot = leanWorkspace(workspace);
+  const snapshot = leanWorkspace(workspace, thread);
   const collectedCommands = [];
   const toolCallTrace = [];
   // Steps created during *this* chat turn. Lets add_edge resolve refs that
@@ -461,9 +461,24 @@ function computeGaps(ws) {
  * the artefact, its conditions, intent, constraints, and the
  * current strategy.
  */
-function leanWorkspace(ws) {
+function leanWorkspace(ws, thread = null) {
   const plan = (ws.plans || []).find(p => p.id === ws.currentPlanId);
+  // Tell the model which scope of conversation it's in. The chat UI has
+  // multiple threads (global + per-part + per-strategy + ...) and the
+  // model needs to know which lens to use — a per-strategy thread should
+  // stay focused on that strategy, while a global thread can range across.
+  const chatScope = thread ? {
+    scope: thread.scope || 'global',
+    ref: thread.ref || null,
+    // When the user is scoped to a specific plan, name it explicitly so
+    // the model doesn't have to cross-reference ids.
+    planLabel: (thread.scope === 'plan' && thread.ref)
+      ? ((ws.plans || []).find(p => p.id === thread.ref)?.label || null)
+      : null
+  } : { scope: 'global', ref: null, planLabel: null };
   return {
+    // Tell the model up front where the conversation is scoped.
+    chatScope,
     // Gaps come first so the model encounters them while scanning the
     // snapshot. See computeGaps() for the contract — these are
     // informational, not a checklist.

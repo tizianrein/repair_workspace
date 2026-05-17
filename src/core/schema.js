@@ -36,7 +36,7 @@ export const HYPOTHESIS_STATUS = ['suspected', 'confirmed', 'refuted'];
 export const STEP_STATUS = ['pending', 'in-progress', 'completed', 'skipped', 'blocked'];
 export const PLAN_STATUS = ['draft', 'active', 'completed', 'archived'];
 export const EVIDENCE_KIND = ['photo', 'measurement', 'note', 'document', 'rendering'];
-export const CHAT_SCOPE = ['global', 'instance', 'part', 'hypothesis', 'step'];
+export const CHAT_SCOPE = ['global', 'instance', 'part', 'hypothesis', 'step', 'plan'];
 
 // Fixed palette for strategies. Picked for legibility against the cream
 // panel background, with each color reading clearly at small sizes (the

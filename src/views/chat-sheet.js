@@ -41,6 +41,11 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     currentRef = ref ?? null;
     scopePill.textContent = label || scope.toUpperCase();
     scopePill.classList.toggle('global', scope === 'global');
+    // Strategy-scoped chats get a colored swatch matching the strategy's
+    // colour. Other scopes clear it. The swatch lives next to the title
+    // (see renderTitle) and reuses the same --strategy-color the strategy
+    // tile uses, so the user sees the same colour cue in both places.
+    applyScopeColor();
     onScopeChange?.({ scope, ref: currentRef });
     renderTitle();
     // Make sure a thread exists in the workspace for this scope/ref.
@@ -51,7 +56,27 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     renderHistory();
   }
 
+  function applyScopeColor() {
+    if (currentScope === 'plan' && currentRef) {
+      const ws = getWorkspace();
+      const plan = (ws?.plans || []).find(p => p.id === currentRef);
+      if (plan?.color) {
+        sheet.style.setProperty('--chat-scope-color', plan.color);
+        sheet.classList.add('chat-scoped-plan');
+        return;
+      }
+    }
+    sheet.style.removeProperty('--chat-scope-color');
+    sheet.classList.remove('chat-scoped-plan');
+  }
+
   function renderTitle() {
+    if (currentScope === 'plan' && currentRef) {
+      const ws = getWorkspace();
+      const plan = (ws?.plans || []).find(p => p.id === currentRef);
+      titleEl.textContent = plan ? plan.label : 'Strategy';
+      return;
+    }
     const map = {
       global: 'Discuss the repair',
       instance: 'About the artefact',
@@ -86,7 +111,8 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     instance: 'artefact',
     part: 'part',
     hypothesis: 'condition',
-    step: 'step'
+    step: 'step',
+    plan: 'strategy'
   };
 
   function renderHistory() {
@@ -251,7 +277,7 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
         body: JSON.stringify({
           thread,
           userMessage: text,
-          workspace: payloadForChat({ workspace: getWorkspace(), scope: currentScope, maxMessages: 8 }),
+          workspace: payloadForChat({ workspace: getWorkspace(), scope: currentScope, ref: currentRef, maxMessages: 8 }),
           files: pendingPhotos
         }),
         signal: controller.signal

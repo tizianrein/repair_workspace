@@ -283,8 +283,15 @@ defineCommand('remove-plan', (ws, { planId }) => {
   if (currentPlanId === planId) {
     currentPlanId = remaining[0]?.id || null;
   }
+  // Drop the plan's chat thread too — it's now orphaned. The undo path
+  // restores the plan but NOT the thread; that's an accepted limitation,
+  // since chat history is meant to be a record of a strategy's design
+  // and a deleted strategy's chat is rarely what the user wants back.
+  const remainingConversations = (ws.conversations || []).filter(
+    t => !(t.scope === 'plan' && t.ref === planId)
+  );
   return {
-    workspace: { ...ws, plans: remaining, currentPlanId },
+    workspace: { ...ws, plans: remaining, currentPlanId, conversations: remainingConversations },
     inverse: { type: 'add-plan', payload: { plan: removed } }
   };
 });
@@ -371,12 +378,38 @@ defineCommand('duplicate-plan', (ws, { sourcePlanId, label }) => {
       return fresh;
     });
 
+  // Clone the plan's chat thread too. Duplicating a strategy is forking
+  // the design; the conversation that shaped the source should travel
+  // with the fork. We keep the source's thread intact and clone messages
+  // into a fresh thread for the new plan. Other scopes (global, part,
+  // condition, step) are not plan-scoped and are left alone.
+  const sourceThread = (ws.conversations || []).find(t => t.scope === 'plan' && t.ref === sourcePlanId);
+  const clonedConversations = [];
+  if (sourceThread) {
+    const fresh = newConversation('plan', copy.id);
+    // Copy messages with fresh ids; preserve role + content + timestamp.
+    fresh.messages = (sourceThread.messages || []).map(m => {
+      const c = newMessage(m.role, m.content);
+      // Carry forward any role-specific extras the assistant stores on the
+      // message (toolCalls, plannedSummary, followUpOptions). These don't
+      // affect the workspace state but they keep the visual record intact.
+      if (m.toolCalls)         c.toolCalls = m.toolCalls;
+      if (m.plannedSummary)    c.plannedSummary = m.plannedSummary;
+      if (m.followUpOptions)   c.followUpOptions = m.followUpOptions;
+      if (m.suggestedAction)   c.suggestedAction = m.suggestedAction;
+      if (m.uncertainty)       c.uncertainty = m.uncertainty;
+      return c;
+    });
+    clonedConversations.push(fresh);
+  }
+
   return {
     workspace: {
       ...ws,
       plans: [...(ws.plans || []), copy],
       currentPlanId: copy.id,
-      evidence: [...(ws.evidence || []), ...clonedRenderings]
+      evidence: [...(ws.evidence || []), ...clonedRenderings],
+      conversations: [...(ws.conversations || []), ...clonedConversations]
     },
     inverse: { type: 'remove-plan', payload: { planId: copy.id } }
   };

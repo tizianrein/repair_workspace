@@ -362,10 +362,17 @@ function renderStrategies(ws) {
       </div>
     `;
 
-    // Click the main body → switch strategy. Action buttons handle their
-    // own events and stop propagation so they don't also fire the switch.
+    // Click the main body → switch strategy AND switch chat to this
+    // strategy's thread. Action buttons handle their own events and stop
+    // propagation so they don't also fire the switch.
     div.querySelector('.strategy-main').onclick = () => {
       if (!isCurrent) apply(state, { type: 'set-current-plan', payload: { planId: p.id } });
+      // Move the chat to the per-strategy thread even if this strategy is
+      // already current — the user may have navigated to global scope and
+      // come back, in which case clicking the strategy should return
+      // them to its thread.
+      chatSheet?.setScope('plan', p.id);
+      quickActions?.render();
     };
     div.querySelector('[data-act="export"]').onclick = (e) => {
       e.stopPropagation();
@@ -374,7 +381,16 @@ function renderStrategies(ws) {
     div.querySelector('[data-act="delete"]').onclick = (e) => {
       e.stopPropagation();
       const ok = confirm(`Delete strategy "${p.label}"?\n\nThis only removes the strategy. The artefact, hypotheses, and evidence are not affected.`);
-      if (ok) apply(state, { type: 'remove-plan', payload: { planId: p.id } });
+      if (ok) {
+        // If the chat is currently scoped to this strategy's thread, fall
+        // back to global before the strategy disappears — otherwise the
+        // chat would be staring at a now-orphaned thread.
+        const cur = chatSheet?.getCurrentScope?.();
+        if (cur?.scope === 'plan' && cur.ref === p.id) {
+          chatSheet.setScope('global');
+        }
+        apply(state, { type: 'remove-plan', payload: { planId: p.id } });
+      }
     };
     c.appendChild(div);
   });

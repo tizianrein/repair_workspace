@@ -27,14 +27,23 @@ export function payloadForPropose({ workspace, scope = 'all' }) {
   return slim(workspace, needs);
 }
 
-export function payloadForChat({ workspace, scope = 'all', maxMessages = 8 }) {
+export function payloadForChat({ workspace, scope = 'all', ref = null, maxMessages = 8 }) {
   // Chat always needs the broadest context except old plan versions
   const needs = { parts: true, hypotheses: true, intent: true, constraints: true, plans: 'current', executionLog: true };
   const payload = slim(workspace, needs);
-  // Truncate conversations to last N messages of the active thread, drop others
+  // Truncate conversations to last N messages of the active thread.
+  // For scoped-by-ref threads (part/hyp/step/plan), we must filter on
+  // *both* scope and ref so we don't leak history from a sibling thread
+  // (e.g. plan thread A spilling into plan thread B). Global stays as
+  // a cross-cutting thread the user can step into separately.
   if (payload.conversations) {
     payload.conversations = payload.conversations
-      .filter(t => t.scope === scope || t.scope === 'global')
+      .filter(t => {
+        if (t.scope === 'global') return true;
+        if (t.scope !== scope) return false;
+        // Same scope — also require matching ref. null ref matches null ref.
+        return (t.ref ?? null) === (ref ?? null);
+      })
       .map(t => ({
         ...t,
         messages: (t.messages || []).slice(-maxMessages)

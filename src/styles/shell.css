@@ -357,6 +357,18 @@ body.chat-open .chat-sheet { transform: translateY(0); }
   border-radius: 3px;
 }
 .scope-pill.global { background: var(--ink-soft); }
+
+/* When the chat is scoped to a strategy, recolor the scope pill to the
+   strategy's color and lay a thin colored bar across the top of the
+   chat sheet — the same colour cue used in the strategies panel. The
+   colour is set inline via --chat-scope-color. */
+.chat-scoped-plan .scope-pill {
+  background: var(--chat-scope-color, var(--accent));
+  color: #fff;
+}
+.chat-scoped-plan {
+  border-top: 3px solid var(--chat-scope-color, var(--accent));
+}
 .chat-title {
   flex: 1;
   font-family: var(--display);
