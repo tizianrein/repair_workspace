@@ -466,7 +466,7 @@ export async function streamGeminiWithTools({
 
 
 /**
- * Call Gemini 2.5 Flash Image (Nano Banana) to generate or edit an image.
+ * Call Gemini 3.1 Flash Image (Nano Banana 2) to generate or edit an image.
  *
  * Unlike callGemini which expects a JSON response, this returns the image
  * as a base64-encoded data URL string along with any accompanying text.
@@ -484,7 +484,11 @@ export async function callGeminiImage({ prompt, files = [] }) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY not configured on the server');
 
-  const model = 'gemini-2.5-flash-image';
+  // Nano Banana 2 — successor to gemini-2.5-flash-image. Same generateContent
+  // shape, better prompt adherence and text rendering, lower cost per call.
+  // Still a "preview" id at the time of writing; swap to the stable id when
+  // Google promotes it.
+  const model = 'gemini-3.1-flash-image-preview';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const parts = [];

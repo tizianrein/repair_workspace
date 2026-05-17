@@ -154,7 +154,10 @@ chatSheet = createChatSheet(
       // (emitted by the AI when it wants to switch) is also honored. The
       // intent is that "create a new strategy doing the opposite" lands the
       // user in the new strategy's chat with the conversation that follows.
-      const planCreate = commands.find(c => c.type === 'create-plan' && c.payload?.plan?.id);
+      // NOTE: the chat engine's `create_plan` tool emits a command of type
+      // `add-plan` (the underlying schema action). Not `create-plan` — the
+      // tool name and command name don't match, which bit us once already.
+      const planAdd    = commands.find(c => c.type === 'add-plan' && c.payload?.plan?.id);
       const setActive  = commands.find(c => c.type === 'set-current-plan' && c.payload?.planId);
       apply(state, {
         type: 'batch',
@@ -165,7 +168,7 @@ chatSheet = createChatSheet(
       });
       // Pick the target: an explicit set-current-plan wins, otherwise a
       // newly-created plan, otherwise no scope change.
-      const newPlanId = setActive?.payload?.planId || planCreate?.payload?.plan?.id || null;
+      const newPlanId = setActive?.payload?.planId || planAdd?.payload?.plan?.id || null;
       if (newPlanId) {
         chatSheet.setScope('plan', newPlanId);
         quickActions?.render();

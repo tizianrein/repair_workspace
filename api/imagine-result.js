@@ -13,7 +13,7 @@
  * Returns:
  *   { image: 'data:image/png;base64,...', text: string }
  *
- * Calls Gemini 2.5 Flash Image (Nano Banana). The source photo is always
+ * Calls Gemini 3.1 Flash Image (Nano Banana 2). The source photo is always
  * passed as the primary visual anchor — the real artefact's identity,
  * materials, and photographic setting come from there. The Soll-JSON
  * describes the target state.
@@ -73,7 +73,7 @@ export default async function handler(req, res) {
 }
 
 /**
- * Build the prompt for Nano Banana from the Soll-JSON.
+ * Build the prompt for Nano Banana 2 from the Soll-JSON.
  *
  * The Soll-JSON is the canonical specification of the target state. The
  * prompt translates it into descriptive prose that the image model can
