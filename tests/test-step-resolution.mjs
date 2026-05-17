@@ -309,5 +309,95 @@ test('create_plan silently drops edges to nonexistent steps', () => {
   assert.ok(r.droppedEdges, 'Should report dropped edges');
 });
 
+console.log('\nturnContext.pendingPlanId (image-1 bug):');
+test('create_plan sets pendingPlanId so subsequent add_step targets the new plan', () => {
+  // The exact image-1 scenario: workspace has an old current plan, model
+  // creates a NEW plan in the same turn, then adds steps. Without the
+  // turnContext fix the add_step routed to the OLD plan.
+  const ws = {
+    currentPlanId: 'plan_OLD',
+    plans: [{ id: 'plan_OLD', steps: [{ id: 'old_step', title: 'Old step' }] }]
+  };
+  const pending = [];
+  const turnContext = { pendingPlanId: null };
+  const r1 = mapToolToCommand('create_plan',
+    { label: 'New strategy', steps: [{ id: 'first', title: 'First', description: 'a' }] },
+    {}, ws, pending, turnContext
+  );
+  assert.equal(r1.ok, true);
+  const newPlanId = r1.planId;
+  // Important: turnContext was updated by create_plan
+  assert.equal(turnContext.pendingPlanId, newPlanId, 'turnContext should hold the new plan id');
+
+  // Now add_step in the SAME turn should target the new plan, not the old one
+  const r2 = mapToolToCommand('add_step',
+    { title: 'Second', description: 'b' },
+    {}, ws, pending, turnContext
+  );
+  assert.equal(r2.ok, true);
+  assert.equal(r2.commands[0].payload.planId, newPlanId,
+    `add_step should target new plan (${newPlanId}), not old (plan_OLD)`);
+});
+
+test('add_step without any active plan returns error', () => {
+  const ws = { currentPlanId: null, plans: [] };
+  const r = mapToolToCommand('add_step',
+    { title: 'Step', description: 'a' },
+    {}, ws, [], { pendingPlanId: null }
+  );
+  assert.ok(r.error, 'Should error when no plan is active');
+});
+
+test('add_step with afterStepId can reference step in pending plan from same turn', () => {
+  const ws = { currentPlanId: null, plans: [] };
+  const pending = [];
+  const turnContext = { pendingPlanId: null };
+  // create_plan in same turn with one step
+  const r1 = mapToolToCommand('create_plan',
+    { label: 'Plan', steps: [{ id: 'clean', title: 'Clean', description: 'a' }] },
+    {}, ws, pending, turnContext
+  );
+  // Now simulate that the new plan has been "materialized" in fullWorkspace
+  // (this is what client-side state will eventually do, but for the alias
+  // map's purposes, we also have the plan in pending tracking)
+  const wsWithNewPlan = {
+    currentPlanId: 'plan_OLD',  // workspace currentPlan still stale
+    plans: [
+      { id: turnContext.pendingPlanId, steps: r1.command.payload.plan.steps }
+    ]
+  };
+  // add_step into the new plan, using afterStepId
+  const r2 = mapToolToCommand('add_step',
+    { title: 'Second', description: 'b', afterStepId: 'clean' },
+    {}, wsWithNewPlan, pending, turnContext
+  );
+  assert.equal(r2.ok, true, `Expected ok, got: ${r2.error}`);
+  assert.equal(r2.commands.length, 2, 'should produce upsert-step + add-edge');
+  assert.equal(r2.commands[1].type, 'add-edge');
+});
+
+test('set_active_plan updates turnContext', () => {
+  const ws = {
+    currentPlanId: 'plan_A',
+    plans: [
+      { id: 'plan_A', steps: [] },
+      { id: 'plan_B', steps: [{ id: 'b_step', title: 'B Step' }] }
+    ]
+  };
+  const turnContext = { pendingPlanId: null };
+  const r1 = mapToolToCommand('set_active_plan',
+    { planId: 'plan_B' }, {}, ws, [], turnContext
+  );
+  assert.equal(r1.ok, true);
+  assert.equal(turnContext.pendingPlanId, 'plan_B');
+  // Now an add_edge should resolve refs in plan_B's step list
+  const r2 = mapToolToCommand('add_edge',
+    { source: 'b_step', target: 'b_step' },  // bogus but tests resolution
+    {}, ws, [], turnContext
+  );
+  assert.equal(r2.ok, true, `Expected ok, got: ${r2.error}`);
+  assert.equal(r2.command.payload.planId, 'plan_B');
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

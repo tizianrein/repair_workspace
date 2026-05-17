@@ -18,7 +18,7 @@
  * workspace state.
  */
 
-import { callGeminiWithTools } from './gemini.js';
+import { callGeminiWithTools, isProAvailable, tripProCoolDown, isQuotaError, PREFERRED_CHAT_MODEL_NAME, FALLBACK_CHAT_MODEL_NAME } from './gemini.js';
 import { loadPrompt } from './prompts.js';
 import { CHAT_TOOLS } from './chat-tools.js';
 
@@ -120,9 +120,14 @@ export async function runChat({ thread, userMessage, workspace, files }) {
   // point at a sibling step the model just created (where the model knows the
   // step by a slug or title, but the server assigned a fresh id).
   const pendingSteps = [];
+  // Plan created during *this* chat turn. Client only re-points currentPlanId
+  // after the whole batch is applied, so without this, a sequence like
+  // create_plan + add_step would route the add_step to the *old* current plan
+  // (or fail with "no active plan"). Mutable so create_plan can write to it.
+  const turnContext = { pendingPlanId: null };
 
   async function executeTool(name, args) {
-    const result = mapToolToCommand(name, args, snapshot, workspace, pendingSteps);
+    const result = mapToolToCommand(name, args, snapshot, workspace, pendingSteps, turnContext);
     toolCallTrace.push({ name, args, result });
     // Only add commands when the tool actually succeeded. A result with
     // `error` means we rejected the call (e.g. add_edge to an unknown step)
@@ -136,46 +141,83 @@ export async function runChat({ thread, userMessage, workspace, files }) {
     return result;
   }
 
-  // First attempt: normal call
-  let result;
-  let firstError = null;
-  const t0 = Date.now();
-  try {
-    result = await callGeminiWithTools({
+  // ---------------------------------------------------------------------
+  // Model selection: prefer Pro for quality, fall back to Flash on quota.
+  // ---------------------------------------------------------------------
+  // Pro produces FAR fewer tool-call mistakes than Flash: less hallucinated
+  // step ids, vanishingly rare "tool_code"-as-text reasoning leaks. It's
+  // ~3x more expensive and ~2x slower, so we don't use it unconditionally;
+  // we keep a module-level cool-down so once Pro 429's we stop trying it
+  // for ~90s.
+  const wantPro = isProAvailable();
+  let modelTried = wantPro ? PREFERRED_CHAT_MODEL_NAME : FALLBACK_CHAT_MODEL_NAME;
+
+  async function tryModel(model, opts = {}) {
+    return callGeminiWithTools({
       systemPrompt,
       userMessage,
       history,
       workspaceSnapshot: snapshot,
       tools: CHAT_TOOLS,
       executeTool,
-      model: 'gemini-2.5-flash',
+      model,
       temperature: 0.6,
       maxTurns: 12,
-      // Gemini 2.5 Flash supports up to 65k output tokens. We use a
-      // generous budget so big plans (20+ steps with full descriptions)
-      // can fit. The bottleneck for big plans is rarely tokens — it's
-      // Gemini's tool-call argument decoder choking on deeply nested
-      // structures. We mitigate by allowing more turns so the model can
-      // call create_plan with a skeleton, then refine with update_step
-      // calls across subsequent turns.
-      maxOutputTokens: 32768
+      // Gemini 2.5 supports up to 65k output tokens. We use a generous
+      // budget so big plans can fit. Pro tolerates deeper nesting in
+      // function calls, so it rarely needs the chunking retry below.
+      maxOutputTokens: 32768,
+      ...opts
     });
-    console.log('[chat-engine] first attempt OK in', Date.now() - t0, 'ms. text.len=', result?.text?.length || 0, 'tools=', toolCallTrace.length);
-  } catch (err) {
-    firstError = err;
-    console.warn('[chat-engine] first attempt FAILED after', Date.now() - t0, 'ms:', err.message);
-    console.warn('[chat-engine] context at failure: history.length=', history.length,
-      'parts=', snapshot.instance?.parts?.length || 0,
-      'conditions=', snapshot.conditions?.length || 0,
-      'planSteps=', snapshot.currentPlan?.steps?.length || 0,
-      'collectedCommands=', collectedCommands.length,
-      'toolCallTrace=', toolCallTrace.length);
   }
 
-  // Retry-with-collaboration: if the first attempt failed with a model-side
-  // problem (MALFORMED_FUNCTION_CALL, empty output, MAX_TOKENS), try again
-  // with an explicit instruction to break the work down and ask the user
-  // for help. This turns a hard failure into a productive conversation.
+  // First attempt
+  let result;
+  let firstError = null;
+  const t0 = Date.now();
+  try {
+    result = await tryModel(modelTried);
+    console.log(`[chat-engine] ${modelTried} OK in`, Date.now() - t0, 'ms. text.len=', result?.text?.length || 0, 'tools=', toolCallTrace.length);
+  } catch (err) {
+    firstError = err;
+    console.warn(`[chat-engine] ${modelTried} FAILED after`, Date.now() - t0, 'ms:', err.message);
+
+    // If Pro hit a quota error, trip the cool-down and immediately try
+    // Flash with the same request — participants shouldn't see a failure
+    // just because Pro is rate-limited.
+    if (modelTried === PREFERRED_CHAT_MODEL_NAME && isQuotaError(err)) {
+      tripProCoolDown(err.message);
+      // Reset turn-local state so the Flash retry starts clean. Without
+      // this, anything Pro half-applied (none, in practice, because Pro
+      // failed before any tool ran) would double-up.
+      collectedCommands.length = 0;
+      toolCallTrace.length = 0;
+      pendingSteps.length = 0;
+      turnContext.pendingPlanId = null;
+      modelTried = FALLBACK_CHAT_MODEL_NAME;
+      const t1 = Date.now();
+      try {
+        result = await tryModel(FALLBACK_CHAT_MODEL_NAME);
+        firstError = null;
+        console.log('[chat-engine] Flash fallback OK in', Date.now() - t1, 'ms. text.len=', result?.text?.length || 0, 'tools=', toolCallTrace.length);
+      } catch (flashErr) {
+        firstError = flashErr;
+        console.warn('[chat-engine] Flash fallback also FAILED after', Date.now() - t1, 'ms:', flashErr.message);
+      }
+    }
+    if (firstError) {
+      console.warn('[chat-engine] context at failure: history.length=', history.length,
+        'parts=', snapshot.instance?.parts?.length || 0,
+        'conditions=', snapshot.conditions?.length || 0,
+        'planSteps=', snapshot.currentPlan?.steps?.length || 0,
+        'collectedCommands=', collectedCommands.length,
+        'toolCallTrace=', toolCallTrace.length);
+    }
+  }
+
+  // Retry-with-collaboration: if the first attempt(s) produced no text and
+  // no tool calls, fall back to a plain-text "let me chunk this" reply so
+  // the user gets something useful rather than a silent empty bubble.
   const failed = firstError || (!result?.text?.trim() && toolCallTrace.length === 0);
   if (failed) {
     const errorContext = firstError?.message || 'no response';
@@ -197,7 +239,9 @@ export async function runChat({ thread, userMessage, workspace, files }) {
         // No tools on the retry — we want a conversational fallback only.
         tools: [],
         executeTool: async () => ({ ok: true }),
-        model: 'gemini-2.5-flash',
+        // Always use Flash for the chunking retry — it's the cheap path
+        // and we don't need Pro quality for "ask the user a question".
+        model: FALLBACK_CHAT_MODEL_NAME,
         temperature: 0.5,
         maxTurns: 1,
         maxOutputTokens: 2048
@@ -264,10 +308,25 @@ function leanWorkspace(ws) {
  * `pendingSteps` is a shared mutable array carrying step-id information for
  * steps created earlier in the same chat turn — so add_edge can resolve refs
  * that point at a step the model just created via add_step.
+ *
+ * `turnContext.pendingPlanId` carries the id of a plan created earlier in
+ * this turn via create_plan. Subsequent add_step / update_step / add_edge /
+ * etc. in the same turn must target that plan, not the workspace's stale
+ * currentPlanId (which only updates client-side after the whole batch
+ * applies). Without this, "create a plan and add 5 steps" silently routes
+ * the steps to the previously-active plan, or fails with "no active plan".
  */
-function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []) {
-  // Build the alias map once per call. Cheap; few dozen entries at most.
-  const currentPlan = (fullWorkspace.plans || []).find(p => p.id === fullWorkspace.currentPlanId) || null;
+function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = [], turnContext = {}) {
+  // Resolve the active plan id, preferring the one just created in this turn
+  // over the workspace's stale currentPlanId.
+  const activePlanId = turnContext.pendingPlanId || fullWorkspace.currentPlanId || null;
+  // Build the alias map once per call. Cheap; few dozen entries at most. We
+  // prefer the active plan (turn-local or workspace-current) over a strict
+  // currentPlanId lookup so step-ref resolution works inside the same turn
+  // that created the plan.
+  const currentPlan = activePlanId
+    ? (fullWorkspace.plans || []).find(p => p.id === activePlanId) || null
+    : null;
   const aliases = buildStepAliasMap(currentPlan, pendingSteps);
 
   switch (name) {
@@ -362,6 +421,11 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
       if (droppedEdges.length) {
         console.warn('[chat-engine] create_plan: dropped', droppedEdges.length, 'unresolvable edge(s):', droppedEdges);
       }
+      // Mark this plan as the in-turn active one so subsequent add_step etc.
+      // route to it. The client only updates its currentPlanId after the
+      // whole batch applies, so without this the new plan would be invisible
+      // to the rest of this turn's tool calls.
+      turnContext.pendingPlanId = planId;
       return {
         ok: true, planId, stepIds: steps.map(s => s.id),
         message: `Created plan "${args.label}" with ${steps.length} steps`
@@ -374,7 +438,7 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
       };
     }
     case 'add_step': {
-      const currentPlanId = fullWorkspace.currentPlanId;
+      const currentPlanId = activePlanId;
       if (!currentPlanId) return { error: 'No active plan. Call create_plan first.' };
       const stepId = newId('step');
       // Register this step BEFORE resolving after/before refs — covers the
@@ -435,7 +499,7 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
       };
     }
     case 'update_step': {
-      const currentPlanId = fullWorkspace.currentPlanId;
+      const currentPlanId = activePlanId;
       if (!currentPlanId) return { error: 'No active plan' };
       const resolvedId = resolveStepRef(args.stepId, aliases);
       if (!resolvedId) {
@@ -448,7 +512,7 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
       };
     }
     case 'remove_step': {
-      const currentPlanId = fullWorkspace.currentPlanId;
+      const currentPlanId = activePlanId;
       if (!currentPlanId) return { error: 'No active plan' };
       const resolvedId = resolveStepRef(args.stepId, aliases);
       if (!resolvedId) {
@@ -461,7 +525,7 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
       };
     }
     case 'add_edge': {
-      const currentPlanId = fullWorkspace.currentPlanId;
+      const currentPlanId = activePlanId;
       if (!currentPlanId) return { error: 'No active plan' };
       const src = resolveStepRef(args.source, aliases);
       const tgt = resolveStepRef(args.target, aliases);
@@ -489,11 +553,14 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
       };
     }
     case 'remove_edge': {
-      const currentPlanId = fullWorkspace.currentPlanId;
+      const currentPlanId = activePlanId;
       if (!currentPlanId) return { error: 'No active plan' };
       return { ok: true, command: { type: 'remove-edge', payload: { planId: currentPlanId, edgeId: args.edgeId } } };
     }
     case 'set_active_plan':
+      // Keep the in-turn context consistent so subsequent tool calls target
+      // the same plan the model just switched to.
+      turnContext.pendingPlanId = args.planId || null;
       return { ok: true, command: { type: 'set-current-plan', payload: { planId: args.planId } } };
     case 'update_plan':
       return {
@@ -501,6 +568,9 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
         command: { type: 'update-plan', payload: { planId: args.planId, patch: args.patch || {} } }
       };
     case 'remove_plan':
+      // If the model removes the plan it was about to mutate, clear the
+      // turn-local pointer so later tool calls don't write into the void.
+      if (turnContext.pendingPlanId === args.planId) turnContext.pendingPlanId = null;
       return { ok: true, command: { type: 'remove-plan', payload: { planId: args.planId } } };
     default:
       return { error: `Unknown tool: ${name}` };

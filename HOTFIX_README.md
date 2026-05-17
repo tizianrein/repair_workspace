@@ -1,29 +1,66 @@
-# Workshop Hotfix: add_edge step-ref resolution
+# Workshop Hotfix v2
 
-## What this fixes
-The workshop bug where Gemini calls `add_edge` with a step name that doesn't
-exist in the plan — typically a snake_case slug it invented (e.g.
-`repair_feet_ends`), or a step title verbatim (e.g. `Grundierung auftragen`),
-or a reference to a step it created earlier in the same turn but whose
-server-generated id it cannot know. The whole batch failed at apply-time and
-the user saw "Den Schritt sehe ich aber nicht".
+Builds on v1 (step-ref resolution). Fixes three new issues, keeps everything
+v1 fixed.
 
-## What it doesn't change
-- Storage format (no migration needed)
+## What v2 adds
+
+1. **Pro-first model selection with Flash fallback.**
+   `chat-engine.js` now tries `gemini-2.5-pro` first. Pro produces far fewer
+   tool-call mistakes (no more `tool_code print(default_api.…)` text dumps,
+   no hallucinated step ids). When Pro returns a 429/quota error, the engine
+   transparently retries the same request on `gemini-2.5-flash` — the user
+   sees no failure, just a slightly slower or differently-worded reply.
+
+   A module-level cool-down (90s after a Pro quota hit) skips Pro entirely
+   on subsequent requests in the same warm Lambda instance, sparing
+   participants the wasted Pro call when quota is empty. Cold-starts reset
+   the cool-down — fine, the live fallback catches it.
+
+2. **`pendingPlanId` turn-context** — fixes the image-1 bug.
+   When the model created a new plan AND added steps in the same chat turn,
+   the steps were routed to the **old** current plan because the workspace
+   snapshot's `currentPlanId` only updates client-side after the whole
+   batch applies. The engine now tracks the just-created plan id and routes
+   subsequent `add_step` / `update_step` / `add_edge` / `remove_step` /
+   `remove_edge` in the same turn to that new plan. `set_active_plan` and
+   `remove_plan` update the same tracker so a mid-turn plan switch sticks.
+
+3. **`tool_code` text-leak stripping** — fixes the image-2 bug.
+   Gemini Flash 2.5 sometimes ignores its function-calling channel and
+   instead emits a Python-like text block describing what it would call:
+   `tool_code print(default_api.set_intent(...)) ... thought The user wants…`.
+   The action is lost (we can't recover it — the model didn't actually
+   call any tool), but `gemini.js` now detects the leak, strips the dump
+   from the visible reply, warns in server logs, and supplies a graceful
+   fallback message so the user sees a sensible "please rephrase" instead
+   of a wall of unreadable code. Pro almost never does this, so #1 is the
+   primary mitigation; #3 is the safety net.
+
+4. **Prompt hardening** — added a CRITICAL "output format" section at the
+   very top of `chat.md` explicitly forbidding `tool_code` / `default_api.`
+   in text replies. Also strengthened the tone rules to forbid enumerating
+   every change in the reply ("1. Ich habe… 2. Ich habe… 3. Ich habe…")
+   because that gives a false sense of completeness when the actual
+   workspace doesn't match. Image-1 was that pattern in action.
+
+## What this does NOT change
+
+- Storage format / data model (no migration)
 - Client code (no rebuild needed)
-- The vocabulary of tools the model can call
-- Existing tests (`test:commands` still passes)
+- Vocabulary of tools the model can call
+- The propose endpoint (still uses its own model setting)
 
 ## How to apply
 
-Drop these 5 files over the corresponding files in your repo (3 modified, 1
-new, 1 modified):
+Drop these 6 files over the corresponding files in your repo:
 
 ```
-api/_shared/chat-engine.js      ← modified (main fix: alias map + resolver)
-api/_shared/chat-tools.js       ← modified (hardened tool descriptions)
-src/ai/prompts/chat.md          ← modified (added "Step ids" rules section + worked example)
-tests/test-step-resolution.mjs  ← NEW (20 unit tests for the resolver)
+api/_shared/chat-engine.js      ← modified (pro/flash fallback, turnContext)
+api/_shared/chat-tools.js       ← modified (from v1: hardened descriptions)
+api/_shared/gemini.js           ← modified (NEW: model helpers + tool_code strip)
+src/ai/prompts/chat.md          ← modified (NEW: anti-tool_code section, anti-enumeration)
+tests/test-step-resolution.mjs  ← modified (24 tests now, was 20)
 package.json                    ← modified (one new npm script: test:step-resolution)
 ```
 
@@ -39,28 +76,33 @@ No `npm install` needed.
 
 ```
 npm run test:commands          # existing tests, should still pass
-npm run test:step-resolution   # new tests, should be 20/20 green
+npm run test:step-resolution   # 24 tests, all green
 ```
 
-## How the fix works (one paragraph)
+## What participants will likely notice
 
-The chat engine now tracks every step the model creates within a single chat
-turn — keyed by its server-assigned real id AND by every alias the model
-might plausibly reference it by (its title, the snake_case slug of its
-title, any `slug` it requested). When `add_edge` runs, source/target are
-resolved against (a) the live workspace plan and (b) the in-turn pending-
-steps registry. If resolution succeeds, the real ids are substituted. If it
-fails, the tool returns `{ error: ... }` instead of producing a broken
-command — Gemini sees the error in the functionResponse and gets to fix
-itself in the same turn. The whole batch no longer dies on the client.
+- Replies will feel slightly slower at first (Pro is ~2x slower than Flash).
+  When you see "Generated by gemini-2.5-flash" patterns in the logs, that's
+  the fallback kicking in.
+- The "I've done X, Y, Z, also W, and updated Q" enumerations will mostly
+  disappear — Pro follows the no-listing rule.
+- "tool_code" walls in chat will be replaced with a German fallback message
+  asking the user to rephrase.
+- Adding a step inside a plan that was just created in the same turn now
+  actually appears in that plan (image-1 fix).
 
-Also: `create_plan` now silently drops internal edges that don't resolve
-(better a partial plan than no plan), and `add_step`'s afterStepId /
-beforeStepId now resolve via the same logic (so the model can pass either
-a real id or a title there).
+## Cost / quota note
 
-## Behavioural rollback
+Pro is roughly 3-4× the per-token cost of Flash. For 12 participants in a
+3-4 hour workshop with ~50 chat turns each, you're looking at maybe
+$15-25 instead of ~$5 — still well within free tier if you have one.
 
-If for some reason this breaks something in the workshop, revert just
-`api/_shared/chat-engine.js` and `api/_shared/chat-tools.js` from your git
-history and redeploy. The prompt change is harmless on its own.
+If you exhaust Pro's free-tier per-minute or per-day quota, the fallback
+kicks in automatically. Participants will see Flash quality for ~90s
+after each quota hit, then Pro retries.
+
+## Rollback
+
+If something breaks: revert `api/_shared/chat-engine.js` and
+`api/_shared/gemini.js` from your git history and redeploy. The prompt
+change is harmless on its own.

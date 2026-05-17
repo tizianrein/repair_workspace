@@ -3,9 +3,53 @@
  *
  * Single place to talk to Gemini. Both endpoints (propose, chat) go through
  * here. Centralized error handling, JSON unwrapping, multimodal support.
+ *
+ * Model strategy: we prefer gemini-2.5-pro for chat (much better tool-call
+ * compliance — far fewer hallucinated step ids, far less "tool_code" text
+ * output) and fall back to gemini-2.5-flash automatically on quota errors.
+ * Callers can override per-call via the `model` param.
  */
 
 const DEFAULT_MODEL = 'gemini-2.5-flash';
+const PREFERRED_CHAT_MODEL = 'gemini-2.5-pro';
+const FALLBACK_CHAT_MODEL = 'gemini-2.5-flash';
+
+// ----------------------------------------------------------------------------
+// Pro quota cool-down
+//
+// Vercel serverless functions don't share memory across invocations
+// reliably, but within a single warm Lambda instance (which Vercel keeps
+// alive for ~15min between requests) module-level state survives. We use
+// that to track when Pro most recently 429'd; while we're inside the
+// cool-down window we skip Pro entirely and go straight to Flash, sparing
+// participants a 5-10s wasted call.
+//
+// This is best-effort, not perfect. Cold starts reset it. That's fine: the
+// fallback path inside each request still catches Pro quota errors live.
+// ----------------------------------------------------------------------------
+
+let proCoolDownUntil = 0;
+const PRO_COOL_DOWN_MS = 90 * 1000; // 1.5 min after a Pro rate-limit hit
+
+export function isProAvailable() {
+  return Date.now() >= proCoolDownUntil;
+}
+export function tripProCoolDown(reason) {
+  proCoolDownUntil = Date.now() + PRO_COOL_DOWN_MS;
+  console.warn(`[gemini] Pro cool-down tripped (${reason}); using Flash until`,
+    new Date(proCoolDownUntil).toISOString());
+}
+export function isQuotaError(err) {
+  const msg = (err && err.message) || '';
+  // Gemini returns 429 with a "RESOURCE_EXHAUSTED" body for both per-minute
+  // and per-day quota. Both should fall back.
+  return /\b429\b/.test(msg)
+    || /RESOURCE_EXHAUSTED/i.test(msg)
+    || /quota/i.test(msg)
+    || /rate.?limit/i.test(msg);
+}
+export const PREFERRED_CHAT_MODEL_NAME = PREFERRED_CHAT_MODEL;
+export const FALLBACK_CHAT_MODEL_NAME = FALLBACK_CHAT_MODEL;
 
 export async function callGemini({ systemPrompt, userPayload, files = [], model, temperature = 0.4, maxOutputTokens }) {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -273,6 +317,42 @@ export async function callGeminiWithTools({
       if (p.text) turnText += p.text;
       const fc = p.functionCall || p.function_call;
       if (fc) turnCalls.push({ name: fc.name, args: fc.args || {} });
+    }
+
+    // Strip "tool_code" leakage. Sometimes (especially on Flash) the model
+    // emits its planned tool calls as a Python-like text block instead of
+    // structured functionCall parts. The user sees a wall of
+    // `tool_code print(default_api.create_plan(...))` text in chat and
+    // nothing happens in the workspace. We can't recover the intended
+    // calls — the action is lost — but we can at least remove the noise
+    // from what the user sees, log a warning, and (later, in the engine)
+    // emit a clear fallback message asking the user to retry.
+    let toolCodeLeak = false;
+    if (turnText && /\b(?:tool_code\b|default_api\.|print\(default_api)/.test(turnText)) {
+      toolCodeLeak = true;
+      console.warn('[gemini] detected tool_code leak in text output — stripping. snippet:',
+        turnText.slice(0, 200).replace(/\s+/g, ' '));
+      turnText = turnText
+        // Remove fenced code blocks that look like tool-call dumps
+        .replace(/```(?:tool_code|python)?[\s\S]*?```/g, '')
+        // Greedy: remove any "default_api.foo(...)" call expressions. Use
+        // a balanced-paren matcher up to 8 nesting levels deep — enough
+        // for a step's nested arg lists. Anything left is prose.
+        .replace(/\bprint\(default_api\.[A-Za-z_]+\([^()]*(?:\([^()]*(?:\([^()]*\)[^()]*)*\)[^()]*)*\)\)/g, '')
+        .replace(/\bdefault_api\.[A-Za-z_]+\([^()]*(?:\([^()]*(?:\([^()]*\)[^()]*)*\)[^()]*)*\)/g, '')
+        // Remove stray "tool_code" / "thought" stub words that surround
+        // such dumps in Gemini's leaked syntax.
+        .replace(/\btool_code\b/g, '')
+        .replace(/^\s*thought\b[ \t]*/i, '')
+        // Whitespace cleanup
+        .replace(/\n{3,}/g, '\n\n')
+        .replace(/  +/g, ' ')
+        .trim();
+      // If the leak emptied the text entirely, supply a graceful fallback
+      // so the user doesn't see a blank assistant bubble.
+      if (!turnText) {
+        turnText = '[Die AI hat ihren Plan in einem internen Format ausgegeben statt ihn auszuführen. Bitte formuliere die Anfrage neu — z.B. konkreter, oder in kleineren Schritten.]';
+      }
     }
 
     // Append model's response to contents
