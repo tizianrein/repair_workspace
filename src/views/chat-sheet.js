@@ -161,14 +161,22 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
       // Render a compact summary card listing what was done. Click to
       // expand — each row shows the tool name, whether it landed or was
       // rejected, the args the model passed, and any error message.
-      // Technical but readable; useful when auditing why a change
-      // didn't behave as expected.
-      if (Array.isArray(msg.toolCalls) && msg.toolCalls.length > 0) {
+      //
+      // We exclude `propose_options` from the card: that tool just
+      // attaches chips to the reply, it doesn't modify the workspace.
+      // Showing "✓ Applied" for it would be misleading — the chips are
+      // the affordance, the user hasn't picked anything yet. So if
+      // propose_options is the ONLY tool in this turn, no card. If
+      // there are other tools too, the card shows just those.
+      const workspaceCalls = (msg.toolCalls || []).filter(
+        ev => ev && ev.name !== 'propose_options'
+      );
+      if (workspaceCalls.length > 0) {
         const card = document.createElement('details');
         card.className = 'chat-actions-card';
         const summary = msg.plannedSummary
           ? msg.plannedSummary
-          : `${msg.toolCalls.length} action${msg.toolCalls.length === 1 ? '' : 's'}`;
+          : `${workspaceCalls.length} action${workspaceCalls.length === 1 ? '' : 's'}`;
         const sumEl = document.createElement('summary');
         sumEl.innerHTML =
           `<span class="csa-arrow" aria-hidden="true">▸</span>` +
@@ -177,7 +185,7 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
 
         const log = document.createElement('div');
         log.className = 'csa-log';
-        for (const ev of msg.toolCalls) {
+        for (const ev of workspaceCalls) {
           const row = document.createElement('div');
           row.className = 'csa-log-row';
           const isError = !!(ev.result && ev.result.error);
