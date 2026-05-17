@@ -59,6 +59,7 @@ export async function runChat({ thread, userMessage, workspace, files }) {
   // First attempt: normal call
   let result;
   let firstError = null;
+  const t0 = Date.now();
   try {
     result = await callGeminiWithTools({
       systemPrompt,
@@ -79,8 +80,16 @@ export async function runChat({ thread, userMessage, workspace, files }) {
       // calls across subsequent turns.
       maxOutputTokens: 32768
     });
+    console.log('[chat-engine] first attempt OK in', Date.now() - t0, 'ms. text.len=', result?.text?.length || 0, 'tools=', toolCallTrace.length);
   } catch (err) {
     firstError = err;
+    console.warn('[chat-engine] first attempt FAILED after', Date.now() - t0, 'ms:', err.message);
+    console.warn('[chat-engine] context at failure: history.length=', history.length,
+      'parts=', snapshot.instance?.parts?.length || 0,
+      'conditions=', snapshot.conditions?.length || 0,
+      'planSteps=', snapshot.currentPlan?.steps?.length || 0,
+      'collectedCommands=', collectedCommands.length,
+      'toolCallTrace=', toolCallTrace.length);
   }
 
   // Retry-with-collaboration: if the first attempt failed with a model-side
