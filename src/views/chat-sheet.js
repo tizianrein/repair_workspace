@@ -113,7 +113,17 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
       div.textContent = msg.content;
     } else {
       div.className = `chat-bubble chat-${msg.role === 'user' ? 'user' : 'llm'}`;
-      div.textContent = msg.content;
+      // User messages: plain text (we don't want to render anything the
+      // user types — too risky and not the right affordance anyway).
+      // Assistant messages: small subset of markdown — paragraph breaks,
+      // bullet/ordered lists, **bold**, *italic*, `inline code`. The
+      // renderer escapes HTML first, then re-introduces markup, so model
+      // output can never inject tags.
+      if (msg.role === 'user') {
+        div.textContent = msg.content;
+      } else {
+        div.innerHTML = renderAssistantMarkdown(msg.content || '');
+      }
       if (msg.uncertainty?.length) {
         const un = document.createElement('div');
         un.className = 'chat-uncertainty';
@@ -405,6 +415,68 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
 
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/**
+ * Render a small, deliberately restricted subset of markdown for AI chat
+ * replies. We support:
+ *   - paragraph breaks (blank line)
+ *   - unordered lists (lines starting with `- ` or `* `)
+ *   - ordered lists (lines starting with `1.`, `2.`, ...)
+ *   - **bold**
+ *   - *italic* / _italic_  (but only when surrounded by whitespace or
+ *     punctuation, so snake_case ids like front_left_leg don't italicize)
+ *   - `inline code`
+ *
+ * Deliberately NOT supported: headers, links, images, blockquotes, nested
+ * lists, fenced code blocks, tables. The chat UI doesn't need them and
+ * each one is a footgun (links are an exfiltration vector, headers look
+ * ridiculous in a chat bubble, etc).
+ *
+ * Security: every input character is HTML-escaped first, THEN markdown
+ * markers are converted back to tags. Model output cannot inject tags.
+ */
+function renderAssistantMarkdown(text) {
+  if (!text) return '';
+  // Escape first — everything that follows operates on already-safe text.
+  let s = escapeHtml(text);
+
+  // Inline code: `foo` → <code>foo</code>. Do this BEFORE bold/italic so
+  // markers inside code aren't reinterpreted.
+  s = s.replace(/`([^`\n]+?)`/g, '<code>$1</code>');
+
+  // Bold: **foo** → <strong>foo</strong>. Greedy is fine since we forbid newlines.
+  s = s.replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>');
+
+  // Italic: *foo* or _foo_ — but only when the marker is at a word boundary
+  // (start/end of line or surrounded by whitespace/punctuation). This stops
+  // snake_case ids like front_left_leg from italicizing. We anchor the
+  // opening marker to (start-of-string | whitespace | open-paren) and the
+  // closing marker to (end-of-string | whitespace | punctuation).
+  s = s.replace(/(^|[\s(])\*([^*\n]{1,200}?)\*(?=[\s.,!?;:)]|$)/g, '$1<em>$2</em>');
+  s = s.replace(/(^|[\s(])_([^_\n]{1,200}?)_(?=[\s.,!?;:)]|$)/g, '$1<em>$2</em>');
+
+  // Now turn the text into paragraphs and lists. Split on blank lines to
+  // get blocks, then decide what each block is.
+  const blocks = s.split(/\n{2,}/).map(b => b.trim()).filter(Boolean);
+  const html = blocks.map(block => {
+    const lines = block.split('\n');
+    // Unordered list: every line starts with "- " or "* ".
+    if (lines.every(l => /^\s*[-*]\s+/.test(l))) {
+      const items = lines.map(l => `<li>${l.replace(/^\s*[-*]\s+/, '')}</li>`).join('');
+      return `<ul>${items}</ul>`;
+    }
+    // Ordered list: every line starts with "1." "2." etc.
+    if (lines.every(l => /^\s*\d+\.\s+/.test(l))) {
+      const items = lines.map(l => `<li>${l.replace(/^\s*\d+\.\s+/, '')}</li>`).join('');
+      return `<ol>${items}</ol>`;
+    }
+    // Otherwise: paragraph with single-newline → <br> so the model can
+    // still force a soft break inside a paragraph if it wants.
+    return `<p>${lines.join('<br>')}</p>`;
+  }).join('');
+
+  return html;
 }
 
 /**

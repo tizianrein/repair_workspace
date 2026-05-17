@@ -96,22 +96,24 @@ function resolveStepRef(ref, aliases) {
 }
 
 // ----------------------------------------------------------------------------
-// Chat-markdown stripping
+// Chat post-processing — leak defense and markdown cleanup
 //
-// The chat UI doesn't render markdown. The prompt forbids it, but the model
-// leaks **bold**, headings, and bullet markers anyway. We strip the common
-// patterns server-side as a safety net so the user never sees literal
-// asterisks or hashes. Conservative — only obvious markup, never touch
-// snake_case identifiers like front_left_leg.
+// Two filters run on every model reply before we ship it to the client:
 //
-// We also strip Gemini "tool_code" leakage. Gemini Pro occasionally emits
-// its function calls as a *text* part instead of as a proper `functionCall`
-// part — typically as `tool_code\n print(default_api.add_condition(...))`
-// or as long chains of `print(default_api.xxx(...))` calls. When this
-// happens the tools don't actually execute (we only act on functionCall
-// parts), and the user sees a wall of pseudo-Python in the chat. We can't
-// recover the missed tool calls from text, but we can at least stop the
-// garbage from reaching the UI and replace it with a brief honest message.
+//   1. stripToolCodeLeak — kills Gemini's textual tool-call leak. Gemini
+//      sometimes emits its function calls as a *text* part instead of as
+//      a proper `functionCall` part — "tool_code\nprint(default_api.add_
+//      condition(...))" — and the user sees pseudo-Python claiming things
+//      were done that weren't. The detector fires on the literal token
+//      `tool_code` OR on chains of `default_api.xxx(...)` calls. When it
+//      fires, runChat retries the turn with a correction (see runChat
+//      below). If even the retry leaks, we replace the visible reply with
+//      a short honest "something went wrong" line.
+//
+//   2. stripChatMarkdown — strips the markdown the client *doesn't*
+//      render (headers, fenced code blocks). The client renderer in
+//      chat-sheet.js handles **bold**, *italic*, `inline code`, lists,
+//      and paragraph breaks, so we leave those alone.
 // ----------------------------------------------------------------------------
 
 // Detect Gemini's textual tool-call leak. Triggers on either the explicit
@@ -148,16 +150,25 @@ function stripToolCodeLeak(text) {
   return cleaned;
 }
 
+// ----------------------------------------------------------------------------
+// Chat-markdown stripping
+//
+// The chat UI renders a small subset of markdown in assistant bubbles:
+// **bold**, *italic*, `inline code`, paragraph breaks, ordered/unordered
+// lists. Those we LET THROUGH untouched. We only strip the things the
+// client doesn't render — headers and fenced code blocks — so the user
+// doesn't see stray `#` or backtick fences in the bubble.
+// ----------------------------------------------------------------------------
+
 function stripChatMarkdown(text) {
   if (!text || typeof text !== 'string') return text;
   return text
-    .replace(/\*\*([^*\n]+?)\*\*/g, '$1')
-    .replace(/__([^_\n]+?)__/g, '$1')
-    .replace(/(^|[\s(])\*([^*\n]{1,80}?)\*(?=[\s.,!?;:)]|$)/g, '$1$2')
-    .replace(/(^|[\s(])_([^_\n]{1,80}?)_(?=[\s.,!?;:)]|$)/g, '$1$2')
+    // Headers: strip the leading `# ` markers, leave the heading text as a
+    // normal line. Multiple hashes (`##`, `###`) all collapse to nothing.
     .replace(/^#{1,6}[ \t]+/gm, '')
-    .replace(/^[ \t]*[-*][ \t]+/gm, '')
-    .replace(/`([^`\n]+?)`/g, '$1')
+    // Fenced code blocks: extract content, drop the fences.
+    .replace(/```[a-z]*\n?([\s\S]*?)```/gi, '$1')
+    // Trailing whitespace on lines.
     .replace(/[ \t]+\n/g, '\n')
     .trim();
 }

@@ -392,6 +392,24 @@ body.chat-open .chat-sheet { transform: translateY(0); }
 }
 .chat-user { align-self: flex-end; background: var(--info-soft); color: var(--info); border-bottom-right-radius: 3px; }
 .chat-llm { align-self: flex-start; background: var(--bg-soft); color: var(--ink); border-bottom-left-radius: 3px; }
+
+/* Markdown rendered inside assistant bubbles. Tight spacing so the bubble
+   doesn't bloat for short replies; first/last child margins killed so
+   paragraphs don't leave gaps at the bubble edges. */
+.chat-llm p { margin: 0 0 0.6em 0; }
+.chat-llm p:last-child { margin-bottom: 0; }
+.chat-llm ul, .chat-llm ol { margin: 0.2em 0 0.6em 0; padding-left: 1.4em; }
+.chat-llm ul:last-child, .chat-llm ol:last-child { margin-bottom: 0; }
+.chat-llm li { margin: 0.15em 0; }
+.chat-llm strong { font-weight: 600; }
+.chat-llm em { font-style: italic; }
+.chat-llm code {
+  font-family: var(--mono);
+  font-size: 0.92em;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 0 0.3em;
+  border-radius: 3px;
+}
 .chat-system {
   align-self: center;
   font-family: var(--mono);
