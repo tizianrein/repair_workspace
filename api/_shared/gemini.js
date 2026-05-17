@@ -259,6 +259,12 @@ export async function callGeminiWithTools({
         'Try a smaller / more focused request.'
       );
     }
+    // MALFORMED_FUNCTION_CALL: the model tried to call a tool but produced
+    // junk arguments — usually happens when trying to cram a huge plan
+    // into a single create_plan call and running into structural limits.
+    if (finishReason === 'MALFORMED_FUNCTION_CALL') {
+      throw new Error('MALFORMED_FUNCTION_CALL');
+    }
 
     // Collect text and function calls from this turn
     let turnText = '';

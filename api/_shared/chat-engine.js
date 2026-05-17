@@ -56,18 +56,69 @@ export async function runChat({ thread, userMessage, workspace, files }) {
     return result;
   }
 
-  const result = await callGeminiWithTools({
-    systemPrompt,
-    userMessage,
-    history,
-    workspaceSnapshot: snapshot,
-    tools: CHAT_TOOLS,
-    executeTool,
-    model: 'gemini-2.5-flash',
-    temperature: 0.6,
-    maxTurns: 10,
-    maxOutputTokens: 16384
-  });
+  // First attempt: normal call
+  let result;
+  let firstError = null;
+  try {
+    result = await callGeminiWithTools({
+      systemPrompt,
+      userMessage,
+      history,
+      workspaceSnapshot: snapshot,
+      tools: CHAT_TOOLS,
+      executeTool,
+      model: 'gemini-2.5-flash',
+      temperature: 0.6,
+      maxTurns: 12,
+      // Gemini 2.5 Flash supports up to 65k output tokens. We use a
+      // generous budget so big plans (20+ steps with full descriptions)
+      // can fit. The bottleneck for big plans is rarely tokens — it's
+      // Gemini's tool-call argument decoder choking on deeply nested
+      // structures. We mitigate by allowing more turns so the model can
+      // call create_plan with a skeleton, then refine with update_step
+      // calls across subsequent turns.
+      maxOutputTokens: 32768
+    });
+  } catch (err) {
+    firstError = err;
+  }
+
+  // Retry-with-collaboration: if the first attempt failed with a model-side
+  // problem (MALFORMED_FUNCTION_CALL, empty output, MAX_TOKENS), try again
+  // with an explicit instruction to break the work down and ask the user
+  // for help. This turns a hard failure into a productive conversation.
+  const failed = firstError || (!result?.text?.trim() && toolCallTrace.length === 0);
+  if (failed) {
+    const errorContext = firstError?.message || 'no response';
+    const fallbackInstruction =
+      `The previous attempt failed: ${errorContext}. ` +
+      `This means your task was too large to do in one go. ` +
+      `Do NOT try again to do everything at once. ` +
+      `Instead: reply with a short message that (a) acknowledges the request is ambitious, ` +
+      `(b) proposes 2-3 ways to break it into smaller chunks, ` +
+      `(c) asks the user which chunk to do first. ` +
+      `Do NOT call any tools in this response — just write the chunking proposal as plain text.`;
+
+    try {
+      result = await callGeminiWithTools({
+        systemPrompt: systemPrompt + '\n\n## RETRY MODE\n\n' + fallbackInstruction,
+        userMessage,
+        history,
+        workspaceSnapshot: snapshot,
+        // No tools on the retry — we want a conversational fallback only.
+        tools: [],
+        executeTool: async () => ({ ok: true }),
+        model: 'gemini-2.5-flash',
+        temperature: 0.5,
+        maxTurns: 1,
+        maxOutputTokens: 2048
+      });
+    } catch (retryErr) {
+      // If even the simple retry fails, surface the original error so the
+      // user knows what went wrong.
+      throw firstError || retryErr;
+    }
+  }
 
   return {
     reply: result.text || '',
