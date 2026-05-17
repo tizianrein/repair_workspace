@@ -49,6 +49,7 @@ The repair intent (axes + summary) and constraints are user-owned but conversati
 - User says "I really want this to be sustainable, even if it costs more time" → bump Ecological Sustainability to ~0.9, leave Economic Viability where it is, mention what you did
 - User says "actually, I have a tight deadline, two days max" → set `time_budget_minutes` and lower Aesthetic Intervention if their plan is over-ambitious
 - User asks for a plan that contradicts their current intent → either adjust the intent first ("I'm setting Material Authenticity down to 0.4 since you want a fresh modern finish — let me know if that's wrong") or call out the tension and ask
+- User gives a directional brief like "let's think about preservation for a museum" or "I want a modern reuse" → that's also a priority signal. Call `set_intent` with *both* the new `summary` AND the `axes` the brief implies — museum-preservation pushes Material Authenticity and Cultural Continuity up, Aesthetic Intervention down. Don't call `set_intent` with only `summary`; the server will reject an empty intent patch as a no-op.
 
 The intent axes (0..1 values) map roughly: 0 = doesn't matter, 0.5 = balanced concern, 1 = primary driver. Don't change them by tiny amounts; meaningful shifts only (0.5 → 0.8 not 0.5 → 0.55).
 

@@ -411,6 +411,15 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
     : null;
   const aliases = buildStepAliasMap(currentPlan, pendingSteps);
 
+  // True when `obj` is null/undefined or has no own enumerable string keys.
+  // Used to reject no-op patches across update_* / set_* tools — silently
+  // accepting them caused the "I updated the intent" bug where the model
+  // called set_intent with an empty argument object, the dispatcher said
+  // ok, the client applied a no-op command, and the user saw a confident
+  // receipt for work that didn't happen.
+  const isEmptyPatch = (obj) =>
+    obj == null || typeof obj !== 'object' || Object.keys(obj).length === 0;
+
   switch (name) {
     case 'add_condition': {
       const id = newId('hyp');
@@ -471,15 +480,27 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
         ok: true, message: `Removed ${args.hypothesisId}`,
         command: { type: 'remove-hypothesis', payload: { hypothesisId: args.hypothesisId } }
       };
-    case 'update_condition':
+    case 'update_condition': {
+      if (!args.hypothesisId) {
+        return { error: 'update_condition: hypothesisId is required.' };
+      }
+      if (isEmptyPatch(args.patch)) {
+        return {
+          error: `update_condition called on ${args.hypothesisId} with an empty patch — ` +
+                 'nothing to update. Pass `patch` with at least one of: type, description, status, confidence.'
+        };
+      }
+      const changedFields = Object.keys(args.patch).join(', ');
       return {
-        ok: true, message: `Updated ${args.hypothesisId}`,
-        command: { type: 'update-hypothesis', payload: { hypothesisId: args.hypothesisId, patch: args.patch || {} } }
+        ok: true,
+        message: `Updated ${args.hypothesisId} (${changedFields})`,
+        command: { type: 'update-hypothesis', payload: { hypothesisId: args.hypothesisId, patch: args.patch } }
       };
+    }
     case 'set_intent': {
       const intent = {};
       if (args.summary !== undefined) intent.summary = args.summary;
-      if (Array.isArray(args.axes)) {
+      if (Array.isArray(args.axes) && args.axes.length > 0) {
         const existing = (snapshot.intent?.axes || []).slice();
         for (const upd of args.axes) {
           const idx = existing.findIndex(a => a.id === upd.id);
@@ -487,13 +508,48 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
         }
         intent.axes = existing;
       }
-      return { ok: true, message: 'Intent updated', command: { type: 'set-intent', payload: { intent } } };
-    }
-    case 'set_constraints':
+      if (isEmptyPatch(intent)) {
+        return {
+          error: 'set_intent called with no summary and no axes — nothing to update. ' +
+                 'Pass `summary` (string) and/or `axes` (array of {id, value}). ' +
+                 'For a directional shift like "preservation for a museum", pass BOTH ' +
+                 'the new summary AND the axis values it implies.'
+        };
+      }
+      // Build a human-friendly summary that names what actually changed,
+      // so the receipt the user sees ("1 intent change") is honest and
+      // the model has a precise echo to paraphrase in its prose.
+      const changedParts = [];
+      if (intent.summary !== undefined) changedParts.push('summary');
+      if (Array.isArray(intent.axes)) changedParts.push(`${args.axes.length} axis value${args.axes.length === 1 ? '' : 's'}`);
       return {
-        ok: true, message: 'Constraints updated',
-        command: { type: 'set-constraints', payload: { constraints: { ...args } } }
+        ok: true,
+        message: `Intent updated (${changedParts.join(' and ')})`,
+        command: { type: 'set-intent', payload: { intent } }
       };
+    }
+    case 'set_constraints': {
+      // Filter to keys that have real values — `args` may contain
+      // undefined entries from Gemini even when nothing was meant.
+      const constraints = {};
+      for (const [k, v] of Object.entries(args || {})) {
+        if (v !== undefined && v !== null && v !== '') constraints[k] = v;
+      }
+      if (isEmptyPatch(constraints)) {
+        return {
+          error: 'set_constraints called with no fields — nothing to update. ' +
+                 'Pass at least one field (tools_available, materials_available, ' +
+                 'time_budget_minutes, budget_limit, skill_level, safety_level, ' +
+                 'allowed_operations, avoid_operations, additional_constraints).'
+        };
+      }
+      const fieldNames = Object.keys(constraints).join(', ');
+      return {
+        ok: true,
+        message: `Constraints updated: ${fieldNames}`,
+        command: { type: 'set-constraints', payload: { constraints } }
+      };
+    }
     case 'create_plan': {
       const planId = newId('plan');
       // First pass: stamp every step with a real id, register it in
@@ -616,9 +672,18 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
         const known = (currentPlan?.steps || []).map(s => s.id).join(', ');
         return { error: `update_step: step "${args.stepId}" not found. Known: ${known || '(none)'}` };
       }
+      if (isEmptyPatch(args.patch)) {
+        return {
+          error: `update_step on ${resolvedId} called with an empty patch — nothing to update. ` +
+                 'Pass `patch` with at least one of: title, description, affectedPartRefs, ' +
+                 'addressesHypothesisRefs, toolsRequired, materialsRequired, estimatedMinutes.'
+        };
+      }
+      const changedFields = Object.keys(args.patch).join(', ');
       return {
-        ok: true, message: `Updated ${resolvedId}`,
-        command: { type: 'upsert-step', payload: { planId: currentPlanId, step: { id: resolvedId, ...(args.patch || {}) } } }
+        ok: true,
+        message: `Updated ${resolvedId} (${changedFields})`,
+        command: { type: 'upsert-step', payload: { planId: currentPlanId, step: { id: resolvedId, ...args.patch } } }
       };
     }
     case 'remove_step': {
@@ -670,11 +735,23 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
       // the same plan the model just switched to.
       turnContext.pendingPlanId = args.planId || null;
       return { ok: true, command: { type: 'set-current-plan', payload: { planId: args.planId } } };
-    case 'update_plan':
+    case 'update_plan': {
+      if (!args.planId) {
+        return { error: 'update_plan: planId is required.' };
+      }
+      if (isEmptyPatch(args.patch)) {
+        return {
+          error: `update_plan on ${args.planId} called with an empty patch — nothing to update. ` +
+                 'Pass `patch` with at least one of: label, summary.'
+        };
+      }
+      const changedFields = Object.keys(args.patch).join(', ');
       return {
-        ok: true, message: `Updated plan ${args.planId}`,
-        command: { type: 'update-plan', payload: { planId: args.planId, patch: args.patch || {} } }
+        ok: true,
+        message: `Updated plan ${args.planId} (${changedFields})`,
+        command: { type: 'update-plan', payload: { planId: args.planId, patch: args.patch } }
       };
+    }
     case 'remove_plan':
       // If the model removes the plan it was about to mutate, clear the
       // turn-local pointer so later tool calls don't write into the void.
