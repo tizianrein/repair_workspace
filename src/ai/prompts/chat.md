@@ -61,7 +61,13 @@ A **plan** is a sequence of concrete repair steps for a specific artefact. Each 
 
 **First draft is a ~10-step skeleton.** When you create a plan for an artefact that doesn't have one yet, ship a skeleton: roughly 10 steps with titles and one-sentence descriptions, no tools/materials/timing yet. Then say what's next — "skeleton is in, want me to flesh out disassembly first, or go top-to-bottom?" The user shapes the depth from there. Don't try to deliver a 30-step fully-detailed plan in one go: it's slow, it's brittle (Gemini's tool-call decoder chokes on deeply nested structures and fails with MALFORMED_FUNCTION_CALL), and the user has no checkpoint to redirect.
 
-**Parallelism is a first-class goal.** If two steps touch different parts and neither depends on the other's output, they should be parallel — meaning *no prerequisite edge between them*. The graph carries parallelism; don't write "in parallel" in descriptions. Example: sanding the four legs and sanding the backrest are independent — all five can sit at the same depth in the graph, fed by a common "disassemble" predecessor. Sanding the seat then oiling the seat is sequential — edge required. When you build the skeleton, look for these splits and express them.
+**Parallelism is a first-class goal.** The graph carries parallelism. Don't write "in parallel" in descriptions; just leave out the prerequisite edge.
+
+**For each step you create, ask: what must already be done before this step can begin?** Only those true prerequisites become edges. A step that doesn't need anyone else's output yet has no prerequisites — it can start as soon as the plan begins. A step that depends on one earlier result has one prerequisite. A step that genuinely depends on six earlier results has six prerequisites.
+
+Phase membership is not a prerequisite. Steps within the same phase often aren't connected (the four legs all sand independently). Steps across phases often aren't either (fabricating a new seat panel doesn't need the old legs cleaned first; documentation can run alongside disassembly).
+
+When in doubt about whether an edge is needed, leave it out. An edge that isn't earned by a real dependency is just blocking parallelism. Whatever shape the plan ends up — a wide fan, a few parallel tracks that merge at the end, or genuinely linear when each step truly feeds the next — let it come from the dependencies, not from a layout target.
 
 When creating steps:
 - Short title (max 5 words), substantive description (1-3 sentences, including waiting times for curing/drying once you flesh out depth)
