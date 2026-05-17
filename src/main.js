@@ -1540,8 +1540,58 @@ function recalledExampleSlug() {
 
 async function attachExampleAssets(slug) {
   await attachExampleCover(slug);
+  await attachExamplePhotos(slug);
   await attachExampleMesh(slug);
   rememberExampleSlug(slug);
+}
+
+// Walk the workspace's photo-kind evidence records and try to fetch each
+// from the example's /photos/ folder. Hits are seeded into IndexedDB
+// under the evidence id so the "Pick source photo" dialog and the
+// imagine-result pipeline can find them.
+//
+// Example workspaces declare photos by evidence record only (id +
+// filename) because bundling base64 blobs into workspace.json would
+// inflate it by megabytes per photo. Keeping the actual JPEGs as
+// loose files alongside the JSON is much cleaner.
+//
+// File naming convention varies across examples: some use the workspace's
+// fileName field directly, some name the file after the evidence id with
+// a generic .jpg extension. We try fileName first, then a few id-based
+// fallbacks. Records that can't be found are skipped silently — the
+// existing "missing" affordance in the picker handles them.
+async function attachExamplePhotos(slug) {
+  const ws = state.workspace;
+  const photos = (ws.evidence || []).filter(e => e.kind === 'photo');
+  if (!photos.length) return;
+  for (const ev of photos) {
+    try {
+      // Skip if it's already in IndexedDB (e.g. user re-loaded the example).
+      const existing = await PhotoStorage.get(ev.id);
+      if (existing) continue;
+      const candidates = [];
+      if (ev.fileName) candidates.push(ev.fileName);
+      for (const ext of ['jpg', 'jpeg', 'png', 'webp', 'JPG', 'JPEG', 'PNG']) {
+        candidates.push(`${ev.id}.${ext}`);
+      }
+      let blob = null;
+      let foundName = null;
+      for (const name of candidates) {
+        try {
+          const res = await fetch(`/examples/${slug}/photos/${encodeURIComponent(name)}`);
+          if (res.ok) {
+            blob = await res.blob();
+            foundName = name;
+            break;
+          }
+        } catch { /* try next */ }
+      }
+      if (!blob) continue;
+      await PhotoStorage.put(ev.id, blob, ev.fileName || foundName);
+    } catch (err) {
+      console.warn(`[example] could not load photo ${ev.fileName || ev.id}:`, err);
+    }
+  }
 }
 
 function renderCover(ws) {
