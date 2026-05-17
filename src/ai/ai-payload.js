@@ -46,7 +46,19 @@ export function payloadForChat({ workspace, scope = 'all', ref = null, maxMessag
       })
       .map(t => ({
         ...t,
-        messages: (t.messages || []).slice(-maxMessages)
+        // Drop large per-message photo payloads (base64 data URLs) from
+        // history. The current turn's photos travel via the separate
+        // `files` field on the request, and including base64 images from
+        // every prior turn would bloat the payload quickly (each photo
+        // is hundreds of KB). We keep just a small marker so the model
+        // knows photos were present in prior turns if it cares.
+        messages: (t.messages || []).slice(-maxMessages).map(m => {
+          if (Array.isArray(m.photos) && m.photos.length) {
+            const { photos, ...rest } = m;
+            return { ...rest, hadPhotos: photos.length };
+          }
+          return m;
+        })
       }));
   }
   return payload;

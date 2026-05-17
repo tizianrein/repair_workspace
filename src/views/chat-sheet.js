@@ -146,7 +146,28 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
       // renderer escapes HTML first, then re-introduces markup, so model
       // output can never inject tags.
       if (msg.role === 'user') {
-        div.textContent = msg.content;
+        // Photos are rendered above the text so the visual context the
+        // user attached is visible at a glance. Stored on the message
+        // by send() — see the stamping there. Photos that aren't on
+        // the message (e.g. older messages from before this feature)
+        // simply don't render thumbnails, which is fine.
+        if (Array.isArray(msg.photos) && msg.photos.length) {
+          const photoRow = document.createElement('div');
+          photoRow.className = 'chat-msg-photos';
+          for (const p of msg.photos) {
+            const img = document.createElement('img');
+            img.src = `data:${p.mimeType};base64,${p.data}`;
+            img.alt = 'attached photo';
+            img.className = 'chat-msg-photo';
+            photoRow.appendChild(img);
+          }
+          div.appendChild(photoRow);
+        }
+        if (msg.content) {
+          const textEl = document.createElement('div');
+          textEl.textContent = msg.content;
+          div.appendChild(textEl);
+        }
       } else {
         div.innerHTML = renderAssistantMarkdown(msg.content || '');
       }
@@ -276,7 +297,14 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     // Persist the user message via the command system. We also build a
     // local copy with the same id/timestamp so we can include it in
     // the API request without round-tripping through the workspace.
+    // If photos are attached, stamp them onto the message itself so
+    // the bubble can render them as thumbnails (otherwise the photo
+    // disappears from the chat history after sending — visible only
+    // to the model in the API request, not to the user).
     const userMsg = newMessage('user', text);
+    if (pendingPhotos.length) {
+      userMsg.photos = pendingPhotos.map(p => ({ mimeType: p.mimeType, data: p.data }));
+    }
     if (thread) {
       onAppendMessage?.({ threadId: thread.id, message: userMsg });
       thread = currentThread();  // re-read; now contains the new message
