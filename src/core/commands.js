@@ -197,8 +197,13 @@ defineCommand('remove-evidence', (ws, { evidenceId }) => {
 // not the workspace root. These commands are written in terms of plans
 // but keep their original names so existing callers don't need to change.
 
-defineCommand('set-intent', (ws, { intent }) => {
-  const idx = (ws.plans || []).findIndex(p => p.id === ws.currentPlanId);
+defineCommand('set-intent', (ws, { intent, planId }) => {
+  // Prefer an explicit planId (the dispatcher passes one when an AI turn
+  // creates a plan and updates its intent in the same batch — the client's
+  // currentPlanId hasn't moved yet at command-eval time, so without this
+  // tag the intent would land on the previous plan).
+  const targetId = planId || ws.currentPlanId;
+  const idx = (ws.plans || []).findIndex(p => p.id === targetId);
   if (idx < 0) {
     // No current strategy to attach intent to. Stash on the workspace
     // root as a transient "pending intent" so user edits aren't lost; the
@@ -221,12 +226,14 @@ defineCommand('set-intent', (ws, { intent }) => {
         ? { ...p, intent: merged, updatedAt: new Date().toISOString() }
         : p)
     },
-    inverse: { type: 'set-intent', payload: { intent: prev } }
+    inverse: { type: 'set-intent', payload: { intent: prev, planId: targetId } }
   };
 });
 
-defineCommand('set-constraints', (ws, { constraints }) => {
-  const idx = (ws.plans || []).findIndex(p => p.id === ws.currentPlanId);
+defineCommand('set-constraints', (ws, { constraints, planId }) => {
+  // See set-intent for rationale on the optional planId tag.
+  const targetId = planId || ws.currentPlanId;
+  const idx = (ws.plans || []).findIndex(p => p.id === targetId);
   if (idx < 0) {
     const prev = ws._pendingConstraints || null;
     return {
@@ -244,7 +251,7 @@ defineCommand('set-constraints', (ws, { constraints }) => {
         ? { ...p, constraints: merged, updatedAt: new Date().toISOString() }
         : p)
     },
-    inverse: { type: 'set-constraints', payload: { constraints: prev } }
+    inverse: { type: 'set-constraints', payload: { constraints: prev, planId: targetId } }
   };
 });
 

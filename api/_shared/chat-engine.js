@@ -646,7 +646,11 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
       return {
         ok: true,
         message: `Intent updated (${changedParts.join(' and ')})`,
-        command: { type: 'set-intent', payload: { intent } }
+        // Pin to the active plan id. In a turn where the model just
+        // called create_plan, activePlanId is the freshly-created plan
+        // — without this, set-intent would patch the (still-current on
+        // the client) OLD plan, leaving the new plan with default intent.
+        command: { type: 'set-intent', payload: { intent, planId: activePlanId || null } }
       };
     }
     case 'set_constraints': {
@@ -668,7 +672,8 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
       return {
         ok: true,
         message: `Constraints updated: ${fieldNames}`,
-        command: { type: 'set-constraints', payload: { constraints } }
+        // Pin to active plan id — same rationale as set-intent above.
+        command: { type: 'set-constraints', payload: { constraints, planId: activePlanId || null } }
       };
     }
     case 'create_plan': {
