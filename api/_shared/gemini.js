@@ -247,7 +247,18 @@ export async function callGeminiWithTools({
     }
     const json = await res.json();
     const candidate = json?.candidates?.[0];
+    const finishReason = candidate?.finishReason;
     const parts = candidate?.content?.parts || [];
+
+    // If the model was cut off mid-response, surface that clearly to the
+    // caller so they can show a useful error to the user instead of a
+    // silent empty bubble.
+    if (finishReason === 'MAX_TOKENS' && parts.length === 0) {
+      throw new Error(
+        'The AI hit its output limit before producing anything useful. ' +
+        'Try a smaller / more focused request.'
+      );
+    }
 
     // Collect text and function calls from this turn
     let turnText = '';
@@ -262,7 +273,17 @@ export async function callGeminiWithTools({
     contents.push({ role: 'model', parts });
 
     if (turnCalls.length === 0) {
-      // No more tool calls — this is the final reply
+      // No more tool calls — this is the final reply.
+      // If the model produced neither text nor tool calls, that's
+      // almost always a MAX_TOKENS or safety filter issue — surface it.
+      if (!turnText && i === 0) {
+        const reason = finishReason || 'unknown';
+        throw new Error(
+          `The AI produced no response (finishReason=${reason}). ` +
+          'This usually means MAX_TOKENS, a safety filter, or a request the ' +
+          'model couldn\'t handle. Try rephrasing more specifically.'
+        );
+      }
       finalText = turnText.trim();
       break;
     }

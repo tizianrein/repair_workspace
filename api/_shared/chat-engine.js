@@ -50,6 +50,9 @@ export async function runChat({ thread, userMessage, workspace, files }) {
     const result = mapToolToCommand(name, args, snapshot, workspace);
     toolCallTrace.push({ name, args, result });
     if (result.command) collectedCommands.push(result.command);
+    if (Array.isArray(result.commands)) {
+      for (const c of result.commands) collectedCommands.push(c);
+    }
     return result;
   }
 
@@ -194,22 +197,42 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace) {
       const currentPlanId = fullWorkspace.currentPlanId;
       if (!currentPlanId) return { error: 'No active plan. Call create_plan first.' };
       const stepId = newId('step');
-      return {
-        ok: true, stepId, message: `Added step "${args.title}"`,
-        command: {
-          type: 'upsert-step',
-          payload: {
-            planId: currentPlanId,
-            step: {
-              id: stepId, title: args.title, description: args.description,
-              affectedPartRefs: args.affectedPartRefs || [],
-              addressesHypothesisRefs: args.addressesHypothesisRefs || [],
-              toolsRequired: args.toolsRequired || [],
-              materialsRequired: args.materialsRequired || [],
-              estimatedMinutes: args.estimatedMinutes || null
-            }
+      const commands = [{
+        type: 'upsert-step',
+        payload: {
+          planId: currentPlanId,
+          step: {
+            id: stepId, title: args.title, description: args.description,
+            affectedPartRefs: args.affectedPartRefs || [],
+            addressesHypothesisRefs: args.addressesHypothesisRefs || [],
+            toolsRequired: args.toolsRequired || [],
+            materialsRequired: args.materialsRequired || [],
+            estimatedMinutes: args.estimatedMinutes || null
           }
         }
+      }];
+      // Auto-wire the new step into the plan's flow. If afterStepId is
+      // given, add an edge so this step depends on that one. Same for
+      // beforeStepId. Without this, the user gets orphan steps floating
+      // disconnected from the main chain.
+      if (args.afterStepId) {
+        commands.push({
+          type: 'add-edge',
+          payload: { planId: currentPlanId, source: args.afterStepId, target: stepId }
+        });
+      }
+      if (args.beforeStepId) {
+        commands.push({
+          type: 'add-edge',
+          payload: { planId: currentPlanId, source: stepId, target: args.beforeStepId }
+        });
+      }
+      return {
+        ok: true, stepId,
+        message: `Added step "${args.title}"`,
+        // Multi-command result: engine will push all of these into the
+        // collectedCommands array.
+        commands
       };
     }
     case 'update_step': {
@@ -243,6 +266,11 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace) {
     }
     case 'set_active_plan':
       return { ok: true, command: { type: 'set-current-plan', payload: { planId: args.planId } } };
+    case 'update_plan':
+      return {
+        ok: true, message: `Updated plan ${args.planId}`,
+        command: { type: 'update-plan', payload: { planId: args.planId, patch: args.patch || {} } }
+      };
     case 'remove_plan':
       return { ok: true, command: { type: 'remove-plan', payload: { planId: args.planId } } };
     default:

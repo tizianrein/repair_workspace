@@ -392,6 +392,23 @@ defineCommand('set-plan-status', (ws, { planId, status }) => {
   };
 });
 
+// Update plan-level metadata (label, status, color). For step-level edits
+// use upsert-step / remove-step instead. Patch object is shallow-merged:
+// only fields explicitly present are changed.
+defineCommand('update-plan', (ws, { planId, patch }) => {
+  const idx = ws.plans.findIndex(p => p.id === planId);
+  if (idx < 0) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
+  const plan = ws.plans[idx];
+  // Capture inverse before we mutate
+  const prev = {};
+  for (const k of Object.keys(patch || {})) prev[k] = plan[k];
+  const updated = { ...plan, ...(patch || {}), updatedAt: new Date().toISOString() };
+  return {
+    workspace: { ...ws, plans: ws.plans.map((p, i) => i === idx ? updated : p) },
+    inverse: { type: 'update-plan', payload: { planId, patch: prev } }
+  };
+});
+
 defineCommand('upsert-step', (ws, { planId, step }) => {
   const idx = ws.plans.findIndex(p => p.id === planId);
   if (idx < 0) throw new Error(`upsert-step: no plan with id "${planId}" — make sure add-plan created it first, and that the planId matches`);

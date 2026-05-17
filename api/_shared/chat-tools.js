@@ -152,7 +152,7 @@ export const CHAT_TOOLS = [
   },
   {
     name: 'add_step',
-    description: 'Add a single step to the current plan, optionally between existing steps. Use this for small edits to an existing plan rather than recreating it.',
+    description: 'Add a single step to the current plan. CRITICAL: when adding to a plan that already has steps, you MUST specify either afterStepId or beforeStepId (or both) so the new step is wired into the execution chain. Orphan steps with no edges are not useful and confuse the user. Look at the current plan\'s existing edges and steps before deciding placement.',
     parameters: {
       type: 'object',
       properties: {
@@ -163,8 +163,8 @@ export const CHAT_TOOLS = [
         toolsRequired: { type: 'array', items: { type: 'string' } },
         materialsRequired: { type: 'array', items: { type: 'string' } },
         estimatedMinutes: { type: 'number' },
-        afterStepId: { type: 'string', description: 'Optional: place this step after this one (adds an edge)' },
-        beforeStepId: { type: 'string', description: 'Optional: place this step before this one (adds an edge)' }
+        afterStepId: { type: 'string', description: 'Step id this new step must come AFTER. Adds an edge automatically. Strongly recommended when there is an existing chain.' },
+        beforeStepId: { type: 'string', description: 'Step id this new step must come BEFORE. Adds an edge automatically.' }
       },
       required: ['title', 'description']
     }
@@ -229,6 +229,24 @@ export const CHAT_TOOLS = [
       type: 'object',
       properties: { planId: { type: 'string' } },
       required: ['planId']
+    }
+  },
+  {
+    name: 'update_plan',
+    description: 'Update plan-level metadata: rename a plan, change its status. When you change a step inside a plan such that the plan name no longer fits (e.g. user changed "yellow" to "blue", and the plan was named "Yellow Finish Strategy"), call this to also rename the plan. Use update_step for step-level changes.',
+    parameters: {
+      type: 'object',
+      properties: {
+        planId: { type: 'string' },
+        patch: {
+          type: 'object',
+          properties: {
+            label: { type: 'string', description: 'New short name for the strategy' },
+            status: { type: 'string', enum: ['draft', 'active', 'archived'], description: 'New status' }
+          }
+        }
+      },
+      required: ['planId', 'patch']
     }
   },
   {
