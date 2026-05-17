@@ -276,7 +276,9 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
 
   function open() {
     document.body.classList.add('chat-open');
-    if (!activeThread) activeThread = findOrCreateThread();
+    // Thread is resolved fresh by send() and other callers via currentThread()
+    // — see the comment near the top of the module about why activeThread
+    // is never cached. Just focus the input.
     setTimeout(() => input.focus(), 200);
   }
   function close() { document.body.classList.remove('chat-open'); }
@@ -338,7 +340,6 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     getCurrentMessage() { return input.value; },
     setMessage(text) { input.value = text; input.focus(); },
     getCurrentScope() { return { scope: currentScope, ref: currentRef }; },
-    getActiveThread() { return activeThread; },
     pushMessage,
     pushActionRecord,
     setBusy,
