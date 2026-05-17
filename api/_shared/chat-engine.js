@@ -103,7 +103,50 @@ function resolveStepRef(ref, aliases) {
 // patterns server-side as a safety net so the user never sees literal
 // asterisks or hashes. Conservative — only obvious markup, never touch
 // snake_case identifiers like front_left_leg.
+//
+// We also strip Gemini "tool_code" leakage. Gemini Pro occasionally emits
+// its function calls as a *text* part instead of as a proper `functionCall`
+// part — typically as `tool_code\n print(default_api.add_condition(...))`
+// or as long chains of `print(default_api.xxx(...))` calls. When this
+// happens the tools don't actually execute (we only act on functionCall
+// parts), and the user sees a wall of pseudo-Python in the chat. We can't
+// recover the missed tool calls from text, but we can at least stop the
+// garbage from reaching the UI and replace it with a brief honest message.
 // ----------------------------------------------------------------------------
+
+// Detect Gemini's textual tool-call leak. Triggers on either the explicit
+// "tool_code" marker or on chains of `print(default_api.xxx(` which is the
+// fingerprint of the leak format regardless of marker.
+function looksLikeToolCodeLeak(text) {
+  if (!text) return false;
+  if (/\btool_code\b/.test(text)) return true;
+  // Two or more print(default_api.xxx( calls in a row is the leak signature.
+  const matches = text.match(/\bdefault_api\.[a-z_]+\s*\(/gi);
+  return !!matches && matches.length >= 2;
+}
+
+// Remove the leaked tool-code blob. If the leak is most of the message,
+// replace the whole thing with a short honest line so the user isn't
+// reading pseudo-code. If it's only part of the message (rare), excise
+// just the leak region.
+function stripToolCodeLeak(text) {
+  if (!looksLikeToolCodeLeak(text)) return text;
+  // Strip the obvious tool_code / print(default_api...) chains.
+  let cleaned = text
+    .replace(/```tool_code[\s\S]*?```/g, '')
+    .replace(/\btool_code\b[\s\S]*?(?=\n\n|$)/g, '')
+    .replace(/\bprint\s*\(\s*default_api\.[\s\S]*?\)\s*\)/g, '')
+    .replace(/\bdefault_api\.[a-z_]+\([\s\S]*?\)/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  // If almost nothing meaningful is left (under ~40 chars of prose),
+  // replace with a stand-in. The tools that should have run didn't, so
+  // tell the user honestly rather than pretending success.
+  if (cleaned.length < 40) {
+    return 'Something went wrong on my side — the changes I meant to make didn\'t register. Could you ask again?';
+  }
+  return cleaned;
+}
 
 function stripChatMarkdown(text) {
   if (!text || typeof text !== 'string') return text;
@@ -197,6 +240,62 @@ export async function runChat({ thread, userMessage, workspace, files }) {
       'toolCallTrace=', toolCallTrace.length);
   }
 
+  // Retry-on-tool-code-leak: Gemini sometimes emits its intended function
+  // calls as *text* — "tool_code\nprint(default_api.add_condition(...))"
+  // — instead of as proper functionCall parts. From the model's POV the
+  // turn succeeded; from ours, zero tools ran and the user is about to
+  // read pseudo-Python claiming things were done that weren't. Detect
+  // this and re-prompt with an explicit correction. The retry instruction
+  // tells the model to use real function calls AND warns it not to lie
+  // about what it did. We discard the first attempt's leaked text and
+  // also wipe any half-applied commands so the retry starts clean.
+  if (!firstError && result?.text && looksLikeToolCodeLeak(result.text)) {
+    console.warn('[chat-engine] tool_code LEAK detected in first reply (len=' + result.text.length + '). Retrying with correction.');
+    // Clean slate: the leak path almost always means zero real tools ran,
+    // but if the model emitted a *mix* of real calls and leaked text we
+    // throw away the real calls too — the retry will redo the whole turn
+    // properly. Better than a half-applied state the user can't reason about.
+    collectedCommands.length = 0;
+    toolCallTrace.length = 0;
+    pendingSteps.length = 0;
+    turnContext.pendingPlanId = null;
+
+    const leakCorrection =
+      '\n\n## TOOL-CALL CORRECTION\n\n' +
+      'Your previous attempt at this user turn emitted tool calls as *text* (e.g. ' +
+      '"tool_code print(default_api.add_condition(...))") instead of as real function ' +
+      'calls. None of those tools actually ran. The workspace was not modified.\n\n' +
+      'Retry this turn now. Use real function calls — the same tools listed in your ' +
+      'tool schema (add_condition, set_intent, create_plan, etc.). Do NOT write ' +
+      'tool calls as Python-looking text. Do NOT claim you did things you did not do. ' +
+      'If you cannot perform the requested actions for some reason, say so plainly ' +
+      'in one or two sentences and ask a clarifying question. Otherwise: make the ' +
+      'function calls and write a short normal reply describing what you just did.';
+
+    const tLeak = Date.now();
+    try {
+      result = await callGeminiWithTools({
+        systemPrompt: systemPrompt + leakCorrection,
+        userMessage,
+        history,
+        workspaceSnapshot: snapshot,
+        tools: CHAT_TOOLS,
+        executeTool,
+        model: 'gemini-2.5-flash',
+        temperature: 0.4,  // a touch lower — we want compliance, not creativity
+        maxTurns: 12,
+        maxOutputTokens: 32768
+      });
+      console.log('[chat-engine] leak retry done in', Date.now() - tLeak, 'ms. text.len=', result?.text?.length || 0, 'tools=', toolCallTrace.length, 'leakAgain=', looksLikeToolCodeLeak(result?.text || ''));
+    } catch (retryErr) {
+      // The retry itself errored. Fall through — the strip-and-apologize
+      // path at the end will catch it. Don't throw: we want to give the
+      // user *something* useful rather than a 500.
+      console.warn('[chat-engine] leak retry threw:', retryErr.message);
+      firstError = retryErr;
+    }
+  }
+
   // Retry-with-collaboration: if the first attempt failed with a model-side
   // problem (MALFORMED_FUNCTION_CALL, empty output, MAX_TOKENS), try again
   // with an explicit instruction to break the work down and ask the user
@@ -235,7 +334,7 @@ export async function runChat({ thread, userMessage, workspace, files }) {
   }
 
   return {
-    reply: stripChatMarkdown(result.text || ''),
+    reply: stripChatMarkdown(stripToolCodeLeak(result.text || '')),
     commands: collectedCommands,
     toolCalls: toolCallTrace,
     plannedSummary: buildSummary(collectedCommands)
