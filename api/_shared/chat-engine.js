@@ -348,7 +348,11 @@ export async function runChat({ thread, userMessage, workspace, files }) {
   }
 
   return {
-    reply: stripChatMarkdown(stripToolCodeLeak(result.text || '')),
+    // Keep stripToolCodeLeak to defang Gemini's textual tool-call leaks,
+    // but DON'T strip markdown — the client renders markdown now (see
+    // renderAssistantMarkdown in chat-sheet.js), so stripping it server-side
+    // would turn nicely formatted lists into walls of text.
+    reply: stripToolCodeLeak(result.text || ''),
     commands: collectedCommands,
     toolCalls: toolCallTrace,
     plannedSummary: buildSummary(collectedCommands),
