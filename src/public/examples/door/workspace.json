@@ -63,31 +63,6 @@
         "notes": "Pane is physically absent \u2014 opening is empty. Frame intact."
       },
       {
-        "id": "upper_hinge",
-        "label": "Upper Hinge",
-        "origin": {
-          "x": 0.3282484625155452,
-          "y": 1.85,
-          "z": 0.00233015513505749
-        },
-        "dimensions": {
-          "width": 0.2172416817748855,
-          "height": 0.11494598700463235,
-          "depth": 0.0425046086311342
-        },
-        "rotation": {
-          "x": 0.017014225595313497,
-          "y": -1.5707963267948966,
-          "z": 1.5707963267948966
-        },
-        "connections": [
-          "hinge_stile"
-        ],
-        "material": "rusted steel",
-        "status": "intact",
-        "notes": ""
-      },
-      {
         "id": "lower_left_middle_panel",
         "label": "Lower Left Middle Panel",
         "origin": {
@@ -365,10 +340,9 @@
           "upper_glass_pane",
           "lower_glass_pane",
           "muntin_bar",
-          "upper_hinge",
           "lower_right_panel",
           "bottom_panel_rail",
-          "lower_hinge"
+          "door_handle"
         ],
         "material": "painted and stained wood",
         "status": "intact",
@@ -400,7 +374,9 @@
           "lower_glass_pane",
           "muntin_bar",
           "lower_left_panel",
-          "bottom_panel_rail"
+          "bottom_panel_rail",
+          "upper_hinge",
+          "lower_hinge"
         ],
         "material": "painted and stained wood",
         "status": "intact",
@@ -494,11 +470,11 @@
         "notes": ""
       },
       {
-        "id": "lower_hinge",
-        "label": "Lower Hinge",
+        "id": "door_handle",
+        "label": "Door Handle",
         "origin": {
           "x": 0.3282484625155452,
-          "y": 0.3,
+          "y": 0.9192561512823942,
           "z": 0.00233015513505749
         },
         "dimensions": {
@@ -514,9 +490,59 @@
         "connections": [
           "hinge_stile"
         ],
-        "material": "rusted steel",
+        "material": "wrought iron",
         "status": "intact",
-        "notes": ""
+        "notes": "Cast/wrought iron pull handle at lock-rail height. Opposite side from the hinges."
+      },
+      {
+        "id": "upper_hinge",
+        "label": "Upper Hinge",
+        "origin": {
+          "x": -0.37,
+          "y": 1.8,
+          "z": 0.0
+        },
+        "dimensions": {
+          "width": 0.1,
+          "height": 0.03,
+          "depth": 0.02
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": -1.5707963267948966,
+          "z": 1.5707963267948966
+        },
+        "connections": [
+          "lock_stile"
+        ],
+        "material": "wrought iron",
+        "status": "intact",
+        "notes": "Small upper hinge leaf attached to the lock-stile side of the door."
+      },
+      {
+        "id": "lower_hinge",
+        "label": "Lower Hinge",
+        "origin": {
+          "x": -0.37,
+          "y": 0.35,
+          "z": 0.0
+        },
+        "dimensions": {
+          "width": 0.1,
+          "height": 0.03,
+          "depth": 0.02
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": -1.5707963267948966,
+          "z": 1.5707963267948966
+        },
+        "connections": [
+          "lock_stile"
+        ],
+        "material": "wrought iron",
+        "status": "intact",
+        "notes": "Small lower hinge leaf attached to the lock-stile side of the door."
       }
     ],
     "location": "",
@@ -593,5 +619,5 @@
   "executionLog": [],
   "conversations": [],
   "createdAt": "2026-05-19T17:27:29.083Z",
-  "updatedAt": "2026-05-19T19:48:41.289Z"
+  "updatedAt": "2026-05-19T20:03:40.375Z"
 }
