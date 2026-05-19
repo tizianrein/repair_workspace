@@ -3,7 +3,7 @@
   "template": null,
   "instance": {
     "id": "inst_cantilever_chair",
-    "name": "Cantilever Chair",
+    "name": "Breuer Cantilever Chair",
     "templateRef": null,
     "parts": [
       {
