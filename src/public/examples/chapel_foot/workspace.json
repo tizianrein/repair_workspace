@@ -1704,9 +1704,9 @@
       "description": "Severe surface weathering at the base of the outer support post: greyed wood, vertical drying cracks running with the grain, fibre lift and softening on the exposed faces. Concentrated in the lower section near the steel base shoe.",
       "partRef": "tower_outer_support_front_right",
       "coordinates": {
-        "x": 3.13743,
-        "y": 4.072799,
-        "z": -3.137457
+        "x": 4.534,
+        "y": 0.494,
+        "z": -4.535
       },
       "status": "confirmed",
       "confidence": 0.92,
@@ -1715,7 +1715,7 @@
         "ev_chapel_base_photo"
       ],
       "createdAt": "2026-05-19T20:14:59.349Z",
-      "updatedAt": "2026-05-19T20:14:59.349Z"
+      "updatedAt": "2026-05-19T20:19:48.504Z"
     },
     {
       "id": "cond_outer_support_biological_growth",
@@ -1723,9 +1723,9 @@
       "description": "Green algae and moss colonisation on the wet/shaded faces of the base section. Indicates persistent moisture retention at the post foot.",
       "partRef": "tower_outer_support_front_right",
       "coordinates": {
-        "x": 3.13743,
-        "y": 4.072799,
-        "z": -3.137457
+        "x": 4.534,
+        "y": 0.394,
+        "z": -4.535
       },
       "status": "confirmed",
       "confidence": 0.95,
@@ -1734,7 +1734,7 @@
         "ev_chapel_base_photo"
       ],
       "createdAt": "2026-05-19T20:14:59.349Z",
-      "updatedAt": "2026-05-19T20:14:59.349Z"
+      "updatedAt": "2026-05-19T20:19:48.504Z"
     },
     {
       "id": "cond_outer_support_grain_cracks",
@@ -1742,9 +1742,9 @@
       "description": "Multiple along-grain cracks visible in the base section, the largest extending from above the steel shoe upward. Width consistent with seasonal drying rather than structural overload, but worth monitoring.",
       "partRef": "tower_outer_support_front_right",
       "coordinates": {
-        "x": 3.13743,
-        "y": 4.072799,
-        "z": -3.137457
+        "x": 4.534,
+        "y": 0.594,
+        "z": -4.535
       },
       "status": "confirmed",
       "confidence": 0.85,
@@ -1753,7 +1753,7 @@
         "ev_chapel_base_photo"
       ],
       "createdAt": "2026-05-19T20:14:59.349Z",
-      "updatedAt": "2026-05-19T20:14:59.349Z"
+      "updatedAt": "2026-05-19T20:19:48.504Z"
     },
     {
       "id": "cond_outer_support_moisture_damage",
@@ -1761,9 +1761,9 @@
       "description": "Splashback zone at the post foot shows dark staining and possible softening of the outer fibres at the wood\u2013steel interface. Risk of progressing into the post core if not addressed.",
       "partRef": "tower_outer_support_front_right",
       "coordinates": {
-        "x": 3.13743,
-        "y": 4.072799,
-        "z": -3.137457
+        "x": 4.534,
+        "y": 0.194,
+        "z": -4.535
       },
       "status": "confirmed",
       "confidence": 0.8,
@@ -1772,7 +1772,7 @@
         "ev_chapel_base_photo"
       ],
       "createdAt": "2026-05-19T20:14:59.349Z",
-      "updatedAt": "2026-05-19T20:14:59.349Z"
+      "updatedAt": "2026-05-19T20:19:48.504Z"
     }
   ],
   "intent": {
@@ -1826,5 +1826,5 @@
   "executionLog": [],
   "conversations": [],
   "createdAt": "2026-05-19T20:14:59.349Z",
-  "updatedAt": "2026-05-19T20:14:59.349Z"
+  "updatedAt": "2026-05-19T20:19:48.504Z"
 }
