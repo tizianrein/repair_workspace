@@ -498,7 +498,7 @@
         "id": "upper_hinge",
         "label": "Upper Hinge",
         "origin": {
-          "x": -0.37,
+          "x": -0.42,
           "y": 1.8,
           "z": 0.0
         },
@@ -619,5 +619,5 @@
   "executionLog": [],
   "conversations": [],
   "createdAt": "2026-05-19T17:27:29.083Z",
-  "updatedAt": "2026-05-19T20:03:40.375Z"
+  "updatedAt": "2026-05-19T20:06:37.419Z"
 }
