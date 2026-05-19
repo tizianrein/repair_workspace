@@ -1,0 +1,856 @@
+{
+  "schemaVersion": "2.0.0",
+  "template": null,
+  "instance": {
+    "id": "inst_panelled_glazed_door",
+    "name": "Panelled Glazed Door",
+    "templateRef": null,
+    "parts": [
+      {
+        "id": "upper_glass_pane",
+        "label": "Upper Glass Pane",
+        "origin": {
+          "x": -0.01695842061754771,
+          "y": 1.7973713112559986,
+          "z": -0.0009387775249166544
+        },
+        "dimensions": {
+          "width": 0.6135199646125566,
+          "height": 0.5843650111022805,
+          "depth": 0.002638682264609061
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 1.5707963267948966
+        },
+        "connections": [
+          "top_rail",
+          "glazing_bar",
+          "lock_stile",
+          "hinge_stile"
+        ],
+        "material": "frosted glass pane",
+        "status": "intact",
+        "notes": "Heavy surface soiling; substrate intact."
+      },
+      {
+        "id": "lower_glass_pane",
+        "label": "Lower Glass Pane",
+        "origin": {
+          "x": -0.0015316418347830485,
+          "y": 1.1734438138197352,
+          "z": -0.0009387775249166544
+        },
+        "dimensions": {
+          "width": 0.5843650111022805,
+          "height": 0.5797431278663244,
+          "depth": 0.002638682264609061
+        },
+        "rotation": {
+          "x": -0.0,
+          "y": 3.141592653589793,
+          "z": 3.141592653589793
+        },
+        "connections": [
+          "middle_rail",
+          "glazing_bar",
+          "lock_stile",
+          "hinge_stile"
+        ],
+        "material": "frosted glass pane",
+        "status": "intact",
+        "notes": "Heavy surface soiling; substrate intact."
+      },
+      {
+        "id": "upper_hinge_leaf",
+        "label": "Upper Hinge Leaf",
+        "origin": {
+          "x": 0.314957905235918,
+          "y": 0.9185717704933363,
+          "z": -0.011007797243333641
+        },
+        "dimensions": {
+          "width": 0.21724168177488573,
+          "height": 0.11494598700463232,
+          "depth": 0.04250460863113414
+        },
+        "rotation": {
+          "x": 0.03857422177551518,
+          "y": -1.5707963267948966,
+          "z": 1.5707963267948966
+        },
+        "connections": [
+          "hinge_stile"
+        ],
+        "material": "aged steel",
+        "status": "defective",
+        "notes": "Surface oxidation and accumulated dirt; functional but corroded."
+      },
+      {
+        "id": "bottom_panel_board_2",
+        "label": "Bottom Panel Board 2",
+        "origin": {
+          "x": -0.08641773968987655,
+          "y": 0.48972602326723425,
+          "z": 5.898059818321144e-17
+        },
+        "dimensions": {
+          "width": 0.5499654569825503,
+          "height": 0.12439305711795828,
+          "depth": 0.0207767178909304
+        },
+        "rotation": {
+          "x": 7.243963875363435e-19,
+          "y": -2.9725596897427153e-19,
+          "z": 1.5925042095985968
+        },
+        "connections": [
+          "middle_rail",
+          "bottom_rail_cap",
+          "bottom_panel_board_1",
+          "bottom_panel_board_3"
+        ],
+        "material": "wood, distressed white paint",
+        "status": "defective",
+        "notes": "Widespread paint loss; weathered grey wood surface visible."
+      },
+      {
+        "id": "bottom_panel_board_1",
+        "label": "Bottom Panel Board 1",
+        "origin": {
+          "x": -0.2117020989386067,
+          "y": 0.4870059378021721,
+          "z": 5.811323644522304e-17
+        },
+        "dimensions": {
+          "width": 0.5463583480993207,
+          "height": 0.12439305711795828,
+          "depth": 0.0207767178909304
+        },
+        "rotation": {
+          "x": -7.426231704433328e-20,
+          "y": 3.6023133723233556e-18,
+          "z": 1.592504209598597
+        },
+        "connections": [
+          "middle_rail",
+          "bottom_rail_cap",
+          "lock_stile",
+          "bottom_panel_board_2"
+        ],
+        "material": "wood, distressed white paint",
+        "status": "defective",
+        "notes": "Widespread paint loss; weathered grey wood surface visible."
+      },
+      {
+        "id": "bottom_panel_board_4",
+        "label": "Bottom Panel Board 4",
+        "origin": {
+          "x": 0.11039749391810048,
+          "y": 0.4870059378021722,
+          "z": 5.898059818321144e-17
+        },
+        "dimensions": {
+          "width": 0.5463583480993207,
+          "height": 0.1243930571179583,
+          "depth": 0.0207767178909304
+        },
+        "rotation": {
+          "x": -0.0,
+          "y": 0.0,
+          "z": 1.592504209598597
+        },
+        "connections": [
+          "middle_rail",
+          "bottom_rail_cap",
+          "bottom_panel_board_3",
+          "bottom_panel_board_5"
+        ],
+        "material": "wood, distressed white paint",
+        "status": "defective",
+        "notes": "Widespread paint loss; weathered grey wood surface visible."
+      },
+      {
+        "id": "bottom_panel_board_5",
+        "label": "Bottom Panel Board 5",
+        "origin": {
+          "x": 0.23568185316683063,
+          "y": 0.48972602326723425,
+          "z": 5.898059818321144e-17
+        },
+        "dimensions": {
+          "width": 0.5499654569825503,
+          "height": 0.12439305711795831,
+          "depth": 0.0207767178909304
+        },
+        "rotation": {
+          "x": 7.243963875363435e-19,
+          "y": -2.9725596897427235e-19,
+          "z": 1.592504209598597
+        },
+        "connections": [
+          "middle_rail",
+          "bottom_rail_cap",
+          "hinge_stile",
+          "bottom_panel_board_4"
+        ],
+        "material": "wood, distressed white paint",
+        "status": "defective",
+        "notes": "Widespread paint loss; weathered grey wood surface visible."
+      },
+      {
+        "id": "bottom_panel_board_3",
+        "label": "Bottom Panel Board 3",
+        "origin": {
+          "x": 0.016705897149539815,
+          "y": 0.4848147700879782,
+          "z": 7.37257477290143e-17
+        },
+        "dimensions": {
+          "width": 0.5391442268395286,
+          "height": 0.07827792088631419,
+          "depth": 0.05745442613803792
+        },
+        "rotation": {
+          "x": 1.992819039503323e-18,
+          "y": -2.2467839344818227e-17,
+          "z": 1.592504209598597
+        },
+        "connections": [
+          "middle_rail",
+          "bottom_rail_cap",
+          "bottom_panel_board_2",
+          "bottom_panel_board_4"
+        ],
+        "material": "wood, distressed white paint",
+        "status": "defective",
+        "notes": "Widespread paint loss; weathered grey wood surface visible."
+      },
+      {
+        "id": "base_moulding_front",
+        "label": "Base Moulding Front",
+        "origin": {
+          "x": 0.019574786776643004,
+          "y": 0.04251925182578995,
+          "z": 0.05250351042710391
+        },
+        "dimensions": {
+          "width": 0.7603453921107405,
+          "height": 0.08164820860783288,
+          "depth": 0.047552594716170286
+        },
+        "rotation": {
+          "x": -0.0,
+          "y": 3.141592653589793,
+          "z": 3.141592653589793
+        },
+        "connections": [
+          "bottom_rail",
+          "lock_stile",
+          "hinge_stile"
+        ],
+        "material": "wood, distressed white paint",
+        "status": "defective",
+        "notes": "Widespread paint loss; weathered grey wood surface visible."
+      },
+      {
+        "id": "base_moulding_back",
+        "label": "Base Moulding Back",
+        "origin": {
+          "x": 0.019574786776642983,
+          "y": 0.04251925182578995,
+          "z": -0.05250351042710391
+        },
+        "dimensions": {
+          "width": 0.7603453921107405,
+          "height": 0.08164820860783288,
+          "depth": 0.047552594716170286
+        },
+        "rotation": {
+          "x": -0.0,
+          "y": 3.141592653589793,
+          "z": 3.141592653589793
+        },
+        "connections": [
+          "bottom_rail",
+          "lock_stile",
+          "hinge_stile"
+        ],
+        "material": "wood, distressed white paint",
+        "status": "defective",
+        "notes": "Widespread paint loss; weathered grey wood surface visible."
+      },
+      {
+        "id": "bottom_rail",
+        "label": "Bottom Rail",
+        "origin": {
+          "x": 0.019528414856294973,
+          "y": 0.07265003280288576,
+          "z": 1.0928757898653885e-16
+        },
+        "dimensions": {
+          "width": 0.5719565158140447,
+          "height": 0.14190977056202453,
+          "depth": 0.08685372843564926
+        },
+        "rotation": {
+          "x": -0.0,
+          "y": 3.141592653589793,
+          "z": 3.141592653589793
+        },
+        "connections": [
+          "lock_stile",
+          "hinge_stile",
+          "bottom_rail_cap",
+          "base_moulding_front",
+          "base_moulding_back"
+        ],
+        "material": "wood, distressed white paint",
+        "status": "defective",
+        "notes": "Widespread paint loss; weathered grey wood surface visible."
+      },
+      {
+        "id": "bottom_rail_cap",
+        "label": "Bottom Rail Cap",
+        "origin": {
+          "x": 0.017040473320313665,
+          "y": 0.18052114163479838,
+          "z": 7.37257477290143e-17
+        },
+        "dimensions": {
+          "width": 0.5719565158140447,
+          "height": 0.0710264627146289,
+          "depth": 0.05745442613803792
+        },
+        "rotation": {
+          "x": -0.0,
+          "y": 3.141592653589793,
+          "z": 3.141592653589793
+        },
+        "connections": [
+          "bottom_rail",
+          "lock_stile",
+          "hinge_stile",
+          "bottom_panel_board_1",
+          "bottom_panel_board_2",
+          "bottom_panel_board_3",
+          "bottom_panel_board_4",
+          "bottom_panel_board_5"
+        ],
+        "material": "wood, distressed white paint",
+        "status": "defective",
+        "notes": "Widespread paint loss; weathered grey wood surface visible."
+      },
+      {
+        "id": "hinge_stile",
+        "label": "Hinge Stile",
+        "origin": {
+          "x": 0.33309866294137025,
+          "y": 1.0865192404846002,
+          "z": 7.372574772901426e-17
+        },
+        "dimensions": {
+          "width": 2.171694570526286,
+          "height": 0.09425605448736404,
+          "depth": 0.05745442613803782
+        },
+        "rotation": {
+          "x": 1.9302106694518868e-17,
+          "y": -1.0538694861726423e-15,
+          "z": 1.5887817912271687
+        },
+        "connections": [
+          "top_rail",
+          "middle_rail",
+          "bottom_rail",
+          "bottom_rail_cap",
+          "upper_glass_pane",
+          "lower_glass_pane",
+          "upper_hinge_leaf",
+          "bottom_panel_board_5",
+          "base_moulding_front",
+          "base_moulding_back"
+        ],
+        "material": "wood, distressed white paint",
+        "status": "defective",
+        "notes": "Widespread paint loss; weathered grey wood surface visible."
+      },
+      {
+        "id": "lock_stile",
+        "label": "Lock Stile",
+        "origin": {
+          "x": -0.3330986629413703,
+          "y": 1.0865192404846002,
+          "z": 7.372574772901433e-17
+        },
+        "dimensions": {
+          "width": 2.171694570526286,
+          "height": 0.09425605448736414,
+          "depth": 0.05745442613803782
+        },
+        "rotation": {
+          "x": 1.9476492392479634e-17,
+          "y": -1.0635758671341044e-15,
+          "z": 1.5887817912271687
+        },
+        "connections": [
+          "top_rail",
+          "middle_rail",
+          "bottom_rail",
+          "bottom_rail_cap",
+          "upper_glass_pane",
+          "lower_glass_pane",
+          "bottom_panel_board_1",
+          "base_moulding_front",
+          "base_moulding_back"
+        ],
+        "material": "wood, distressed white paint",
+        "status": "defective",
+        "notes": "Widespread paint loss; weathered grey wood surface visible."
+      },
+      {
+        "id": "top_rail",
+        "label": "Top Rail",
+        "origin": {
+          "x": -0.01952841485629503,
+          "y": 2.1391203540410153,
+          "z": 5.117434254131581e-17
+        },
+        "dimensions": {
+          "width": 0.5719565158140447,
+          "height": 0.06783625385636993,
+          "depth": 0.05745442613803789
+        },
+        "rotation": {
+          "x": -0.0,
+          "y": 3.141592653589793,
+          "z": 3.141592653589793
+        },
+        "connections": [
+          "lock_stile",
+          "hinge_stile",
+          "upper_glass_pane"
+        ],
+        "material": "wood, distressed white paint",
+        "status": "defective",
+        "notes": "Widespread paint loss; weathered grey wood surface visible."
+      },
+      {
+        "id": "glazing_bar",
+        "label": "Glazing Bar",
+        "origin": {
+          "x": -0.007403022364563805,
+          "y": 1.477357893464149,
+          "z": -0.0002414462692333398
+        },
+        "dimensions": {
+          "width": 0.5747473890490444,
+          "height": 0.02808503142250296,
+          "depth": 0.01865926345480965
+        },
+        "rotation": {
+          "x": -0.0,
+          "y": 3.141592653589793,
+          "z": 3.141592653589793
+        },
+        "connections": [
+          "upper_glass_pane",
+          "lower_glass_pane"
+        ],
+        "material": "wood, distressed white paint",
+        "status": "defective",
+        "notes": "Widespread paint loss; weathered grey wood surface visible."
+      },
+      {
+        "id": "middle_rail",
+        "label": "Middle Rail",
+        "origin": {
+          "x": 0.0045556160371323234,
+          "y": 0.821862582540648,
+          "z": 8.673617379884035e-17
+        },
+        "dimensions": {
+          "width": 0.5721904953584497,
+          "height": 0.13336796541801355,
+          "depth": 0.057454426138037716
+        },
+        "rotation": {
+          "x": -0.0,
+          "y": 3.141592653589793,
+          "z": 3.141592653589793
+        },
+        "connections": [
+          "lock_stile",
+          "hinge_stile",
+          "lower_glass_pane",
+          "bottom_panel_board_1",
+          "bottom_panel_board_2",
+          "bottom_panel_board_3",
+          "bottom_panel_board_4",
+          "bottom_panel_board_5"
+        ],
+        "material": "wood, distressed white paint",
+        "status": "defective",
+        "notes": "Widespread paint loss; weathered grey wood surface visible."
+      }
+    ],
+    "location": "",
+    "provenance": "",
+    "notes": "Historical panelled glazed door, recovered for restoration. Heavy weathering throughout.",
+    "createdAt": "2026-05-19T17:17:52.832Z",
+    "sourcePhotoEvidenceId": "ev_cbd048fd89e"
+  },
+  "evidence": [
+    {
+      "id": "ev_door_visual_inspection",
+      "kind": "note",
+      "attachedTo": null,
+      "capturedAt": "2026-05-19T17:26:32.858Z",
+      "capturedBy": null,
+      "url": null,
+      "text": "Visual inspection of the door laid against the workshop wall. Widespread paint loss across all painted wood: both stiles, all four rails, the glazing bar, the base mouldings, and especially the five lower panel boards. Wood beneath the paint is greyed and weathered; surface fibres are open on the lower panel boards with visible splits and gaps between boards. The upper hinge leaf shows surface oxidation. Both glass panes appear structurally intact but are heavily soiled with a calcareous deposit / old paint overspray. No fractures observed in the glass.",
+      "measurement": null,
+      "confirmsConditionRef": null,
+      "refutesConditionRef": null
+    },
+    {
+      "id": "ev_cbd048fd89e",
+      "kind": "photo",
+      "attachedTo": null,
+      "capturedAt": "2026-05-19T17:17:52.832Z",
+      "capturedBy": null,
+      "url": "idb://ev_cbd048fd89e",
+      "text": null,
+      "measurement": null,
+      "confirmsConditionRef": null,
+      "refutesConditionRef": null,
+      "fileName": "WhatsApp Image 2026-05-18 at 15.30.32.jpeg",
+      "byteSize": 300563
+    }
+  ],
+  "conditions": [
+    {
+      "id": "cond_paint_loss_lock_stile",
+      "type": "Paint Loss",
+      "description": "Extensive flaking and loss of the original distressed white paint along the full length of the lock stile. Underlying wood is greyed and weathered.",
+      "partRef": "lock_stile",
+      "coordinates": {
+        "x": -0.333,
+        "y": 1.0,
+        "z": 0.0
+      },
+      "status": "confirmed",
+      "confidence": 0.95,
+      "evidenceRefs": [
+        "ev_door_visual_inspection"
+      ],
+      "createdAt": "2026-05-19T17:26:32.858Z",
+      "updatedAt": "2026-05-19T17:26:32.858Z"
+    },
+    {
+      "id": "cond_paint_loss_hinge_stile",
+      "type": "Paint Loss",
+      "description": "Extensive flaking and loss of paint along the full length of the hinge stile. Underlying wood is greyed.",
+      "partRef": "hinge_stile",
+      "coordinates": {
+        "x": 0.333,
+        "y": 1.0,
+        "z": 0.0
+      },
+      "status": "confirmed",
+      "confidence": 0.95,
+      "evidenceRefs": [
+        "ev_door_visual_inspection"
+      ],
+      "createdAt": "2026-05-19T17:26:32.858Z",
+      "updatedAt": "2026-05-19T17:26:32.858Z"
+    },
+    {
+      "id": "cond_paint_loss_middle_rail",
+      "type": "Paint Loss",
+      "description": "Major paint loss on the middle rail and the carved ornament above the lower panel; only patches of paint remain.",
+      "partRef": "middle_rail",
+      "coordinates": {
+        "x": 0.0,
+        "y": 0.822,
+        "z": 0.029
+      },
+      "status": "confirmed",
+      "confidence": 0.9,
+      "evidenceRefs": [
+        "ev_door_visual_inspection"
+      ],
+      "createdAt": "2026-05-19T17:26:32.858Z",
+      "updatedAt": "2026-05-19T17:26:32.858Z"
+    },
+    {
+      "id": "cond_paint_loss_top_rail",
+      "type": "Paint Loss",
+      "description": "Paint loss across the top rail; wood greyed and exposed.",
+      "partRef": "top_rail",
+      "coordinates": {
+        "x": 0.0,
+        "y": 2.139,
+        "z": 0.029
+      },
+      "status": "confirmed",
+      "confidence": 0.85,
+      "evidenceRefs": [
+        "ev_door_visual_inspection"
+      ],
+      "createdAt": "2026-05-19T17:26:32.858Z",
+      "updatedAt": "2026-05-19T17:26:32.858Z"
+    },
+    {
+      "id": "cond_paint_loss_bottom_rail",
+      "type": "Paint Loss",
+      "description": "Paint loss across the bottom rail and rail cap; wood greyed with surface erosion.",
+      "partRef": "bottom_rail",
+      "coordinates": {
+        "x": 0.0,
+        "y": 0.073,
+        "z": 0.043
+      },
+      "status": "confirmed",
+      "confidence": 0.9,
+      "evidenceRefs": [
+        "ev_door_visual_inspection"
+      ],
+      "createdAt": "2026-05-19T17:26:32.858Z",
+      "updatedAt": "2026-05-19T17:26:32.858Z"
+    },
+    {
+      "id": "cond_paint_loss_base_moulding",
+      "type": "Paint Loss",
+      "description": "Heavy paint loss along the base moulding (front and back faces); some original paint islands remain.",
+      "partRef": "base_moulding_front",
+      "coordinates": {
+        "x": 0.0,
+        "y": 0.043,
+        "z": 0.052
+      },
+      "status": "confirmed",
+      "confidence": 0.9,
+      "evidenceRefs": [
+        "ev_door_visual_inspection"
+      ],
+      "createdAt": "2026-05-19T17:26:32.858Z",
+      "updatedAt": "2026-05-19T17:26:32.858Z"
+    },
+    {
+      "id": "cond_weathering_bottom_panel_board_1",
+      "type": "Weathering",
+      "description": "Severe weathering on the lower panel board: open wood grain, paint largely gone, surface fibres splintering.",
+      "partRef": "bottom_panel_board_1",
+      "coordinates": {
+        "x": -0.2117020989386067,
+        "y": 0.4870059378021721,
+        "z": 5.811323644522304e-17
+      },
+      "status": "confirmed",
+      "confidence": 0.9,
+      "evidenceRefs": [
+        "ev_door_visual_inspection"
+      ],
+      "createdAt": "2026-05-19T17:26:32.858Z",
+      "updatedAt": "2026-05-19T17:26:32.858Z"
+    },
+    {
+      "id": "cond_weathering_bottom_panel_board_2",
+      "type": "Weathering",
+      "description": "Severe weathering on the lower panel board: open wood grain, paint largely gone, surface fibres splintering.",
+      "partRef": "bottom_panel_board_2",
+      "coordinates": {
+        "x": -0.08641773968987655,
+        "y": 0.48972602326723425,
+        "z": 5.898059818321144e-17
+      },
+      "status": "confirmed",
+      "confidence": 0.9,
+      "evidenceRefs": [
+        "ev_door_visual_inspection"
+      ],
+      "createdAt": "2026-05-19T17:26:32.858Z",
+      "updatedAt": "2026-05-19T17:26:32.858Z"
+    },
+    {
+      "id": "cond_weathering_bottom_panel_board_3",
+      "type": "Weathering",
+      "description": "Severe weathering on the lower panel board: open wood grain, paint largely gone, surface fibres splintering.",
+      "partRef": "bottom_panel_board_3",
+      "coordinates": {
+        "x": 0.016705897149539815,
+        "y": 0.4848147700879782,
+        "z": 7.37257477290143e-17
+      },
+      "status": "confirmed",
+      "confidence": 0.9,
+      "evidenceRefs": [
+        "ev_door_visual_inspection"
+      ],
+      "createdAt": "2026-05-19T17:26:32.858Z",
+      "updatedAt": "2026-05-19T17:26:32.858Z"
+    },
+    {
+      "id": "cond_weathering_bottom_panel_board_4",
+      "type": "Weathering",
+      "description": "Severe weathering on the lower panel board: open wood grain, paint largely gone, surface fibres splintering.",
+      "partRef": "bottom_panel_board_4",
+      "coordinates": {
+        "x": 0.11039749391810048,
+        "y": 0.4870059378021722,
+        "z": 5.898059818321144e-17
+      },
+      "status": "confirmed",
+      "confidence": 0.9,
+      "evidenceRefs": [
+        "ev_door_visual_inspection"
+      ],
+      "createdAt": "2026-05-19T17:26:32.858Z",
+      "updatedAt": "2026-05-19T17:26:32.858Z"
+    },
+    {
+      "id": "cond_weathering_bottom_panel_board_5",
+      "type": "Weathering",
+      "description": "Severe weathering on the lower panel board: open wood grain, paint largely gone, surface fibres splintering.",
+      "partRef": "bottom_panel_board_5",
+      "coordinates": {
+        "x": 0.23568185316683063,
+        "y": 0.48972602326723425,
+        "z": 5.898059818321144e-17
+      },
+      "status": "confirmed",
+      "confidence": 0.9,
+      "evidenceRefs": [
+        "ev_door_visual_inspection"
+      ],
+      "createdAt": "2026-05-19T17:26:32.858Z",
+      "updatedAt": "2026-05-19T17:26:32.858Z"
+    },
+    {
+      "id": "cond_panel_gap_boards",
+      "type": "Split",
+      "description": "Visible gaps and slight separation between adjacent lower panel boards, consistent with seasonal movement and joint loosening.",
+      "partRef": "bottom_panel_board_3",
+      "coordinates": {
+        "x": 0.016705897149539815,
+        "y": 0.4848147700879782,
+        "z": 7.37257477290143e-17
+      },
+      "status": "confirmed",
+      "confidence": 0.8,
+      "evidenceRefs": [
+        "ev_door_visual_inspection"
+      ],
+      "createdAt": "2026-05-19T17:26:32.858Z",
+      "updatedAt": "2026-05-19T17:26:32.858Z"
+    },
+    {
+      "id": "cond_corrosion_upper_hinge",
+      "type": "Corrosion",
+      "description": "Surface oxidation and dirt accumulation on the upper hinge leaf; pivot is stiff but functional.",
+      "partRef": "upper_hinge_leaf",
+      "coordinates": {
+        "x": 0.315,
+        "y": 0.919,
+        "z": -0.011
+      },
+      "status": "confirmed",
+      "confidence": 0.85,
+      "evidenceRefs": [
+        "ev_door_visual_inspection"
+      ],
+      "createdAt": "2026-05-19T17:26:32.858Z",
+      "updatedAt": "2026-05-19T17:26:32.858Z"
+    },
+    {
+      "id": "cond_soiling_upper_glass",
+      "type": "Soiling",
+      "description": "Heavy surface deposit (calcareous film and old paint overspray) on the upper glass pane. Glass substrate appears intact.",
+      "partRef": "upper_glass_pane",
+      "coordinates": {
+        "x": -0.01695842061754771,
+        "y": 1.7973713112559986,
+        "z": -0.0009387775249166544
+      },
+      "status": "confirmed",
+      "confidence": 0.85,
+      "evidenceRefs": [
+        "ev_door_visual_inspection"
+      ],
+      "createdAt": "2026-05-19T17:26:32.858Z",
+      "updatedAt": "2026-05-19T17:26:32.858Z"
+    },
+    {
+      "id": "cond_soiling_lower_glass",
+      "type": "Soiling",
+      "description": "Heavy surface deposit on the lower glass pane. Glass substrate appears intact.",
+      "partRef": "lower_glass_pane",
+      "coordinates": {
+        "x": -0.0015316418347830485,
+        "y": 1.1734438138197352,
+        "z": -0.0009387775249166544
+      },
+      "status": "confirmed",
+      "confidence": 0.85,
+      "evidenceRefs": [
+        "ev_door_visual_inspection"
+      ],
+      "createdAt": "2026-05-19T17:26:32.858Z",
+      "updatedAt": "2026-05-19T17:26:32.858Z"
+    }
+  ],
+  "intent": {
+    "axes": [
+      {
+        "id": "axis_1",
+        "label": "Material Authenticity",
+        "value": 0.5
+      },
+      {
+        "id": "axis_2",
+        "label": "Structural Performance",
+        "value": 0.5
+      },
+      {
+        "id": "axis_3",
+        "label": "Economic Viability",
+        "value": 0.5
+      },
+      {
+        "id": "axis_4",
+        "label": "Cultural Continuity",
+        "value": 0.5
+      },
+      {
+        "id": "axis_5",
+        "label": "Ecological Sustainability",
+        "value": 0.5
+      },
+      {
+        "id": "axis_6",
+        "label": "Aesthetic Intervention",
+        "value": 0.5
+      }
+    ],
+    "summary": ""
+  },
+  "constraints": {
+    "tools_available": "",
+    "materials_available": "",
+    "time_budget_minutes": 0,
+    "budget_limit": "",
+    "skill_level": "",
+    "safety_level": "",
+    "allowed_operations": "",
+    "avoid_operations": "",
+    "additional_constraints": ""
+  },
+  "plans": [],
+  "currentPlanId": null,
+  "executionLog": [],
+  "conversations": [],
+  "createdAt": "2026-05-19T17:17:52.832Z",
+  "updatedAt": "2026-05-19T17:26:32.858Z"
+}

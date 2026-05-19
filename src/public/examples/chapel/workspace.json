@@ -1,0 +1,441 @@
+{
+  "schemaVersion": "2.0.0",
+  "template": null,
+  "instance": {
+    "id": "lunch_chair",
+    "name": "Lunch Chair",
+    "templateRef": null,
+    "parts": [
+      {
+        "id": "backrest",
+        "label": "Backrest",
+        "origin": {
+          "x": -0.157503,
+          "y": 0.752163,
+          "z": -0.005168
+        },
+        "dimensions": {
+          "width": 0.04529,
+          "height": 0.437329,
+          "depth": 0.084895
+        },
+        "rotation": {
+          "x": -1.570796,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "back_right_leg",
+          "back_left_leg"
+        ],
+        "material": "Weathered solid timber",
+        "status": "defective",
+        "notes": ""
+      },
+      {
+        "id": "front_left_leg",
+        "label": "Front Left Leg",
+        "origin": {
+          "x": 0.177713,
+          "y": 0.222923,
+          "z": -0.144027
+        },
+        "dimensions": {
+          "width": 0.40512,
+          "height": 0.03755,
+          "depth": 0.03528
+        },
+        "rotation": {
+          "x": -0.006422,
+          "y": -1.570796,
+          "z": 1.570796
+        },
+        "connections": [
+          "front_apron",
+          "rounded_apron",
+          "front_stretcher",
+          "round_stretcher"
+        ],
+        "material": "Weathered solid timber",
+        "status": "defective",
+        "notes": ""
+      },
+      {
+        "id": "front_right_leg",
+        "label": "Front Right Leg",
+        "origin": {
+          "x": 0.191055,
+          "y": 0.222838,
+          "z": 0.18024
+        },
+        "dimensions": {
+          "width": 0.40512,
+          "height": 0.038881,
+          "depth": 0.03528
+        },
+        "rotation": {
+          "x": 0.049829,
+          "y": -1.570796,
+          "z": 1.570796
+        },
+        "connections": [
+          "rounded_apron",
+          "front_apron",
+          "front_stretcher",
+          "round_stretcher"
+        ],
+        "material": "Weathered solid timber",
+        "status": "defective",
+        "notes": ""
+      },
+      {
+        "id": "back_left_leg",
+        "label": "Back Left Leg",
+        "origin": {
+          "x": -0.181214,
+          "y": 0.381046,
+          "z": -0.129702
+        },
+        "dimensions": {
+          "width": 0.759087,
+          "height": 0.052487,
+          "depth": 0.045646
+        },
+        "rotation": {
+          "x": -0.038933,
+          "y": -1.573305,
+          "z": 1.635148
+        },
+        "connections": [
+          "back_slat_upper",
+          "back_slat_lower",
+          "backrest",
+          "round_stretcher",
+          "rounded_apron"
+        ],
+        "material": "Weathered solid timber",
+        "status": "defective",
+        "notes": ""
+      },
+      {
+        "id": "back_right_leg",
+        "label": "Back Right Leg",
+        "origin": {
+          "x": -0.183172,
+          "y": 0.387249,
+          "z": 0.168494
+        },
+        "dimensions": {
+          "width": 0.741169,
+          "height": 0.062518,
+          "depth": 0.046624
+        },
+        "rotation": {
+          "x": -0.040198,
+          "y": -1.575075,
+          "z": 1.6359
+        },
+        "connections": [
+          "backrest",
+          "back_slat_upper",
+          "back_slat_lower",
+          "round_stretcher",
+          "rounded_apron"
+        ],
+        "material": "Weathered solid timber",
+        "status": "defective",
+        "notes": ""
+      },
+      {
+        "id": "front_stretcher",
+        "label": "Front Stretcher",
+        "origin": {
+          "x": 0.181957,
+          "y": 0.302869,
+          "z": 0.020778
+        },
+        "dimensions": {
+          "width": 0.292059,
+          "height": 0.027114,
+          "depth": 0.024037
+        },
+        "rotation": {
+          "x": 0,
+          "y": 1.570796,
+          "z": 3.141593
+        },
+        "connections": [
+          "front_left_leg",
+          "front_right_leg"
+        ],
+        "material": "Weathered solid timber",
+        "status": "defective",
+        "notes": ""
+      },
+      {
+        "id": "front_apron",
+        "label": "Front Apron",
+        "origin": {
+          "x": 0.191417,
+          "y": 0.443152,
+          "z": 0.018502
+        },
+        "dimensions": {
+          "width": 0.362613,
+          "height": 0.058178,
+          "depth": 0.034912
+        },
+        "rotation": {
+          "x": 1.568978,
+          "y": -1.565416,
+          "z": 0
+        },
+        "connections": [
+          "front_left_leg",
+          "seat",
+          "front_right_leg",
+          "rounded_apron"
+        ],
+        "material": "Weathered solid timber",
+        "status": "defective",
+        "notes": ""
+      },
+      {
+        "id": "seat_panel",
+        "label": "Seat Panel",
+        "origin": {
+          "x": 0.023798,
+          "y": 0.462697,
+          "z": 0.019359
+        },
+        "dimensions": {
+          "width": 0.394143,
+          "height": 0.363173,
+          "depth": 0.004181
+        },
+        "rotation": {
+          "x": -1.56898,
+          "y": 0.003274,
+          "z": 0
+        },
+        "connections": [
+          "seat"
+        ],
+        "material": "Weathered solid timber",
+        "status": "defective",
+        "notes": ""
+      },
+      {
+        "id": "seat",
+        "label": "Seat",
+        "origin": {
+          "x": 0.023798,
+          "y": 0.477304,
+          "z": 0.019332
+        },
+        "dimensions": {
+          "width": 0.394143,
+          "height": 0.363173,
+          "depth": 0.025034
+        },
+        "rotation": {
+          "x": -1.56898,
+          "y": 0.003274,
+          "z": 0
+        },
+        "connections": [
+          "front_apron",
+          "seat_panel",
+          "rounded_apron"
+        ],
+        "material": "Weathered solid timber",
+        "status": "new",
+        "notes": ""
+      },
+      {
+        "id": "rounded_apron",
+        "label": "Rounded Apron",
+        "origin": {
+          "x": -0.005127,
+          "y": 0.443264,
+          "z": 0.01966
+        },
+        "dimensions": {
+          "width": 0.363389,
+          "height": 0.336901,
+          "depth": 0.034695
+        },
+        "rotation": {
+          "x": 1.568952,
+          "y": -1.569205,
+          "z": 0
+        },
+        "connections": [
+          "front_right_leg",
+          "seat",
+          "front_left_leg",
+          "front_apron",
+          "back_right_leg",
+          "back_left_leg"
+        ],
+        "material": "Weathered solid timber",
+        "status": "defective",
+        "notes": ""
+      },
+      {
+        "id": "round_stretcher",
+        "label": "Round Stretcher",
+        "origin": {
+          "x": -0.005127,
+          "y": 0.332098,
+          "z": 0.01966
+        },
+        "dimensions": {
+          "width": 0.363342,
+          "height": 0.336901,
+          "depth": 0.018362
+        },
+        "rotation": {
+          "x": 1.569827,
+          "y": -1.569205,
+          "z": 0
+        },
+        "connections": [
+          "back_left_leg",
+          "back_right_leg",
+          "front_left_leg",
+          "front_right_leg"
+        ],
+        "material": "Weathered solid timber",
+        "status": "defective",
+        "notes": ""
+      },
+      {
+        "id": "back_slat_upper",
+        "label": "Back Slat Upper",
+        "origin": {
+          "x": -0.176334,
+          "y": 0.631842,
+          "z": 0.000074
+        },
+        "dimensions": {
+          "width": 0.248498,
+          "height": 0.045587,
+          "depth": 0.019058
+        },
+        "rotation": {
+          "x": 0.081093,
+          "y": 1.570796,
+          "z": 3.141593
+        },
+        "connections": [
+          "back_left_leg",
+          "back_right_leg"
+        ],
+        "material": "Weathered solid timber",
+        "status": "defective",
+        "notes": ""
+      },
+      {
+        "id": "back_slat_lower",
+        "label": "Back Slat Lower",
+        "origin": {
+          "x": -0.178298,
+          "y": 0.561717,
+          "z": 0.004252
+        },
+        "dimensions": {
+          "width": 0.248498,
+          "height": 0.045587,
+          "depth": 0.019058
+        },
+        "rotation": {
+          "x": 0.118593,
+          "y": 1.570796,
+          "z": -3.141593
+        },
+        "connections": [
+          "back_left_leg",
+          "back_right_leg"
+        ],
+        "material": "Weathered solid timber",
+        "status": "defective",
+        "notes": ""
+      }
+    ],
+    "location": "",
+    "provenance": "",
+    "notes": "",
+    "createdAt": "2026-05-16T15:04:11.777Z",
+    "sourcePhotoEvidenceId": "ev_7f43309a26f"
+  },
+  "evidence": [
+    {
+      "id": "ev_7f43309a26f",
+      "kind": "photo",
+      "attachedTo": null,
+      "capturedAt": "2026-05-16T15:04:11.777Z",
+      "capturedBy": null,
+      "url": "idb://ev_7f43309a26f",
+      "text": null,
+      "measurement": null,
+      "confirmsConditionRef": null,
+      "refutesConditionRef": null,
+      "fileName": "IMG_6692.JPG",
+      "byteSize": 2552032
+    }
+  ],
+  "conditions": [],
+  "intent": {
+    "axes": [
+      {
+        "id": "axis_1",
+        "label": "Material Authenticity",
+        "value": 0.5
+      },
+      {
+        "id": "axis_2",
+        "label": "Structural Performance",
+        "value": 0.5
+      },
+      {
+        "id": "axis_3",
+        "label": "Economic Viability",
+        "value": 0.5
+      },
+      {
+        "id": "axis_4",
+        "label": "Cultural Continuity",
+        "value": 0.5
+      },
+      {
+        "id": "axis_5",
+        "label": "Ecological Sustainability",
+        "value": 0.5
+      },
+      {
+        "id": "axis_6",
+        "label": "Aesthetic Intervention",
+        "value": 0.5
+      }
+    ],
+    "summary": ""
+  },
+  "constraints": {
+    "tools_available": "",
+    "materials_available": "",
+    "time_budget_minutes": 0,
+    "budget_limit": "",
+    "skill_level": "",
+    "safety_level": "",
+    "allowed_operations": "",
+    "avoid_operations": "",
+    "additional_constraints": ""
+  },
+  "plans": [],
+  "currentPlanId": null,
+  "executionLog": [],
+  "conversations": [],
+  "createdAt": "2026-05-16T15:04:11.777Z",
+  "updatedAt": "2026-05-16T15:48:08.842Z"
+}

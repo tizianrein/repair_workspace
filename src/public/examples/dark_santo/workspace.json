@@ -2,8 +2,8 @@
   "schemaVersion": "2.0.0",
   "template": null,
   "instance": {
-    "id": "inst_santo02",
-    "name": "santo_02",
+    "id": "inst_dark_santo",
+    "name": "Dark Santo",
     "templateRef": null,
     "parts": [
       {
@@ -30,9 +30,9 @@
           "seat",
           "front_left_glider"
         ],
-        "material": "beech timber, clear lacquer",
-        "status": "defective",
-        "notes": "Severe breakout of wood near the top of the leg."
+        "material": "beech timber, dark stain",
+        "status": "intact",
+        "notes": ""
       },
       {
         "id": "front_right_leg",
@@ -58,9 +58,9 @@
           "seat",
           "front_right_glider"
         ],
-        "material": "beech timber, clear lacquer",
-        "status": "defective",
-        "notes": "Crack on the top surface of the leg."
+        "material": "beech timber, dark stain",
+        "status": "intact",
+        "notes": ""
       },
       {
         "id": "back_left_leg",
@@ -87,9 +87,9 @@
           "backrest",
           "back_left_glider"
         ],
-        "material": "beech timber, clear lacquer",
-        "status": "defective",
-        "notes": "Surface scratches on the left face mid-shaft; cosmetic only."
+        "material": "beech timber, dark stain",
+        "status": "intact",
+        "notes": ""
       },
       {
         "id": "back_right_leg",
@@ -116,9 +116,9 @@
           "backrest",
           "back_right_glider"
         ],
-        "material": "beech timber, clear lacquer",
-        "status": "defective",
-        "notes": "Big chip on top surface near the backrest joint."
+        "material": "beech timber, dark stain",
+        "status": "intact",
+        "notes": ""
       },
       {
         "id": "front_apron",
@@ -143,7 +143,7 @@
           "front_right_leg",
           "seat"
         ],
-        "material": "beech timber, clear lacquer",
+        "material": "beech timber, dark stain",
         "status": "intact",
         "notes": ""
       },
@@ -170,7 +170,7 @@
           "back_right_leg",
           "seat"
         ],
-        "material": "beech timber, clear lacquer",
+        "material": "beech timber, dark stain",
         "status": "intact",
         "notes": ""
       },
@@ -197,7 +197,7 @@
           "back_left_leg",
           "seat"
         ],
-        "material": "beech timber, clear lacquer",
+        "material": "beech timber, dark stain",
         "status": "intact",
         "notes": ""
       },
@@ -224,7 +224,7 @@
           "back_right_leg",
           "seat"
         ],
-        "material": "beech timber, clear lacquer",
+        "material": "beech timber, dark stain",
         "status": "intact",
         "notes": ""
       },
@@ -256,9 +256,9 @@
           "left_side_apron",
           "right_side_apron"
         ],
-        "material": "beech plywood, clear lacquer",
-        "status": "defective",
-        "notes": "Rough surface texture on top; worn lacquer."
+        "material": "beech plywood, dark stain",
+        "status": "intact",
+        "notes": ""
       },
       {
         "id": "backrest",
@@ -282,7 +282,7 @@
           "back_left_leg",
           "back_right_leg"
         ],
-        "material": "beech timber, clear lacquer",
+        "material": "beech timber, dark stain",
         "status": "intact",
         "notes": ""
       },
@@ -387,1401 +387,64 @@
         "notes": ""
       }
     ],
-    "location": "Workshop, ground floor",
-    "provenance": "Stacking chair, c. 1970s Central European industrial design. Light beech with clear lacquer.",
-    "notes": "Owner wants the chair restored to its original function with traditional, sympathetic repairs that preserve as much original material as possible.",
-    "createdAt": "2026-05-14T10:00:00.000Z",
-    "sourcePhotoEvidenceId": "ev_mp63iqa301d"
+    "location": "",
+    "provenance": "",
+    "notes": "",
+    "createdAt": "2026-05-19T17:01:53.051Z",
+    "sourcePhotoEvidenceId": null
   },
-  "evidence": [
-    {
-      "id": "ev_initial_inspection",
-      "kind": "note",
-      "attachedTo": null,
-      "capturedAt": "2026-05-14T09:30:00.000Z",
-      "capturedBy": null,
-      "url": null,
-      "text": "Walk-around inspection. Chair sits stable on its gliders. Joints feel snug. Damage concentrated on the legs (breakout, crack, chip, scratches) and seat surface (worn lacquer).",
-      "measurement": null,
-      "confirmsConditionRef": null,
-      "refutesConditionRef": null
-    },
-    {
-      "id": "ev_mp63iqa301d",
-      "kind": "photo",
-      "attachedTo": null,
-      "capturedAt": "2026-05-14T23:04:38.283Z",
-      "capturedBy": null,
-      "url": "idb://ev_mp63iqa301d",
-      "text": null,
-      "measurement": null,
-      "confirmsConditionRef": null,
-      "refutesConditionRef": null,
-      "fileName": "santo_02.jpg",
-      "byteSize": 160327
-    }
-  ],
-  "conditions": [
-    {
-      "id": "cond_front_left_breakout",
-      "type": "Breakout",
-      "description": "Severe breakout of wood on the front left leg near the top, where it meets the apron and seat. Structural impact likely; requires patching.",
-      "partRef": "front_left_leg",
-      "coordinates": {
-        "x": -0.235,
-        "y": 0.434,
-        "z": -0.2225
-      },
-      "status": "confirmed",
-      "confidence": 0.9,
-      "evidenceRefs": [
-        "ev_initial_inspection"
-      ],
-      "createdAt": "2026-05-14T09:35:00.000Z",
-      "updatedAt": "2026-05-14T09:35:00.000Z"
-    },
-    {
-      "id": "cond_front_right_crack",
-      "type": "Crack",
-      "description": "Large crack on the top surface of the front right leg. Compromises the joint area; should be patched out.",
-      "partRef": "front_right_leg",
-      "coordinates": {
-        "x": 0.235,
-        "y": 0.434,
-        "z": -0.2225
-      },
-      "status": "confirmed",
-      "confidence": 0.85,
-      "evidenceRefs": [
-        "ev_initial_inspection"
-      ],
-      "createdAt": "2026-05-14T09:36:00.000Z",
-      "updatedAt": "2026-05-14T09:36:00.000Z"
-    },
-    {
-      "id": "cond_back_right_chip",
-      "type": "Chipping",
-      "description": "Big wood chipping on the top surface of the back right leg, near the backrest joint.",
-      "partRef": "back_right_leg",
-      "coordinates": {
-        "x": 0.235,
-        "y": 0.76,
-        "z": 0.2225
-      },
-      "status": "confirmed",
-      "confidence": 0.95,
-      "evidenceRefs": [
-        "ev_initial_inspection"
-      ],
-      "createdAt": "2026-05-14T09:37:00.000Z",
-      "updatedAt": "2026-05-14T09:37:00.000Z"
-    },
-    {
-      "id": "cond_seat_rough",
-      "type": "Rough Surface",
-      "description": "Rough surface texture on top of the seat where the lacquer has worn through. Cosmetic; panel is structurally sound.",
-      "partRef": "seat",
-      "coordinates": {
-        "x": 0,
-        "y": 0.44,
-        "z": 0
-      },
-      "status": "confirmed",
-      "confidence": 0.85,
-      "evidenceRefs": [
-        "ev_initial_inspection"
-      ],
-      "createdAt": "2026-05-14T09:38:00.000Z",
-      "updatedAt": "2026-05-14T09:38:00.000Z"
-    },
-    {
-      "id": "cond_back_left_scratch",
-      "type": "Scratches",
-      "description": "Scratches in the middle of the left side of the back left leg. Surface only, no structural impact.",
-      "partRef": "back_left_leg",
-      "coordinates": {
-        "x": -0.25,
-        "y": 0.56,
-        "z": 0.2225
-      },
-      "status": "confirmed",
-      "confidence": 0.8,
-      "evidenceRefs": [
-        "ev_initial_inspection"
-      ],
-      "createdAt": "2026-05-14T09:39:00.000Z",
-      "updatedAt": "2026-05-14T09:39:00.000Z"
-    }
-  ],
+  "evidence": [],
+  "conditions": [],
   "intent": {
     "axes": [
       {
         "id": "axis_1",
         "label": "Material Authenticity",
-        "value": 0.9
+        "value": 0.5
       },
       {
         "id": "axis_2",
         "label": "Structural Performance",
-        "value": 0.85
+        "value": 0.5
       },
       {
         "id": "axis_3",
         "label": "Economic Viability",
-        "value": 0.4
+        "value": 0.5
       },
       {
         "id": "axis_4",
         "label": "Cultural Continuity",
-        "value": 0.75
+        "value": 0.5
       },
       {
         "id": "axis_5",
         "label": "Ecological Sustainability",
-        "value": 0.6
+        "value": 0.5
       },
       {
         "id": "axis_6",
         "label": "Aesthetic Intervention",
-        "value": 0.2
+        "value": 0.5
       }
     ],
-    "summary": "Gentle craftsman approach: restore the chair to its original function using traditional, sympathetic repair techniques. Preserve as much original material as possible. Patch damaged areas with matching wood (scarf joint, dovetail patch, Dutchman patch). Blend repairs into the existing patina rather than concealing them."
+    "summary": ""
   },
   "constraints": {
-    "tools_available": "fine-toothed hand saw, chisel set, mallet, clamps, cauls, block plane, cabinet scraper, sanding block, sandpaper assortment, marking knife, dovetail gauge",
-    "materials_available": "matching beech wood stock, hide glue, shellac, linseed oil, lint-free cloths, tack cloth",
-    "time_budget_minutes": 600,
-    "budget_limit": "moderate \u2014 matching wood and quality glue acceptable",
-    "skill_level": "advanced",
-    "safety_level": "normal",
-    "allowed_operations": "saw, chisel, plane, sand, glue, finish",
-    "avoid_operations": "no power saw, no synthetic fillers, no aggressive material removal",
-    "additional_constraints": "Repairs use traditional joinery and should be reversible where possible. Work spans multiple sessions to allow hide glue to cure (overnight between glue and trim steps)."
+    "tools_available": "",
+    "materials_available": "",
+    "time_budget_minutes": 0,
+    "budget_limit": "",
+    "skill_level": "",
+    "safety_level": "",
+    "allowed_operations": "",
+    "avoid_operations": "",
+    "additional_constraints": ""
   },
-  "plans": [
-    {
-      "id": "plan_gentle_craftsman_repair",
-      "label": "Gentle Craftsman Repair",
-      "status": "draft",
-      "steps": [
-        {
-          "id": "step_setup_work_area",
-          "title": "Setup Work Area",
-          "description": "Clear and protect the work surface. Gather all necessary tools and materials for the repair process. Ensure good lighting and ventilation for precision work.",
-          "status": "pending",
-          "affectedPartRefs": [],
-          "addressesConditionRefs": [],
-          "toolsRequired": [
-            "Workbench",
-            "Drop cloths",
-            "Safety glasses",
-            "Gloves"
-          ],
-          "materialsRequired": [],
-          "estimatedMinutes": 15,
-          "expectedOutcome": "Clean, well-lit workspace with all tools and materials laid out and ready.",
-          "safetyNotes": "Ensure adequate lighting and ventilation. Keep walkways clear.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_2"
-            ],
-            "drivingConditions": [],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_remove_gliders",
-          "title": "Remove Gliders",
-          "description": "Carefully remove the gliders from the bottom of each leg to prevent damage during repair and finishing processes. Store them safely to be reinstalled later.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_left_glider",
-            "front_right_glider",
-            "back_left_glider",
-            "back_right_glider"
-          ],
-          "addressesConditionRefs": [],
-          "toolsRequired": [
-            "Pliers",
-            "Screwdriver (if applicable)",
-            "Protective padding"
-          ],
-          "materialsRequired": [],
-          "estimatedMinutes": 10,
-          "expectedOutcome": "All four gliders removed and set aside for reinstallation.",
-          "safetyNotes": "Wear gloves to avoid sharp edges from old gliders.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_2"
-            ],
-            "drivingConditions": [],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_mark_scarf_joint_cut_fl_leg",
-          "title": "Mark Scarf Joint",
-          "description": "Precisely mark the scarf joint cut on the front_left_leg to remove the damaged area (damage_02). Ensure the angle is shallow and consistent for maximum gluing surface and strength, respecting original material and minimizing loss.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_left_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_left_breakout"
-          ],
-          "toolsRequired": [
-            "Pencil",
-            "Marking knife",
-            "Ruler",
-            "Angle gauge"
-          ],
-          "materialsRequired": [],
-          "estimatedMinutes": 15,
-          "expectedOutcome": "Scarf joint cut line marked precisely on the front left leg.",
-          "safetyNotes": "Handle marking knife with care; cut away from your body.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_2"
-            ],
-            "drivingConditions": [
-              "cond_front_left_breakout"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_cut_damaged_leg_scarf_fl_leg",
-          "title": "Cut Damaged Leg",
-          "description": "Carefully cut the front_left_leg along the marked scarf joint line using a fine-toothed hand saw. Ensure a clean, straight, and consistent angled cut to provide a strong bonding surface for the new piece, retaining as much original material as possible.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_left_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_left_breakout"
-          ],
-          "toolsRequired": [
-            "Fine-toothed hand saw",
-            "Chisel",
-            "Bench vise"
-          ],
-          "materialsRequired": [],
-          "estimatedMinutes": 20,
-          "expectedOutcome": "Damaged section of the front left leg removed along a clean angled cut.",
-          "safetyNotes": "Secure the leg in the vise. Wear safety glasses. Saw away from your body.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_2"
-            ],
-            "drivingConditions": [
-              "cond_front_left_breakout"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_prepare_scarf_insert_blank_fl_leg",
-          "title": "Prepare Scarf Blank",
-          "description": "Select a new piece of wood that closely matches the original front_left_leg in species, grain, and color. Cut a blank slightly oversized to allow for precise shaping of the scarf joint, adhering to traditional methods.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_left_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_left_breakout"
-          ],
-          "toolsRequired": [
-            "Hand saw",
-            "Marking gauge"
-          ],
-          "materialsRequired": [
-            "Matching wood stock"
-          ],
-          "estimatedMinutes": 15,
-          "expectedOutcome": "Matching beech blank cut slightly oversized, ready for shaping.",
-          "safetyNotes": "Wear safety glasses when sawing. Keep fingers clear of the cut line.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_4"
-            ],
-            "drivingConditions": [
-              "cond_front_left_breakout"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_cut_scarf_insert_angle_fl_leg",
-          "title": "Cut Scarf Insert",
-          "description": "Precisely cut the new wood blank with an angle matching the scarf joint on the front_left_leg. Test fit frequently to ensure a perfect, gap-free mating surface, reflecting careful craftsmanship.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_left_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_left_breakout"
-          ],
-          "toolsRequired": [
-            "Fine-toothed hand saw",
-            "Chisel",
-            "Marking knife",
-            "Sanding block"
-          ],
-          "materialsRequired": [],
-          "estimatedMinutes": 30,
-          "expectedOutcome": "Scarf insert shaped to mate cleanly with the leg, gap-free dry fit.",
-          "safetyNotes": "Secure the workpiece. Wear safety glasses.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_2"
-            ],
-            "drivingConditions": [
-              "cond_front_left_breakout"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_glue_scarf_joint_fl_leg",
-          "title": "Glue Scarf Joint",
-          "description": "Apply a traditional hide glue or a sympathetic wood glue to both mating surfaces of the scarf joint on the front_left_leg. Carefully align and join the new piece, clamping securely with even pressure along the entire joint. Allow ample time for the glue to cure completely.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_left_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_left_breakout"
-          ],
-          "toolsRequired": [
-            "Clamps",
-            "Cauls"
-          ],
-          "materialsRequired": [
-            "Wood glue (hide glue recommended)"
-          ],
-          "estimatedMinutes": 20,
-          "expectedOutcome": "Scarf joint glued, clamped, and curing.",
-          "safetyNotes": "Heated hide glue: work quickly but avoid burns. Wash hands after handling.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_2",
-              "axis_4"
-            ],
-            "drivingConditions": [
-              "cond_front_left_breakout"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_shape_scarf_joint_fl_leg",
-          "title": "Shape Scarf Joint",
-          "description": "Once the glue is fully cured, carefully trim any excess material from the new scarf joint piece on the front_left_leg using a sharp chisel or block plane. Blend the new wood seamlessly into the original leg, maintaining the leg's original profile and preserving the patina.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_left_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_left_breakout"
-          ],
-          "toolsRequired": [
-            "Chisel",
-            "Block plane",
-            "Cabinet scraper"
-          ],
-          "materialsRequired": [],
-          "estimatedMinutes": 25,
-          "expectedOutcome": "Scarf insert trimmed flush with the original leg profile.",
-          "safetyNotes": "Sharp chisel \u2014 always cut away from the supporting hand.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_4"
-            ],
-            "drivingConditions": [
-              "cond_front_left_breakout"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_prepare_dovetail_housing",
-          "title": "Mark Dovetail Housing",
-          "description": "Carefully mark out a shallow, precise dovetail housing around the crack on the front right leg (damage_03). The housing should be just large enough to encompass the damage, minimizing removal of original material and allowing for a strong, sympathetic patch.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_right_crack"
-          ],
-          "toolsRequired": [
-            "Pencil",
-            "Marking knife",
-            "Ruler",
-            "Dovetail gauge"
-          ],
-          "materialsRequired": [],
-          "estimatedMinutes": 15,
-          "expectedOutcome": "Dovetail housing outlined precisely around the front right leg crack.",
-          "safetyNotes": "Handle marking knife with care.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_2"
-            ],
-            "drivingConditions": [
-              "cond_front_right_crack"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_cut_dovetail_housing",
-          "title": "Cut Dovetail Housing",
-          "description": "Using fine chisels and a mallet, carefully cut the marked dovetail housing into the front right leg. Ensure clean, precise cuts and a flat bottom to the housing for optimal fit and adhesion of the patch. Work slowly to retain as much original material as possible.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_right_crack"
-          ],
-          "toolsRequired": [
-            "Fine chisels",
-            "Mallet",
-            "Router plane (optional for flattening)"
-          ],
-          "materialsRequired": [],
-          "estimatedMinutes": 30,
-          "expectedOutcome": "Clean dovetail housing cut into the front right leg with a flat bottom.",
-          "safetyNotes": "Sharp chisels. Keep your non-dominant hand behind the cutting edge at all times.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_2"
-            ],
-            "drivingConditions": [
-              "cond_front_right_crack"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_create_dovetail_patch",
-          "title": "Create Dovetail Patch",
-          "description": "Select a piece of wood that closely matches the original front right leg in species, grain, and color. Carefully cut and shape a dovetail patch that precisely fits the prepared housing, ensuring a snug, gap-free fit, a hallmark of traditional repair.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_right_crack"
-          ],
-          "toolsRequired": [
-            "Hand saw",
-            "Chisels",
-            "Marking knife",
-            "Dovetail gauge"
-          ],
-          "materialsRequired": [
-            "Matching wood stock"
-          ],
-          "estimatedMinutes": 30,
-          "expectedOutcome": "Dovetail patch shaped from matching beech to fit the housing.",
-          "safetyNotes": "Secure stock in the vise before sawing. Wear safety glasses.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_4"
-            ],
-            "drivingConditions": [
-              "cond_front_right_crack"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_fit_dovetail_patch",
-          "title": "Test Fit Patch",
-          "description": "Repeatedly test fit the crafted dovetail patch into the housing on the front right leg, making minor adjustments with a chisel or sandpaper until a perfect, tight fit is achieved. The patch should sit flush with the surrounding original surface without force, demonstrating careful work.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_right_crack"
-          ],
-          "toolsRequired": [
-            "Chisels"
-          ],
-          "materialsRequired": [
-            "Fine-grit sandpaper"
-          ],
-          "estimatedMinutes": 20,
-          "expectedOutcome": "Patch dry-fits flush in the housing without forcing.",
-          "safetyNotes": "Sharp chisel \u2014 work patiently, removing small shavings.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_4"
-            ],
-            "drivingConditions": [
-              "cond_front_right_crack"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_glue_dovetail_patch",
-          "title": "Glue Dovetail Patch",
-          "description": "Apply a traditional hide glue or a sympathetic wood glue sparingly to the mating surfaces of the dovetail housing and patch on the front right leg. Gently tap the patch into place using a mallet, ensuring it is fully seated and flush. Clamp securely with cauls to distribute pressure evenly, allowing for a strong, lasting mend.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_right_crack"
-          ],
-          "toolsRequired": [
-            "Mallet",
-            "Clamps",
-            "Cauls"
-          ],
-          "materialsRequired": [
-            "Wood glue (hide glue recommended)"
-          ],
-          "estimatedMinutes": 15,
-          "expectedOutcome": "Dovetail patch glued, clamped, and curing.",
-          "safetyNotes": "Avoid skin contact with hot hide glue.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_2",
-              "axis_4"
-            ],
-            "drivingConditions": [
-              "cond_front_right_crack"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_trim_dovetail_patch",
-          "title": "Trim Dovetail Patch",
-          "description": "Once the glue is fully cured, carefully trim any excess material from the new dovetail patch using a sharp chisel or block plane. Blend the patch seamlessly into the original leg, maintaining the leg's original profile and preserving the patina through modest intervention.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_right_crack"
-          ],
-          "toolsRequired": [
-            "Chisel",
-            "Block plane",
-            "Cabinet scraper"
-          ],
-          "materialsRequired": [],
-          "estimatedMinutes": 20,
-          "expectedOutcome": "Dovetail patch trimmed flush with the leg surface.",
-          "safetyNotes": "Sharp tools \u2014 always cut away from your body.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_4"
-            ],
-            "drivingConditions": [
-              "cond_front_right_crack"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_mark_dutchman_housing_br_leg",
-          "title": "Mark Dutchman Housing",
-          "description": "Carefully mark out a shallow, precise housing around the chipping on the back right leg (damage_01). The housing should be just large enough to encompass the damage, minimizing removal of original material and allowing for a strong, sympathetic patch, consistent with traditional repair methods.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "back_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_back_right_chip"
-          ],
-          "toolsRequired": [
-            "Pencil",
-            "Marking knife",
-            "Ruler"
-          ],
-          "materialsRequired": [],
-          "estimatedMinutes": 10,
-          "expectedOutcome": "Dutchman housing outlined around the chip on the back right leg.",
-          "safetyNotes": "Handle marking knife with care.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_2"
-            ],
-            "drivingConditions": [
-              "cond_back_right_chip"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_cut_dutchman_housing_br_leg",
-          "title": "Cut Dutchman Housing",
-          "description": "Using fine chisels and a mallet, carefully cut the marked housing into the back right leg. Ensure clean, precise cuts and a flat bottom to the housing for optimal fit and adhesion of the patch. Work slowly to retain as much original material as possible, embodying conservative repair.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "back_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_back_right_chip"
-          ],
-          "toolsRequired": [
-            "Fine chisels",
-            "Mallet",
-            "Router plane (optional for flattening)"
-          ],
-          "materialsRequired": [],
-          "estimatedMinutes": 25,
-          "expectedOutcome": "Clean Dutchman housing cut into the back right leg.",
-          "safetyNotes": "Sharp chisels \u2014 keep hands behind the cutting edge.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_2"
-            ],
-            "drivingConditions": [
-              "cond_back_right_chip"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_create_dutchman_patch_br_leg",
-          "title": "Create Dutchman Patch",
-          "description": "Select a piece of wood that closely matches the original back right leg in species, grain, and color. Carefully cut and shape a patch that precisely fits the prepared housing, ensuring a snug, gap-free fit, a hallmark of traditional repair and sympathetic material use.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "back_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_back_right_chip"
-          ],
-          "toolsRequired": [
-            "Hand saw",
-            "Chisels",
-            "Marking knife"
-          ],
-          "materialsRequired": [
-            "Matching wood stock"
-          ],
-          "estimatedMinutes": 25,
-          "expectedOutcome": "Dutchman patch shaped to fit the prepared housing.",
-          "safetyNotes": "Secure stock in the vise before sawing. Wear safety glasses.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_4"
-            ],
-            "drivingConditions": [
-              "cond_back_right_chip"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_fit_dutchman_patch_br_leg",
-          "title": "Test Fit Patch",
-          "description": "Repeatedly test fit the crafted patch into the housing on the back right leg, making minor adjustments with a chisel or sandpaper until a perfect, tight fit is achieved. The patch should sit flush with the surrounding original surface without force, demonstrating careful craftsmanship and minimal intervention.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "back_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_back_right_chip"
-          ],
-          "toolsRequired": [
-            "Chisels"
-          ],
-          "materialsRequired": [
-            "Fine-grit sandpaper"
-          ],
-          "estimatedMinutes": 15,
-          "expectedOutcome": "Patch dry-fits flush in the housing without forcing.",
-          "safetyNotes": "Sharp chisel \u2014 patient, controlled paring cuts.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_4"
-            ],
-            "drivingConditions": [
-              "cond_back_right_chip"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_glue_dutchman_patch_br_leg",
-          "title": "Glue Dutchman Patch",
-          "description": "Apply a traditional hide glue or a sympathetic wood glue sparingly to the mating surfaces of the housing and patch on the back right leg. Gently tap the patch into place using a mallet, ensuring it is fully seated and flush. Clamp securely with cauls to distribute pressure evenly, allowing for a strong, lasting mend that preserves continuity.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "back_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_back_right_chip"
-          ],
-          "toolsRequired": [
-            "Mallet",
-            "Clamps",
-            "Cauls"
-          ],
-          "materialsRequired": [
-            "Wood glue (hide glue recommended)"
-          ],
-          "estimatedMinutes": 15,
-          "expectedOutcome": "Dutchman patch glued, clamped, and curing.",
-          "safetyNotes": "Avoid skin contact with hot hide glue.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_2",
-              "axis_4"
-            ],
-            "drivingConditions": [
-              "cond_back_right_chip"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_trim_dutchman_patch_br_leg",
-          "title": "Trim Dutchman Patch",
-          "description": "Once the glue is fully cured, carefully trim any excess material from the new patch using a sharp chisel or block plane. Blend the patch seamlessly into the original leg, maintaining the leg's original profile and preserving the patina through modest intervention.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "back_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_back_right_chip"
-          ],
-          "toolsRequired": [
-            "Chisel",
-            "Block plane",
-            "Cabinet scraper"
-          ],
-          "materialsRequired": [],
-          "estimatedMinutes": 15,
-          "expectedOutcome": "Dutchman patch trimmed flush with the leg surface.",
-          "safetyNotes": "Sharp tools \u2014 always cut away from your body.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_4"
-            ],
-            "drivingConditions": [
-              "cond_back_right_chip"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_scrape_excess_material",
-          "title": "Scrape Excess Material",
-          "description": "Carefully scrape away any dried excess glue from the scarf joint and dovetail patch, and excess material from the newly inserted Dutchman patch. Use a sharp scraper or chisel, being mindful not to scratch the surrounding original wood, preserving the patina and original surface.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_left_leg",
-            "front_right_leg",
-            "back_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_left_breakout",
-            "cond_front_right_crack",
-            "cond_back_right_chip"
-          ],
-          "toolsRequired": [
-            "Cabinet scraper",
-            "Sharp chisel"
-          ],
-          "materialsRequired": [],
-          "estimatedMinutes": 20,
-          "expectedOutcome": "All three patches scraped flush; no glue residue or proud material remains.",
-          "safetyNotes": "Sharp scraper edge. Work in controlled passes.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_6"
-            ],
-            "drivingConditions": [
-              "cond_front_left_breakout",
-              "cond_front_right_crack",
-              "cond_back_right_chip"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_initial_sanding_repaired_areas",
-          "title": "Initial Sanding Repaired",
-          "description": "Using medium-grit sandpaper (e.g., 120-150 grit), carefully sand all areas that received a patch, scarf joint, or Dutchman insert (front left leg, front right leg, back right leg) to blend them smoothly with the original surface, respecting the surrounding material and avoiding aggressive removal.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_left_leg",
-            "front_right_leg",
-            "back_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_left_breakout",
-            "cond_front_right_crack",
-            "cond_back_right_chip"
-          ],
-          "toolsRequired": [
-            "Sanding block"
-          ],
-          "materialsRequired": [
-            "Medium-grit sandpaper"
-          ],
-          "estimatedMinutes": 25,
-          "expectedOutcome": "Patched areas blended into the surrounding surfaces.",
-          "safetyNotes": "Wear a dust mask and safety glasses.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_6"
-            ],
-            "drivingConditions": [
-              "cond_front_left_breakout",
-              "cond_front_right_crack",
-              "cond_back_right_chip"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_fine_sanding_repairs",
-          "title": "Fine Sand Repairs",
-          "description": "Using fine-grit sandpaper (e.g., 220-320 grit), perform a final, thorough sanding of all repaired areas (front left leg, front right leg, back right leg) to prepare for finishing, ensuring a sympathetic blend with the original patina and a smooth transition.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_left_leg",
-            "front_right_leg",
-            "back_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_left_breakout",
-            "cond_front_right_crack",
-            "cond_back_right_chip"
-          ],
-          "toolsRequired": [
-            "Sanding block"
-          ],
-          "materialsRequired": [
-            "Fine-grit sandpaper"
-          ],
-          "estimatedMinutes": 20,
-          "expectedOutcome": "Patched areas smooth and ready to accept finish.",
-          "safetyNotes": "Wear a dust mask. Fine dust accumulates quickly.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_6"
-            ],
-            "drivingConditions": [
-              "cond_front_left_breakout",
-              "cond_front_right_crack",
-              "cond_back_right_chip"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_clean_sanding_dust",
-          "title": "Clean Sanding Dust",
-          "description": "Thoroughly clean all repaired surfaces of the chair to remove all sanding dust. Use a tack cloth or compressed air followed by a clean, lint-free cloth to ensure a pristine surface for finishing, promoting good adhesion and a clear finish.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_left_leg",
-            "front_right_leg",
-            "back_right_leg"
-          ],
-          "addressesConditionRefs": [],
-          "toolsRequired": [
-            "Compressed air",
-            "Lint-free cloths"
-          ],
-          "materialsRequired": [
-            "Tack cloth"
-          ],
-          "estimatedMinutes": 10,
-          "expectedOutcome": "All repaired surfaces dust-free and ready for finishing.",
-          "safetyNotes": "Wear a dust mask. Use compressed air with eye protection.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_2"
-            ],
-            "drivingConditions": [],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_apply_first_finish_coat",
-          "title": "Apply First Finish",
-          "description": "Apply a thin, even coat of a sympathetic finish (e.g., shellac, oil finish, or appropriate varnish) to all repaired areas, blending it carefully with the existing patina of the original wood. Allow to dry according to product instructions, aiming for continuity.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_left_leg",
-            "front_right_leg",
-            "back_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_left_breakout",
-            "cond_front_right_crack",
-            "cond_back_right_chip"
-          ],
-          "toolsRequired": [
-            "Brush"
-          ],
-          "materialsRequired": [
-            "Lint-free applicator",
-            "Chosen finish"
-          ],
-          "estimatedMinutes": 20,
-          "expectedOutcome": "First coat of finish applied to all repaired areas; blended with patina.",
-          "safetyNotes": "Work in a ventilated area. Avoid skin contact with shellac or oil; wear gloves.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_4",
-              "axis_6"
-            ],
-            "drivingConditions": [
-              "cond_front_left_breakout",
-              "cond_front_right_crack",
-              "cond_back_right_chip"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_light_sanding_first_coat",
-          "title": "Light Sand First",
-          "description": "If the first coat of finish has raised the grain or is not perfectly smooth on the repaired areas, lightly sand it with very fine-grit sandpaper (e.g., 400-600 grit) or fine steel wool. Clean thoroughly before the next coat to ensure a smooth, continuous finish that respects the original patina.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_left_leg",
-            "front_right_leg",
-            "back_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_left_breakout",
-            "cond_front_right_crack",
-            "cond_back_right_chip"
-          ],
-          "toolsRequired": [
-            "Sanding block"
-          ],
-          "materialsRequired": [
-            "Very fine-grit sandpaper (400-600)",
-            "Fine steel wool",
-            "Tack cloth"
-          ],
-          "estimatedMinutes": 15,
-          "expectedOutcome": "First coat de-nibbed; surface smooth and ready for final coat.",
-          "safetyNotes": "Wear a dust mask. Light pressure only.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_2",
-              "axis_6"
-            ],
-            "drivingConditions": [
-              "cond_front_left_breakout",
-              "cond_front_right_crack",
-              "cond_back_right_chip"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_apply_final_finish_coat",
-          "title": "Apply Final Finish",
-          "description": "Apply a second, final coat of the chosen sympathetic finish to all repaired areas, ensuring an even and consistent sheen that blends seamlessly with the original patina. Allow to cure completely, completing the modest and careful mend.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_left_leg",
-            "front_right_leg",
-            "back_right_leg"
-          ],
-          "addressesConditionRefs": [
-            "cond_front_left_breakout",
-            "cond_front_right_crack",
-            "cond_back_right_chip"
-          ],
-          "toolsRequired": [
-            "Brush"
-          ],
-          "materialsRequired": [
-            "Lint-free applicator",
-            "Chosen finish"
-          ],
-          "estimatedMinutes": 20,
-          "expectedOutcome": "Final coat cured; repairs blend with original finish.",
-          "safetyNotes": "Ventilated area. Properly dispose of oil-soaked rags (lay flat to dry or submerge in water) to avoid spontaneous combustion.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_1",
-              "axis_4",
-              "axis_6"
-            ],
-            "drivingConditions": [
-              "cond_front_left_breakout",
-              "cond_front_right_crack",
-              "cond_back_right_chip"
-            ],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_reinstall_gliders",
-          "title": "Reinstall Gliders",
-          "description": "Carefully reattach the gliders to the bottom of each leg, ensuring they are secure and properly aligned.",
-          "status": "pending",
-          "affectedPartRefs": [
-            "front_left_glider",
-            "front_right_glider",
-            "back_left_glider",
-            "back_right_glider"
-          ],
-          "addressesConditionRefs": [],
-          "toolsRequired": [
-            "Pliers",
-            "Screwdriver (if applicable)"
-          ],
-          "materialsRequired": [],
-          "estimatedMinutes": 10,
-          "expectedOutcome": "All four gliders reattached securely.",
-          "safetyNotes": "No special hazards. Avoid pinching fingers when seating gliders.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_2"
-            ],
-            "drivingConditions": [],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        },
-        {
-          "id": "step_final_cleanup",
-          "title": "Final Cleanup",
-          "description": "Clean the work area thoroughly, properly store all tools and materials, and dispose of waste responsibly, leaving the workspace tidy and organized.",
-          "status": "pending",
-          "affectedPartRefs": [],
-          "addressesConditionRefs": [],
-          "toolsRequired": [
-            "Broom",
-            "Dustpan"
-          ],
-          "materialsRequired": [
-            "Cleaning supplies",
-            "Waste disposal bags"
-          ],
-          "estimatedMinutes": 15,
-          "expectedOutcome": "Workspace clean, tools stored, waste disposed of responsibly.",
-          "safetyNotes": "Dispose of oil-soaked rags safely. Store sharps point-down.",
-          "justification": {
-            "drivingIntentAxes": [
-              "axis_2"
-            ],
-            "drivingConditions": [],
-            "drivingConstraints": [],
-            "rationale": "Part of the gentle craftsman repair sequence; preserves original material and uses traditional joinery."
-          },
-          "confidence": 0.85,
-          "optional": false
-        }
-      ],
-      "edges": [
-        {
-          "id": "edge_1",
-          "source": "step_setup_work_area",
-          "target": "step_remove_gliders"
-        },
-        {
-          "id": "edge_2",
-          "source": "step_remove_gliders",
-          "target": "step_mark_scarf_joint_cut_fl_leg"
-        },
-        {
-          "id": "edge_3",
-          "source": "step_mark_scarf_joint_cut_fl_leg",
-          "target": "step_cut_damaged_leg_scarf_fl_leg"
-        },
-        {
-          "id": "edge_4",
-          "source": "step_cut_damaged_leg_scarf_fl_leg",
-          "target": "step_prepare_scarf_insert_blank_fl_leg"
-        },
-        {
-          "id": "edge_5",
-          "source": "step_prepare_scarf_insert_blank_fl_leg",
-          "target": "step_cut_scarf_insert_angle_fl_leg"
-        },
-        {
-          "id": "edge_6",
-          "source": "step_cut_scarf_insert_angle_fl_leg",
-          "target": "step_glue_scarf_joint_fl_leg"
-        },
-        {
-          "id": "edge_7",
-          "source": "step_glue_scarf_joint_fl_leg",
-          "target": "step_shape_scarf_joint_fl_leg"
-        },
-        {
-          "id": "edge_8",
-          "source": "step_remove_gliders",
-          "target": "step_prepare_dovetail_housing"
-        },
-        {
-          "id": "edge_9",
-          "source": "step_prepare_dovetail_housing",
-          "target": "step_cut_dovetail_housing"
-        },
-        {
-          "id": "edge_10",
-          "source": "step_cut_dovetail_housing",
-          "target": "step_create_dovetail_patch"
-        },
-        {
-          "id": "edge_11",
-          "source": "step_create_dovetail_patch",
-          "target": "step_fit_dovetail_patch"
-        },
-        {
-          "id": "edge_12",
-          "source": "step_fit_dovetail_patch",
-          "target": "step_glue_dovetail_patch"
-        },
-        {
-          "id": "edge_13",
-          "source": "step_glue_dovetail_patch",
-          "target": "step_trim_dovetail_patch"
-        },
-        {
-          "id": "edge_14",
-          "source": "step_remove_gliders",
-          "target": "step_mark_dutchman_housing_br_leg"
-        },
-        {
-          "id": "edge_15",
-          "source": "step_mark_dutchman_housing_br_leg",
-          "target": "step_cut_dutchman_housing_br_leg"
-        },
-        {
-          "id": "edge_16",
-          "source": "step_cut_dutchman_housing_br_leg",
-          "target": "step_create_dutchman_patch_br_leg"
-        },
-        {
-          "id": "edge_17",
-          "source": "step_create_dutchman_patch_br_leg",
-          "target": "step_fit_dutchman_patch_br_leg"
-        },
-        {
-          "id": "edge_18",
-          "source": "step_fit_dutchman_patch_br_leg",
-          "target": "step_glue_dutchman_patch_br_leg"
-        },
-        {
-          "id": "edge_19",
-          "source": "step_glue_dutchman_patch_br_leg",
-          "target": "step_trim_dutchman_patch_br_leg"
-        },
-        {
-          "id": "edge_20",
-          "source": "step_shape_scarf_joint_fl_leg",
-          "target": "step_scrape_excess_material"
-        },
-        {
-          "id": "edge_21",
-          "source": "step_trim_dovetail_patch",
-          "target": "step_scrape_excess_material"
-        },
-        {
-          "id": "edge_22",
-          "source": "step_trim_dutchman_patch_br_leg",
-          "target": "step_scrape_excess_material"
-        },
-        {
-          "id": "edge_23",
-          "source": "step_scrape_excess_material",
-          "target": "step_initial_sanding_repaired_areas"
-        },
-        {
-          "id": "edge_24",
-          "source": "step_initial_sanding_repaired_areas",
-          "target": "step_fine_sanding_repairs"
-        },
-        {
-          "id": "edge_25",
-          "source": "step_fine_sanding_repairs",
-          "target": "step_clean_sanding_dust"
-        },
-        {
-          "id": "edge_26",
-          "source": "step_clean_sanding_dust",
-          "target": "step_apply_first_finish_coat"
-        },
-        {
-          "id": "edge_27",
-          "source": "step_apply_first_finish_coat",
-          "target": "step_light_sanding_first_coat"
-        },
-        {
-          "id": "edge_28",
-          "source": "step_light_sanding_first_coat",
-          "target": "step_apply_final_finish_coat"
-        },
-        {
-          "id": "edge_29",
-          "source": "step_apply_final_finish_coat",
-          "target": "step_reinstall_gliders"
-        },
-        {
-          "id": "edge_30",
-          "source": "step_reinstall_gliders",
-          "target": "step_final_cleanup"
-        }
-      ],
-      "mutexGroups": [],
-      "createdAt": "2026-05-14T23:02:01.390Z",
-      "updatedAt": "2026-05-14T23:02:01.390Z"
-    }
-  ],
-  "currentPlanId": "plan_gentle_craftsman_repair",
+  "plans": [],
+  "currentPlanId": null,
   "executionLog": [],
-  "conversations": [
-    {
-      "id": "thread_seed_global",
-      "scope": "global",
-      "ref": null,
-      "messages": [
-        {
-          "id": "msg_seed_1",
-          "role": "user",
-          "content": "I've got this old beech stacking chair with a few damaged spots \u2014 a breakout on one front leg, a crack on the other, a chip on the back, some scratches, and the seat is rough. I'd like to repair it properly, keeping it as original as possible. Traditional joinery if it makes sense.",
-          "createdAt": "2026-05-14T09:45:00.000Z"
-        },
-        {
-          "id": "msg_seed_2",
-          "role": "assistant",
-          "content": "Good candidate for a gentle craftsman approach. The breakout, crack, and chip each call for a different traditional patch: a scarf joint for the breakout (since it's a larger area on a leg), a dovetail patch for the crack (mechanically locks the wood), and a Dutchman patch for the localized chip. Scratches and the seat can be handled with light sanding and a sympathetic finish. When you're ready, I'll lay out the plan.",
-          "createdAt": "2026-05-14T09:45:30.000Z"
-        },
-        {
-          "id": "msg_seed_3",
-          "role": "user",
-          "content": "Sounds right. Generate the plan.",
-          "createdAt": "2026-05-14T09:46:00.000Z"
-        },
-        {
-          "id": "msg_seed_4",
-          "role": "assistant",
-          "content": "Here's the plan: scarf joint on the front left leg, dovetail patch on the front right leg, Dutchman patch on the back right leg, light sanding on the back left leg scratches and on the seat, then a unifying shellac and linseed oil finish. All using matching beech and hide glue.",
-          "createdAt": "2026-05-14T09:46:30.000Z"
-        }
-      ],
-      "createdAt": "2026-05-14T09:45:00.000Z"
-    }
-  ],
-  "createdAt": "2026-05-14T09:00:00.000Z",
-  "updatedAt": "2026-05-14T23:11:05.680Z"
+  "conversations": [],
+  "createdAt": "2026-05-19T17:01:53.051Z",
+  "updatedAt": "2026-05-19T17:01:53.051Z"
 }
