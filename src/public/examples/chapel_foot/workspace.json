@@ -2,390 +2,1779 @@
   "schemaVersion": "2.0.0",
   "template": null,
   "instance": {
-    "id": "lunch_chair",
-    "name": "Lunch Chair",
+    "id": "inst_kapellenturm",
+    "name": "Kapellenturm",
     "templateRef": null,
     "parts": [
       {
-        "id": "backrest",
-        "label": "Backrest",
+        "id": "tower_upper_brace_front_left_inner",
+        "label": "Tower Upper Brace Front Left Inner",
         "origin": {
-          "x": -0.157503,
-          "y": 0.752163,
-          "z": -0.005168
+          "x": -0.972047,
+          "y": 8.569745,
+          "z": -1.736842
         },
         "dimensions": {
-          "width": 0.04529,
-          "height": 0.437329,
-          "depth": 0.084895
+          "width": 0.127017,
+          "height": 3.413141,
+          "depth": 0.129974
         },
         "rotation": {
-          "x": -1.570796,
-          "y": 0,
-          "z": 0
+          "x": 0.331613,
+          "y": -0.0,
+          "z": -0.567232
         },
         "connections": [
-          "back_right_leg",
-          "back_left_leg"
+          "tower_top_beam_front",
+          "tower_middle_beam_front",
+          "tower_vertical_post_front_left"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "front_left_leg",
-        "label": "Front Left Leg",
+        "id": "tower_upper_brace_front_right_inner",
+        "label": "Tower Upper Brace Front Right Inner",
         "origin": {
-          "x": 0.177713,
-          "y": 0.222923,
-          "z": -0.144027
+          "x": 0.969943,
+          "y": 8.572858,
+          "z": -1.735816
         },
         "dimensions": {
-          "width": 0.40512,
-          "height": 0.03755,
-          "depth": 0.03528
+          "width": 0.126895,
+          "height": 3.411253,
+          "depth": 0.129981
         },
         "rotation": {
-          "x": -0.006422,
-          "y": -1.570796,
-          "z": 1.570796
+          "x": 0.331613,
+          "y": 0.0,
+          "z": 0.567232
         },
         "connections": [
-          "front_apron",
-          "rounded_apron",
-          "front_stretcher",
-          "round_stretcher"
+          "tower_top_beam_front",
+          "tower_middle_beam_front",
+          "tower_vertical_post_front_right"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "front_right_leg",
-        "label": "Front Right Leg",
+        "id": "tower_upper_brace_right_front_outer",
+        "label": "Tower Upper Brace Right Front Outer",
         "origin": {
-          "x": 0.191055,
-          "y": 0.222838,
-          "z": 0.18024
+          "x": 1.738693,
+          "y": 8.564625,
+          "z": -0.975665
         },
         "dimensions": {
-          "width": 0.40512,
-          "height": 0.038881,
-          "depth": 0.03528
+          "width": 0.126006,
+          "height": 3.398814,
+          "depth": 0.126022
         },
         "rotation": {
-          "x": 0.049829,
-          "y": -1.570796,
-          "z": 1.570796
+          "x": 0.533077,
+          "y": 0.204827,
+          "z": 0.38894
         },
         "connections": [
-          "rounded_apron",
-          "front_apron",
-          "front_stretcher",
-          "round_stretcher"
+          "tower_top_beam_right",
+          "tower_middle_beam_right",
+          "tower_vertical_post_front_right"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "back_left_leg",
-        "label": "Back Left Leg",
+        "id": "tower_upper_brace_right_back_outer",
+        "label": "Tower Upper Brace Right Back Outer",
         "origin": {
-          "x": -0.181214,
-          "y": 0.381046,
-          "z": -0.129702
+          "x": 1.735896,
+          "y": 8.572512,
+          "z": 0.970226
         },
         "dimensions": {
-          "width": 0.759087,
-          "height": 0.052487,
-          "depth": 0.045646
+          "width": 0.123429,
+          "height": 3.412479,
+          "depth": 0.118131
         },
         "rotation": {
-          "x": -0.038933,
-          "y": -1.573305,
-          "z": 1.635148
+          "x": -0.537716,
+          "y": -0.206193,
+          "z": 0.390472
         },
         "connections": [
-          "back_slat_upper",
-          "back_slat_lower",
-          "backrest",
-          "round_stretcher",
-          "rounded_apron"
+          "tower_top_beam_right",
+          "tower_middle_beam_right",
+          "tower_vertical_post_back_right"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "back_right_leg",
-        "label": "Back Right Leg",
+        "id": "tower_lower_brace_right_front",
+        "label": "Tower Lower Brace Right Front",
         "origin": {
-          "x": -0.183172,
-          "y": 0.387249,
-          "z": 0.168494
+          "x": 2.919576,
+          "y": 5.173674,
+          "z": -1.009948
         },
         "dimensions": {
-          "width": 0.741169,
-          "height": 0.062518,
-          "depth": 0.046624
+          "width": 0.136064,
+          "height": 4.369052,
+          "depth": 0.12295
         },
         "rotation": {
-          "x": -0.040198,
-          "y": -1.575075,
-          "z": 1.6359
+          "x": -0.425496,
+          "y": -0.156238,
+          "z": 0.364743
         },
         "connections": [
-          "backrest",
-          "back_slat_upper",
-          "back_slat_lower",
-          "round_stretcher",
-          "rounded_apron"
+          "tower_main_rafter_front_right",
+          "tower_middle_beam_front",
+          "tower_middle_beam_right"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "front_stretcher",
-        "label": "Front Stretcher",
+        "id": "tower_lower_brace_right_back",
+        "label": "Tower Lower Brace Right Back",
         "origin": {
-          "x": 0.181957,
-          "y": 0.302869,
-          "z": 0.020778
+          "x": 2.917021,
+          "y": 5.181043,
+          "z": 1.013687
         },
         "dimensions": {
-          "width": 0.292059,
-          "height": 0.027114,
-          "depth": 0.024037
+          "width": 0.137771,
+          "height": 4.372152,
+          "depth": 0.133883
         },
         "rotation": {
-          "x": 0,
-          "y": 1.570796,
-          "z": 3.141593
+          "x": 0.423001,
+          "y": 0.155641,
+          "z": 0.364131
         },
         "connections": [
-          "front_left_leg",
-          "front_right_leg"
+          "tower_main_rafter_back_right",
+          "tower_middle_beam_back",
+          "tower_middle_beam_right"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "front_apron",
-        "label": "Front Apron",
+        "id": "tower_upper_brace_back_right_inner",
+        "label": "Tower Upper Brace Back Right Inner",
         "origin": {
-          "x": 0.191417,
-          "y": 0.443152,
-          "z": 0.018502
+          "x": 0.970014,
+          "y": 8.572835,
+          "z": 1.735822
         },
         "dimensions": {
-          "width": 0.362613,
-          "height": 0.058178,
-          "depth": 0.034912
+          "width": 0.127022,
+          "height": 3.408147,
+          "depth": 0.12569
         },
         "rotation": {
-          "x": 1.568978,
-          "y": -1.565416,
-          "z": 0
+          "x": -0.336301,
+          "y": -0.001448,
+          "z": 0.567686
         },
         "connections": [
-          "front_left_leg",
-          "seat",
-          "front_right_leg",
-          "rounded_apron"
+          "tower_top_beam_back",
+          "tower_middle_beam_back",
+          "tower_vertical_post_back_right"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "seat_panel",
-        "label": "Seat Panel",
+        "id": "tower_upper_brace_back_left_inner",
+        "label": "Tower Upper Brace Back Left Inner",
         "origin": {
-          "x": 0.023798,
-          "y": 0.462697,
-          "z": 0.019359
+          "x": -0.972561,
+          "y": 8.569062,
+          "z": 1.737155
         },
         "dimensions": {
-          "width": 0.394143,
-          "height": 0.363173,
-          "depth": 0.004181
+          "width": 0.126948,
+          "height": 3.414166,
+          "depth": 0.125664
         },
         "rotation": {
-          "x": -1.56898,
-          "y": 0.003274,
-          "z": 0
+          "x": -0.336301,
+          "y": 0.001448,
+          "z": -0.567686
         },
         "connections": [
-          "seat"
+          "tower_top_beam_back",
+          "tower_middle_beam_back",
+          "tower_vertical_post_back_left"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "seat",
-        "label": "Seat",
+        "id": "tower_lower_brace_back_right",
+        "label": "Tower Lower Brace Back Right",
         "origin": {
-          "x": 0.023798,
-          "y": 0.477304,
-          "z": 0.019332
+          "x": 1.01251,
+          "y": 5.178718,
+          "z": 2.917847
         },
         "dimensions": {
-          "width": 0.394143,
-          "height": 0.363173,
-          "depth": 0.025034
+          "width": 0.130066,
+          "height": 4.367672,
+          "depth": 0.122841
         },
         "rotation": {
-          "x": -1.56898,
-          "y": 0.003274,
-          "z": 0
+          "x": -0.335438,
+          "y": 0.000935,
+          "z": -0.454075
         },
         "connections": [
-          "front_apron",
-          "seat_panel",
-          "rounded_apron"
+          "tower_main_rafter_back_right",
+          "tower_middle_beam_back",
+          "tower_middle_beam_right"
         ],
-        "material": "Weathered solid timber",
-        "status": "new",
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "rounded_apron",
-        "label": "Rounded Apron",
+        "id": "tower_lower_brace_back_left",
+        "label": "Tower Lower Brace Back Left",
         "origin": {
-          "x": -0.005127,
-          "y": 0.443264,
-          "z": 0.01966
+          "x": -1.011021,
+          "y": 5.175789,
+          "z": 2.918867
         },
         "dimensions": {
-          "width": 0.363389,
-          "height": 0.336901,
-          "depth": 0.034695
+          "width": 0.130117,
+          "height": 4.378334,
+          "depth": 0.122875
         },
         "rotation": {
-          "x": 1.568952,
-          "y": -1.569205,
-          "z": 0
+          "x": -0.335438,
+          "y": -0.000935,
+          "z": 0.454075
         },
         "connections": [
-          "front_right_leg",
-          "seat",
-          "front_left_leg",
-          "front_apron",
-          "back_right_leg",
-          "back_left_leg"
+          "tower_main_rafter_back_left",
+          "tower_middle_beam_back",
+          "tower_middle_beam_left"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "round_stretcher",
-        "label": "Round Stretcher",
+        "id": "tower_upper_brace_left_back_outer",
+        "label": "Tower Upper Brace Left Back Outer",
         "origin": {
-          "x": -0.005127,
-          "y": 0.332098,
-          "z": 0.01966
+          "x": -1.736479,
+          "y": 8.570662,
+          "z": 0.971535
         },
         "dimensions": {
-          "width": 0.363342,
-          "height": 0.336901,
-          "depth": 0.018362
+          "width": 0.123276,
+          "height": 3.41027,
+          "depth": 0.118
         },
         "rotation": {
-          "x": 1.569827,
-          "y": -1.569205,
-          "z": 0
+          "x": -0.537716,
+          "y": 0.206193,
+          "z": -0.390472
         },
         "connections": [
-          "back_left_leg",
-          "back_right_leg",
-          "front_left_leg",
-          "front_right_leg"
+          "tower_top_beam_left",
+          "tower_middle_beam_left",
+          "tower_vertical_post_back_left"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "back_slat_upper",
-        "label": "Back Slat Upper",
+        "id": "tower_upper_brace_left_front_outer",
+        "label": "Tower Upper Brace Left Front Outer",
         "origin": {
-          "x": -0.176334,
-          "y": 0.631842,
-          "z": 0.000074
+          "x": -1.737635,
+          "y": 8.567717,
+          "z": -0.973458
         },
         "dimensions": {
-          "width": 0.248498,
-          "height": 0.045587,
-          "depth": 0.019058
+          "width": 0.126051,
+          "height": 3.407734,
+          "depth": 0.126047
         },
         "rotation": {
-          "x": 0.081093,
-          "y": 1.570796,
-          "z": 3.141593
+          "x": 0.533077,
+          "y": -0.204827,
+          "z": -0.38894
         },
         "connections": [
-          "back_left_leg",
-          "back_right_leg"
+          "tower_top_beam_left",
+          "tower_middle_beam_left",
+          "tower_vertical_post_front_left"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "back_slat_lower",
-        "label": "Back Slat Lower",
+        "id": "tower_top_beam_front",
+        "label": "Tower Top Beam Front",
         "origin": {
-          "x": -0.178298,
-          "y": 0.561717,
-          "z": 0.004252
+          "x": 0.003157,
+          "y": 9.964298,
+          "z": -1.230036
         },
         "dimensions": {
-          "width": 0.248498,
-          "height": 0.045587,
-          "depth": 0.019058
+          "width": 2.326428,
+          "height": 0.173279,
+          "depth": 0.16083
         },
         "rotation": {
-          "x": 0.118593,
-          "y": 1.570796,
-          "z": -3.141593
+          "x": 0.340339,
+          "y": 0.0,
+          "z": 0.0
         },
         "connections": [
-          "back_left_leg",
-          "back_right_leg"
+          "tower_top_beam_right",
+          "tower_top_beam_left",
+          "tower_apex_beam",
+          "tower_vertical_post_front_right",
+          "tower_vertical_post_front_left",
+          "tower_upper_brace_front_left_inner",
+          "tower_upper_brace_front_right_inner"
         ],
-        "material": "Weathered solid timber",
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_top_beam_right",
+        "label": "Tower Top Beam Right",
+        "origin": {
+          "x": 1.228131,
+          "y": 9.969721,
+          "z": 0.001447
+        },
+        "dimensions": {
+          "width": 0.160561,
+          "height": 0.164022,
+          "depth": 2.338599
+        },
+        "rotation": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.331613
+        },
+        "connections": [
+          "tower_top_beam_front",
+          "tower_top_beam_back",
+          "tower_apex_beam",
+          "tower_vertical_post_front_right",
+          "tower_vertical_post_back_right",
+          "tower_upper_brace_right_front_outer",
+          "tower_upper_brace_right_back_outer"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_top_beam_back",
+        "label": "Tower Top Beam Back",
+        "origin": {
+          "x": -0.002354,
+          "y": 9.965823,
+          "z": 1.229473
+        },
+        "dimensions": {
+          "width": 2.337186,
+          "height": 0.165452,
+          "depth": 0.160545
+        },
+        "rotation": {
+          "x": -0.331613,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "tower_top_beam_right",
+          "tower_top_beam_left",
+          "tower_apex_beam",
+          "tower_vertical_post_back_right",
+          "tower_vertical_post_back_left",
+          "tower_upper_brace_back_right_inner",
+          "tower_upper_brace_back_left_inner"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_top_beam_left",
+        "label": "Tower Top Beam Left",
+        "origin": {
+          "x": -1.229236,
+          "y": 9.96651,
+          "z": 0.001897
+        },
+        "dimensions": {
+          "width": 0.160547,
+          "height": 0.164003,
+          "depth": 2.324156
+        },
+        "rotation": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": -0.331613
+        },
+        "connections": [
+          "tower_top_beam_front",
+          "tower_top_beam_back",
+          "tower_apex_beam",
+          "tower_vertical_post_front_left",
+          "tower_vertical_post_back_left",
+          "tower_upper_brace_left_back_outer",
+          "tower_upper_brace_left_front_outer"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_apex_beam",
+        "label": "Tower Apex Beam",
+        "origin": {
+          "x": 0.0,
+          "y": 9.99,
+          "z": 0.0
+        },
+        "dimensions": {
+          "width": 2.555827,
+          "height": 0.16,
+          "depth": 0.16
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "tower_top_beam_front",
+          "tower_top_beam_right",
+          "tower_top_beam_back",
+          "tower_top_beam_left",
+          "tower_main_rafter_front_right",
+          "tower_main_rafter_back_left",
+          "tower_main_rafter_front_left",
+          "tower_main_rafter_back_right"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_lower_brace_left_back",
+        "label": "Tower Lower Brace Left Back",
+        "origin": {
+          "x": -2.921727,
+          "y": 5.167577,
+          "z": 1.006799
+        },
+        "dimensions": {
+          "width": 0.137629,
+          "height": 4.358553,
+          "depth": 0.133692
+        },
+        "rotation": {
+          "x": 0.423001,
+          "y": -0.155641,
+          "z": -0.364131
+        },
+        "connections": [
+          "tower_main_rafter_back_left",
+          "tower_middle_beam_back",
+          "tower_middle_beam_left"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_lower_brace_left_front",
+        "label": "Tower Lower Brace Left Front",
+        "origin": {
+          "x": -2.918123,
+          "y": 5.177797,
+          "z": -1.012048
+        },
+        "dimensions": {
+          "width": 0.13589,
+          "height": 4.373396,
+          "depth": 0.122929
+        },
+        "rotation": {
+          "x": -0.425496,
+          "y": 0.156238,
+          "z": -0.364743
+        },
+        "connections": [
+          "tower_main_rafter_front_left",
+          "tower_middle_beam_front",
+          "tower_middle_beam_left"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_main_rafter_front_right",
+        "label": "Tower Main Rafter Front Right",
+        "origin": {
+          "x": 2.330804,
+          "y": 6.836335,
+          "z": -2.330015
+        },
+        "dimensions": {
+          "width": 0.337193,
+          "height": 15.027436,
+          "depth": 0.303938
+        },
+        "rotation": {
+          "x": 0.458967,
+          "y": -0.779517,
+          "z": -0.003371
+        },
+        "connections": [
+          "tower_apex_beam",
+          "tower_middle_beam_front",
+          "tower_middle_beam_right",
+          "floor_sill_front",
+          "floor_sill_right",
+          "tower_outer_support_front_right",
+          "tower_lower_brace_right_front"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_middle_beam_front",
+        "label": "Tower Middle Beam Front",
+        "origin": {
+          "x": -0.00089,
+          "y": 7.116946,
+          "z": -2.200448
+        },
+        "dimensions": {
+          "width": 4.244143,
+          "height": 0.254524,
+          "depth": 0.20124
+        },
+        "rotation": {
+          "x": 0.340339,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "tower_middle_beam_right",
+          "tower_middle_beam_left",
+          "tower_vertical_post_front_right",
+          "tower_vertical_post_front_left",
+          "tower_main_rafter_front_right",
+          "tower_main_rafter_front_left",
+          "tower_outer_support_front_left",
+          "tower_outer_support_front_right",
+          "tower_upper_brace_front_left_inner",
+          "tower_upper_brace_front_right_inner",
+          "tower_lower_brace_right_front",
+          "tower_lower_brace_left_front"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_middle_beam_right",
+        "label": "Tower Middle Beam Right",
+        "origin": {
+          "x": 2.201562,
+          "y": 7.11381,
+          "z": -0.004545
+        },
+        "dimensions": {
+          "width": 0.200841,
+          "height": 0.244689,
+          "depth": 4.252064
+        },
+        "rotation": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.331613
+        },
+        "connections": [
+          "tower_middle_beam_front",
+          "tower_middle_beam_back",
+          "tower_vertical_post_front_right",
+          "tower_vertical_post_back_right",
+          "tower_main_rafter_front_right",
+          "tower_main_rafter_back_right",
+          "tower_outer_support_front_right",
+          "tower_outer_support_back_right",
+          "tower_upper_brace_right_front_outer",
+          "tower_upper_brace_right_back_outer",
+          "tower_lower_brace_right_front",
+          "tower_lower_brace_right_back",
+          "tower_lower_brace_back_right"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_middle_beam_back",
+        "label": "Tower Middle Beam Back",
+        "origin": {
+          "x": 0.010382,
+          "y": 7.111533,
+          "z": 2.202341
+        },
+        "dimensions": {
+          "width": 4.264342,
+          "height": 0.245464,
+          "depth": 0.200832
+        },
+        "rotation": {
+          "x": -0.331613,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "tower_middle_beam_right",
+          "tower_middle_beam_left",
+          "tower_vertical_post_back_right",
+          "tower_vertical_post_back_left",
+          "tower_main_rafter_back_right",
+          "tower_main_rafter_back_left",
+          "tower_outer_support_back_right",
+          "tower_outer_support_back_left",
+          "tower_upper_brace_back_right_inner",
+          "tower_upper_brace_back_left_inner",
+          "tower_lower_brace_right_back",
+          "tower_lower_brace_back_left",
+          "tower_lower_brace_left_back",
+          "tower_lower_brace_back_right"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_middle_beam_left",
+        "label": "Tower Middle Beam Left",
+        "origin": {
+          "x": -2.201457,
+          "y": 7.114109,
+          "z": -0.013327
+        },
+        "dimensions": {
+          "width": 0.201238,
+          "height": 0.271617,
+          "depth": 4.26031
+        },
+        "rotation": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": -0.340339
+        },
+        "connections": [
+          "tower_middle_beam_front",
+          "tower_middle_beam_back",
+          "tower_vertical_post_front_left",
+          "tower_vertical_post_back_left",
+          "tower_main_rafter_front_left",
+          "tower_main_rafter_back_left",
+          "tower_outer_support_front_left",
+          "tower_outer_support_back_left",
+          "tower_upper_brace_left_back_outer",
+          "tower_upper_brace_left_front_outer",
+          "tower_lower_brace_back_left",
+          "tower_lower_brace_left_back",
+          "tower_lower_brace_left_front"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_outer_support_back_left",
+        "label": "Tower Outer Support Back Left",
+        "origin": {
+          "x": -3.136723,
+          "y": 4.074246,
+          "z": 3.13683
+        },
+        "dimensions": {
+          "width": 0.269853,
+          "height": 8.882047,
+          "depth": 0.205771
+        },
+        "rotation": {
+          "x": -0.454758,
+          "y": -0.786697,
+          "z": 0.002818
+        },
+        "connections": [
+          "tower_middle_beam_back",
+          "tower_middle_beam_left",
+          "floor_sill_back",
+          "floor_sill_left",
+          "tower_main_rafter_back_left"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_main_rafter_back_left",
+        "label": "Tower Main Rafter Back Left",
+        "origin": {
+          "x": -2.330071,
+          "y": 6.847584,
+          "z": 2.333994
+        },
+        "dimensions": {
+          "width": 0.320819,
+          "height": 14.999666,
+          "depth": 0.299839
+        },
+        "rotation": {
+          "x": -0.45584,
+          "y": -0.701267,
+          "z": -0.032907
+        },
+        "connections": [
+          "tower_apex_beam",
+          "tower_middle_beam_back",
+          "tower_middle_beam_left",
+          "floor_sill_back",
+          "floor_sill_left",
+          "tower_outer_support_back_left",
+          "tower_lower_brace_back_left",
+          "tower_lower_brace_left_back"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_joist_01",
+        "label": "Floor Joist 01",
+        "origin": {
+          "x": 2.85,
+          "y": 3.27,
+          "z": 0.0
+        },
+        "dimensions": {
+          "width": 0.1,
+          "height": 0.18,
+          "depth": 7.229553
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_sill_front",
+          "floor_sill_back",
+          "floor_slat_01",
+          "floor_slat_02",
+          "floor_slat_03",
+          "floor_slat_04"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_joist_02",
+        "label": "Floor Joist 02",
+        "origin": {
+          "x": 2.28,
+          "y": 3.27,
+          "z": 0.0
+        },
+        "dimensions": {
+          "width": 0.1,
+          "height": 0.18,
+          "depth": 7.229553
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_sill_front",
+          "floor_sill_back",
+          "floor_slat_01",
+          "floor_slat_02",
+          "floor_slat_03",
+          "floor_slat_04"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_joist_03",
+        "label": "Floor Joist 03",
+        "origin": {
+          "x": 1.71,
+          "y": 3.27,
+          "z": 0.0
+        },
+        "dimensions": {
+          "width": 0.1,
+          "height": 0.18,
+          "depth": 7.229553
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_sill_front",
+          "floor_sill_back",
+          "floor_slat_01",
+          "floor_slat_02",
+          "floor_slat_03",
+          "floor_slat_04"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_joist_04",
+        "label": "Floor Joist 04",
+        "origin": {
+          "x": 1.14,
+          "y": 3.27,
+          "z": 0.0
+        },
+        "dimensions": {
+          "width": 0.1,
+          "height": 0.18,
+          "depth": 7.229553
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_sill_front",
+          "floor_sill_back",
+          "floor_slat_01",
+          "floor_slat_02",
+          "floor_slat_03",
+          "floor_slat_04"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_joist_05",
+        "label": "Floor Joist 05",
+        "origin": {
+          "x": 0.57,
+          "y": 3.27,
+          "z": 0.0
+        },
+        "dimensions": {
+          "width": 0.1,
+          "height": 0.18,
+          "depth": 7.229553
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_sill_front",
+          "floor_sill_back",
+          "floor_slat_01",
+          "floor_slat_02",
+          "floor_slat_03",
+          "floor_slat_04"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_joist_06",
+        "label": "Floor Joist 06",
+        "origin": {
+          "x": -2.85,
+          "y": 3.27,
+          "z": 0.0
+        },
+        "dimensions": {
+          "width": 0.1,
+          "height": 0.18,
+          "depth": 7.229553
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_sill_front",
+          "floor_sill_back",
+          "floor_slat_01",
+          "floor_slat_02",
+          "floor_slat_03",
+          "floor_slat_04"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_joist_07",
+        "label": "Floor Joist 07",
+        "origin": {
+          "x": -2.28,
+          "y": 3.27,
+          "z": 0.0
+        },
+        "dimensions": {
+          "width": 0.1,
+          "height": 0.18,
+          "depth": 7.229553
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_sill_front",
+          "floor_sill_back",
+          "floor_slat_01",
+          "floor_slat_02",
+          "floor_slat_03",
+          "floor_slat_04"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_joist_08",
+        "label": "Floor Joist 08",
+        "origin": {
+          "x": -1.71,
+          "y": 3.27,
+          "z": 0.0
+        },
+        "dimensions": {
+          "width": 0.1,
+          "height": 0.18,
+          "depth": 7.229553
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_sill_front",
+          "floor_sill_back",
+          "floor_slat_01",
+          "floor_slat_02",
+          "floor_slat_03",
+          "floor_slat_04"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_joist_09",
+        "label": "Floor Joist 09",
+        "origin": {
+          "x": -1.14,
+          "y": 3.27,
+          "z": 0.0
+        },
+        "dimensions": {
+          "width": 0.1,
+          "height": 0.18,
+          "depth": 7.229553
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_sill_front",
+          "floor_sill_back",
+          "floor_slat_01",
+          "floor_slat_02",
+          "floor_slat_03",
+          "floor_slat_04"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_joist_10",
+        "label": "Floor Joist 10",
+        "origin": {
+          "x": -0.57,
+          "y": 3.27,
+          "z": 0.0
+        },
+        "dimensions": {
+          "width": 0.1,
+          "height": 0.18,
+          "depth": 7.229553
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_sill_front",
+          "floor_sill_back",
+          "floor_slat_01",
+          "floor_slat_02",
+          "floor_slat_03",
+          "floor_slat_04"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_joist_11",
+        "label": "Floor Joist 11",
+        "origin": {
+          "x": 0.0,
+          "y": 3.27,
+          "z": 0.0
+        },
+        "dimensions": {
+          "width": 0.1,
+          "height": 0.18,
+          "depth": 7.229553
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_sill_front",
+          "floor_sill_back",
+          "floor_slat_01",
+          "floor_slat_02",
+          "floor_slat_03",
+          "floor_slat_04"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_sill_front",
+        "label": "Floor Sill Front",
+        "origin": {
+          "x": 0.00821,
+          "y": 3.210473,
+          "z": -3.560981
+        },
+        "dimensions": {
+          "width": 6.966764,
+          "height": 0.248067,
+          "depth": 0.201245
+        },
+        "rotation": {
+          "x": 0.340339,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_sill_right",
+          "floor_sill_left",
+          "tower_main_rafter_front_right",
+          "tower_main_rafter_front_left",
+          "tower_outer_support_front_right",
+          "tower_outer_support_front_left",
+          "floor_joist_01",
+          "floor_joist_02",
+          "floor_joist_03",
+          "floor_joist_04",
+          "floor_joist_05",
+          "floor_joist_06",
+          "floor_joist_07",
+          "floor_joist_08",
+          "floor_joist_09",
+          "floor_joist_10",
+          "floor_joist_11"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_sill_right",
+        "label": "Floor Sill Right",
+        "origin": {
+          "x": 3.560409,
+          "y": 3.21204,
+          "z": -0.005403
+        },
+        "dimensions": {
+          "width": 0.200842,
+          "height": 0.244396,
+          "depth": 6.972912
+        },
+        "rotation": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": 0.331613
+        },
+        "connections": [
+          "floor_sill_front",
+          "floor_sill_back",
+          "tower_main_rafter_front_right",
+          "tower_main_rafter_back_right",
+          "tower_outer_support_front_right",
+          "tower_outer_support_back_right"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_sill_back",
+        "label": "Floor Sill Back",
+        "origin": {
+          "x": 0.010017,
+          "y": 3.208275,
+          "z": 3.561759
+        },
+        "dimensions": {
+          "width": 6.995323,
+          "height": 0.252732,
+          "depth": 0.201246
+        },
+        "rotation": {
+          "x": -0.340339,
+          "y": -0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_sill_right",
+          "floor_sill_left",
+          "tower_main_rafter_back_right",
+          "tower_main_rafter_back_left",
+          "tower_outer_support_back_right",
+          "tower_outer_support_back_left",
+          "floor_joist_01",
+          "floor_joist_02",
+          "floor_joist_03",
+          "floor_joist_04",
+          "floor_joist_05",
+          "floor_joist_06",
+          "floor_joist_07",
+          "floor_joist_08",
+          "floor_joist_09",
+          "floor_joist_10",
+          "floor_joist_11"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_sill_left",
+        "label": "Floor Sill Left",
+        "origin": {
+          "x": -3.560297,
+          "y": 3.212399,
+          "z": 0.013472
+        },
+        "dimensions": {
+          "width": 0.201244,
+          "height": 0.257231,
+          "depth": 6.96863
+        },
+        "rotation": {
+          "x": -0.0,
+          "y": -0.0,
+          "z": -0.340339
+        },
+        "connections": [
+          "floor_sill_front",
+          "floor_sill_back",
+          "tower_main_rafter_front_left",
+          "tower_main_rafter_back_left",
+          "tower_outer_support_front_left",
+          "tower_outer_support_back_left"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_vertical_post_front_right",
+        "label": "Tower Vertical Post Front Right",
+        "origin": {
+          "x": 0.983138,
+          "y": 6.686693,
+          "z": -0.978414
+        },
+        "dimensions": {
+          "width": 0.2,
+          "height": 7.819074,
+          "depth": 0.319655
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "tower_top_beam_front",
+          "tower_top_beam_right",
+          "tower_middle_beam_front",
+          "tower_middle_beam_right",
+          "tower_upper_brace_front_right_inner",
+          "tower_upper_brace_right_front_outer"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_vertical_post_back_right",
+        "label": "Tower Vertical Post Back Right",
+        "origin": {
+          "x": 0.999653,
+          "y": 6.706424,
+          "z": 0.983138
+        },
+        "dimensions": {
+          "width": 0.256189,
+          "height": 7.858537,
+          "depth": 0.2
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "tower_top_beam_back",
+          "tower_top_beam_right",
+          "tower_middle_beam_back",
+          "tower_middle_beam_right",
+          "tower_upper_brace_back_right_inner",
+          "tower_upper_brace_right_back_outer"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_vertical_post_back_left",
+        "label": "Tower Vertical Post Back Left",
+        "origin": {
+          "x": -0.983138,
+          "y": 6.697627,
+          "z": 0.975968
+        },
+        "dimensions": {
+          "width": 0.2,
+          "height": 7.840944,
+          "depth": 0.282022
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "tower_top_beam_back",
+          "tower_top_beam_left",
+          "tower_middle_beam_back",
+          "tower_middle_beam_left",
+          "tower_upper_brace_back_left_inner",
+          "tower_upper_brace_left_back_outer"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_slat_01",
+        "label": "Floor Slat 01",
+        "origin": {
+          "x": 0.0,
+          "y": 3.08,
+          "z": 1.123138
+        },
+        "dimensions": {
+          "width": 7.366423,
+          "height": 0.2,
+          "depth": 0.08
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_joist_01",
+          "floor_joist_02",
+          "floor_joist_03",
+          "floor_joist_04",
+          "floor_joist_05",
+          "floor_joist_06",
+          "floor_joist_07",
+          "floor_joist_08",
+          "floor_joist_09",
+          "floor_joist_10",
+          "floor_joist_11"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_slat_02",
+        "label": "Floor Slat 02",
+        "origin": {
+          "x": 0.0,
+          "y": 3.08,
+          "z": 0.843138
+        },
+        "dimensions": {
+          "width": 7.366423,
+          "height": 0.2,
+          "depth": 0.08
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_joist_01",
+          "floor_joist_02",
+          "floor_joist_03",
+          "floor_joist_04",
+          "floor_joist_05",
+          "floor_joist_06",
+          "floor_joist_07",
+          "floor_joist_08",
+          "floor_joist_09",
+          "floor_joist_10",
+          "floor_joist_11"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_slat_03",
+        "label": "Floor Slat 03",
+        "origin": {
+          "x": 0.0,
+          "y": 3.08,
+          "z": -1.123138
+        },
+        "dimensions": {
+          "width": 7.366423,
+          "height": 0.2,
+          "depth": 0.08
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_joist_01",
+          "floor_joist_02",
+          "floor_joist_03",
+          "floor_joist_04",
+          "floor_joist_05",
+          "floor_joist_06",
+          "floor_joist_07",
+          "floor_joist_08",
+          "floor_joist_09",
+          "floor_joist_10",
+          "floor_joist_11"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "floor_slat_04",
+        "label": "Floor Slat 04",
+        "origin": {
+          "x": 0.0,
+          "y": 3.08,
+          "z": -0.843138
+        },
+        "dimensions": {
+          "width": 7.366423,
+          "height": 0.2,
+          "depth": 0.08
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "floor_joist_01",
+          "floor_joist_02",
+          "floor_joist_03",
+          "floor_joist_04",
+          "floor_joist_05",
+          "floor_joist_06",
+          "floor_joist_07",
+          "floor_joist_08",
+          "floor_joist_09",
+          "floor_joist_10",
+          "floor_joist_11"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_vertical_post_front_left",
+        "label": "Tower Vertical Post Front Left",
+        "origin": {
+          "x": -0.983979,
+          "y": 6.713565,
+          "z": -0.983138
+        },
+        "dimensions": {
+          "width": 0.265373,
+          "height": 7.872818,
+          "depth": 0.2
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "tower_top_beam_front",
+          "tower_top_beam_left",
+          "tower_middle_beam_front",
+          "tower_middle_beam_left",
+          "tower_upper_brace_front_left_inner",
+          "tower_upper_brace_left_front_outer"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_outer_support_front_left",
+        "label": "Tower Outer Support Front Left",
+        "origin": {
+          "x": -3.137196,
+          "y": 4.073541,
+          "z": -3.137202
+        },
+        "dimensions": {
+          "width": 0.253907,
+          "height": 8.883562,
+          "depth": 0.21374
+        },
+        "rotation": {
+          "x": 0.46149,
+          "y": 0.786226,
+          "z": 0.000798
+        },
+        "connections": [
+          "tower_middle_beam_front",
+          "tower_middle_beam_left",
+          "floor_sill_front",
+          "floor_sill_left",
+          "tower_main_rafter_front_left"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_main_rafter_front_left",
+        "label": "Tower Main Rafter Front Left",
+        "origin": {
+          "x": -2.327499,
+          "y": 6.851577,
+          "z": -2.329266
+        },
+        "dimensions": {
+          "width": 0.337803,
+          "height": 15.003549,
+          "depth": 0.290827
+        },
+        "rotation": {
+          "x": 0.458602,
+          "y": 0.786202,
+          "z": -0.005698
+        },
+        "connections": [
+          "tower_apex_beam",
+          "tower_middle_beam_front",
+          "tower_middle_beam_left",
+          "floor_sill_front",
+          "floor_sill_left",
+          "tower_outer_support_front_left",
+          "tower_lower_brace_left_front"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_outer_support_front_right",
+        "label": "Tower Outer Support Front Right",
+        "origin": {
+          "x": 3.13743,
+          "y": 4.072799,
+          "z": -3.137457
+        },
+        "dimensions": {
+          "width": 0.253874,
+          "height": 8.885024,
+          "depth": 0.213761
+        },
+        "rotation": {
+          "x": 0.46149,
+          "y": -0.786226,
+          "z": -0.000798
+        },
+        "connections": [
+          "tower_middle_beam_front",
+          "tower_middle_beam_right",
+          "floor_sill_front",
+          "floor_sill_right",
+          "tower_main_rafter_front_right"
+        ],
+        "material": "softwood (spruce / fir)",
         "status": "defective",
+        "notes": "Heavily weathered base section: surface cracks running with the grain, biological growth (green algae / moss), softened/spongy wood at the foot. Supported by a bolted steel shoe (not modelled) on a concrete footing."
+      },
+      {
+        "id": "tower_outer_support_back_right",
+        "label": "Tower Outer Support Back Right",
+        "origin": {
+          "x": 3.136747,
+          "y": 4.074318,
+          "z": 3.136739
+        },
+        "dimensions": {
+          "width": 0.269926,
+          "height": 8.881883,
+          "depth": 0.205794
+        },
+        "rotation": {
+          "x": -0.454758,
+          "y": 0.786697,
+          "z": -0.002818
+        },
+        "connections": [
+          "tower_middle_beam_back",
+          "tower_middle_beam_right",
+          "floor_sill_back",
+          "floor_sill_right",
+          "tower_main_rafter_back_right"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "tower_main_rafter_back_right",
+        "label": "Tower Main Rafter Back Right",
+        "origin": {
+          "x": 2.343169,
+          "y": 6.833837,
+          "z": 2.343783
+        },
+        "dimensions": {
+          "width": 0.338571,
+          "height": 15.0088,
+          "depth": 0.267057
+        },
+        "rotation": {
+          "x": -0.458633,
+          "y": 0.795934,
+          "z": 0.001389
+        },
+        "connections": [
+          "tower_apex_beam",
+          "tower_middle_beam_back",
+          "tower_middle_beam_right",
+          "floor_sill_back",
+          "floor_sill_right",
+          "tower_outer_support_back_right",
+          "tower_lower_brace_right_back",
+          "tower_lower_brace_back_right"
+        ],
+        "material": "softwood (spruce / fir)",
+        "status": "intact",
         "notes": ""
       }
     ],
-    "location": "",
-    "provenance": "",
-    "notes": "",
-    "createdAt": "2026-05-16T15:04:11.777Z",
-    "sourcePhotoEvidenceId": "ev_7f43309a26f"
+    "location": "Rh\u00f6ndorf, Germany",
+    "provenance": "Open timber-frame chapel tower, 1968.",
+    "notes": "54-part timber framework: tower bracing, beams, vertical posts, floor joists, rafters, sills, slats. Outer support posts sit in bolted steel base shoes on concrete footings (shoes not modelled as separate parts).",
+    "createdAt": "2026-05-19T20:14:59.349Z",
+    "sourcePhotoEvidenceId": "ev_chapel_base_photo"
   },
   "evidence": [
     {
-      "id": "ev_7f43309a26f",
+      "id": "ev_chapel_base_inspection",
+      "kind": "note",
+      "attachedTo": null,
+      "capturedAt": "2026-05-19T20:14:59.349Z",
+      "capturedBy": null,
+      "url": null,
+      "text": "Close-up inspection of one outer support post at its ground connection. The post is held in a bolted black steel base shoe seated on a concrete pad. Wood around the steel collar is greyed and dark-stained, with vertical drying cracks and patches of green algae/moss climbing the lower 60\u201380 cm. A through-bolt passes through the post higher up; surrounding wood shows weathering rings. Substrate above the splash zone appears sound; deterioration is concentrated in the bottom section exposed to splashback and moisture retention.",
+      "measurement": null,
+      "confirmsConditionRef": null,
+      "refutesConditionRef": null
+    },
+    {
+      "id": "ev_chapel_base_photo",
       "kind": "photo",
       "attachedTo": null,
-      "capturedAt": "2026-05-16T15:04:11.777Z",
+      "capturedAt": "2026-05-19T20:14:59.349Z",
       "capturedBy": null,
-      "url": "idb://ev_7f43309a26f",
+      "url": "idb://ev_chapel_base_photo",
       "text": null,
       "measurement": null,
       "confirmsConditionRef": null,
       "refutesConditionRef": null,
-      "fileName": "IMG_6692.JPG",
-      "byteSize": 2552032
+      "fileName": "kapellenturm_base.png",
+      "byteSize": null
     }
   ],
-  "conditions": [],
+  "conditions": [
+    {
+      "id": "cond_outer_support_weathering",
+      "type": "Weathering",
+      "description": "Severe surface weathering at the base of the outer support post: greyed wood, vertical drying cracks running with the grain, fibre lift and softening on the exposed faces. Concentrated in the lower section near the steel base shoe.",
+      "partRef": "tower_outer_support_front_right",
+      "coordinates": {
+        "x": 3.13743,
+        "y": 4.072799,
+        "z": -3.137457
+      },
+      "status": "confirmed",
+      "confidence": 0.92,
+      "evidenceRefs": [
+        "ev_chapel_base_inspection",
+        "ev_chapel_base_photo"
+      ],
+      "createdAt": "2026-05-19T20:14:59.349Z",
+      "updatedAt": "2026-05-19T20:14:59.349Z"
+    },
+    {
+      "id": "cond_outer_support_biological_growth",
+      "type": "Biological Growth",
+      "description": "Green algae and moss colonisation on the wet/shaded faces of the base section. Indicates persistent moisture retention at the post foot.",
+      "partRef": "tower_outer_support_front_right",
+      "coordinates": {
+        "x": 3.13743,
+        "y": 4.072799,
+        "z": -3.137457
+      },
+      "status": "confirmed",
+      "confidence": 0.95,
+      "evidenceRefs": [
+        "ev_chapel_base_inspection",
+        "ev_chapel_base_photo"
+      ],
+      "createdAt": "2026-05-19T20:14:59.349Z",
+      "updatedAt": "2026-05-19T20:14:59.349Z"
+    },
+    {
+      "id": "cond_outer_support_grain_cracks",
+      "type": "Split",
+      "description": "Multiple along-grain cracks visible in the base section, the largest extending from above the steel shoe upward. Width consistent with seasonal drying rather than structural overload, but worth monitoring.",
+      "partRef": "tower_outer_support_front_right",
+      "coordinates": {
+        "x": 3.13743,
+        "y": 4.072799,
+        "z": -3.137457
+      },
+      "status": "confirmed",
+      "confidence": 0.85,
+      "evidenceRefs": [
+        "ev_chapel_base_inspection",
+        "ev_chapel_base_photo"
+      ],
+      "createdAt": "2026-05-19T20:14:59.349Z",
+      "updatedAt": "2026-05-19T20:14:59.349Z"
+    },
+    {
+      "id": "cond_outer_support_moisture_damage",
+      "type": "Moisture Damage",
+      "description": "Splashback zone at the post foot shows dark staining and possible softening of the outer fibres at the wood\u2013steel interface. Risk of progressing into the post core if not addressed.",
+      "partRef": "tower_outer_support_front_right",
+      "coordinates": {
+        "x": 3.13743,
+        "y": 4.072799,
+        "z": -3.137457
+      },
+      "status": "confirmed",
+      "confidence": 0.8,
+      "evidenceRefs": [
+        "ev_chapel_base_inspection",
+        "ev_chapel_base_photo"
+      ],
+      "createdAt": "2026-05-19T20:14:59.349Z",
+      "updatedAt": "2026-05-19T20:14:59.349Z"
+    }
+  ],
   "intent": {
     "axes": [
       {
@@ -436,6 +1825,6 @@
   "currentPlanId": null,
   "executionLog": [],
   "conversations": [],
-  "createdAt": "2026-05-16T15:04:11.777Z",
-  "updatedAt": "2026-05-16T15:48:08.842Z"
+  "createdAt": "2026-05-19T20:14:59.349Z",
+  "updatedAt": "2026-05-19T20:14:59.349Z"
 }
