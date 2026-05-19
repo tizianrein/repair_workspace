@@ -2,34 +2,34 @@
   "schemaVersion": "2.0.0",
   "template": null,
   "instance": {
-    "id": "inst_cantilever_chair",
-    "name": "Breuer Cantilever Chair",
+    "id": "inst_cesca_chair",
+    "name": "Cesca Chair",
     "templateRef": null,
     "parts": [
       {
         "id": "seat_front_rail",
         "label": "Seat Front Rail",
         "origin": {
-          "x": 0.0,
-          "y": 0.44432,
-          "z": -0.254095
+          "x": 9.020562075079397e-17,
+          "y": 0.4443202932477046,
+          "z": -0.25409495664170706
         },
         "dimensions": {
-          "width": 0.468728,
-          "height": 0.05,
-          "depth": 0.039194
+          "width": 0.4687281640949275,
+          "height": 0.050000000000001155,
+          "depth": 0.0391937275319197
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": -1.5358491053188046,
+          "y": -2.079309735951797e-16,
+          "z": 5.6222314530959e-17
         },
         "connections": [
-          "seat_caning",
+          "seat_left_rail",
           "seat_right_rail",
-          "seat_left_rail"
+          "seat_cane_panel"
         ],
-        "material": "Beech timber",
+        "material": "beech timber, clear lacquer",
         "status": "intact",
         "notes": ""
       },
@@ -37,26 +37,28 @@
         "id": "seat_back_rail",
         "label": "Seat Back Rail",
         "origin": {
-          "x": 0.0,
-          "y": 0.431594,
-          "z": 0.109918
+          "x": -4.163336342344337e-17,
+          "y": 0.4315938639864164,
+          "z": 0.10991818482069732
         },
         "dimensions": {
-          "width": 0.468728,
-          "height": 0.05,
-          "depth": 0.039194
+          "width": 0.46872816409492757,
+          "height": 0.050000000000000454,
+          "depth": 0.039193727531919284
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": -1.5358491053188175,
+          "y": -1.6498841014851658e-16,
+          "z": -7.316887980665075e-19
         },
         "connections": [
-          "seat_caning",
+          "seat_left_rail",
           "seat_right_rail",
-          "seat_left_rail"
+          "seat_cane_panel",
+          "left_seat_rail",
+          "right_seat_rail"
         ],
-        "material": "Beech timber",
+        "material": "beech timber, clear lacquer",
         "status": "intact",
         "notes": ""
       },
@@ -64,27 +66,27 @@
         "id": "seat_right_rail",
         "label": "Seat Right Rail",
         "origin": {
-          "x": 0.209364,
-          "y": 0.437957,
-          "z": -0.072088
+          "x": 0.20936408204746376,
+          "y": 0.43795707861706007,
+          "z": -0.07208838591050483
         },
         "dimensions": {
-          "width": 0.414236,
-          "height": 0.05,
-          "depth": 0.039194
+          "width": 0.41423554076870506,
+          "height": 0.04999999999999999,
+          "depth": 0.03919372753191977
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": 1.53584910531883,
+          "y": -3.1415926535897927,
+          "z": -1.570796326794896
         },
         "connections": [
           "seat_front_rail",
           "seat_back_rail",
-          "seat_caning",
-          "frame_right_seat_support"
+          "seat_cane_panel",
+          "right_seat_rail"
         ],
-        "material": "Beech timber",
+        "material": "beech timber, clear lacquer",
         "status": "intact",
         "notes": ""
       },
@@ -92,206 +94,207 @@
         "id": "seat_left_rail",
         "label": "Seat Left Rail",
         "origin": {
-          "x": -0.209364,
-          "y": 0.437957,
-          "z": -0.072088
+          "x": -0.2093640820474637,
+          "y": 0.43795707861706007,
+          "z": -0.07208838591050498
         },
         "dimensions": {
-          "width": 0.414236,
-          "height": 0.05,
-          "depth": 0.039194
+          "width": 0.41423554076870506,
+          "height": 0.04999999999999999,
+          "depth": 0.039193727531919825
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": 1.53584910531883,
+          "y": 3.141592653589793,
+          "z": -1.5707963267948968
         },
         "connections": [
           "seat_front_rail",
           "seat_back_rail",
-          "seat_caning",
-          "frame_left_seat_support"
+          "seat_cane_panel",
+          "left_seat_rail"
         ],
-        "material": "Beech timber",
+        "material": "beech timber, clear lacquer",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "backrest_left_rail",
-        "label": "Backrest Left Rail",
+        "id": "backrest_left_stile",
+        "label": "Backrest Left Stile",
         "origin": {
-          "x": -0.207541,
-          "y": 0.658468,
-          "z": 0.204515
+          "x": -0.20754118928664866,
+          "y": 0.6584680182703917,
+          "z": 0.2045152656935641
         },
         "dimensions": {
-          "width": 0.294396,
-          "height": 0.05,
-          "depth": 0.041893
+          "width": 0.2943961022565027,
+          "height": 0.04999999999999993,
+          "depth": 0.041892502113461114
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": 0.209464509709098,
+          "y": 2.0739993526585672e-16,
+          "z": 1.5707963267948966
         },
         "connections": [
-          "frame_left_back_support",
-          "backrest_caning",
           "backrest_top_rail",
-          "backrest_bottom_rail"
+          "backrest_bottom_rail",
+          "backrest_cane_panel",
+          "left_backrest_mount"
         ],
-        "material": "Beech timber",
+        "material": "beech timber, clear lacquer",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "frame_left_back_support",
-        "label": "Frame Left Back Support",
+        "id": "left_backrest_mount",
+        "label": "Left Backrest Mount",
         "origin": {
-          "x": -0.217541,
-          "y": 0.675447,
-          "z": 0.244874
+          "x": -0.21754118928664862,
+          "y": 0.6754470535057779,
+          "z": 0.24487422167001394
         },
         "dimensions": {
-          "width": 0.244396,
-          "height": 0.03,
-          "depth": 0.03
+          "width": 0.2443961022565028,
+          "height": 0.030000000002314564,
+          "depth": 0.030000000002314575
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": 0.20946450970909786,
+          "y": 7.887593392098483e-11,
+          "z": 1.5707963268112979
         },
         "connections": [
-          "backrest_left_rail",
-          "frame_left_rear_bend"
+          "left_backrest_upright",
+          "backrest_left_stile"
         ],
-        "material": "Chrome-plated steel tube",
+        "material": "chrome-plated steel tube",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "frame_left_seat_support",
-        "label": "Frame Left Seat Support",
+        "id": "left_seat_rail",
+        "label": "Left Seat Rail",
         "origin": {
-          "x": -0.217541,
-          "y": 0.400691,
-          "z": -0.007442
+          "x": -0.21754119269464334,
+          "y": 0.4006914223892305,
+          "z": -0.007442434138638815
         },
         "dimensions": {
-          "width": 0.466649,
-          "height": 0.03,
-          "depth": 0.03
+          "width": 0.4666493589793276,
+          "height": 0.030000006845335603,
+          "depth": 0.030000024077794462
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": 1.5356486744067372,
+          "y": -3.1415926257528763,
+          "z": -1.5707962989751725
         },
         "connections": [
+          "seat_back_rail",
           "seat_left_rail",
-          "frame_left_front_vertical",
-          "frame_left_rear_bend"
+          "left_front_leg",
+          "left_backrest_upright"
         ],
-        "material": "Chrome-plated steel tube",
+        "material": "chrome-plated steel tube",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "frame_left_front_vertical",
-        "label": "Frame Left Front Vertical",
+        "id": "left_front_leg",
+        "label": "Left Front Leg",
         "origin": {
-          "x": -0.217541,
-          "y": 0.212469,
-          "z": -0.262539
+          "x": -0.21754118928424804,
+          "y": 0.21246897934475112,
+          "z": -0.2625388749764676
         },
         "dimensions": {
-          "width": 0.424141,
-          "height": 0.03,
-          "depth": 0.03
+          "width": 0.42414077956144575,
+          "height": 0.030000000008296446,
+          "depth": 0.030000000008296487
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
+          "x": 0.03514765238816471,
+          "y": -2.76722827749488e-10,
+          "z": 1.570796326798358
+        },
+        "connections": [
+          "left_seat_rail",
+          "left_base_runner"
+        ],
+        "material": "chrome-plated steel tube",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "left_base_runner",
+        "label": "Left Base Runner",
+        "origin": {
+          "x": -0.21754119269204492,
+          "y": 0.015002461204187028,
+          "z": 0.004500081347722382
+        },
+        "dimensions": {
+          "width": 0.030000006821186254,
+          "height": 0.5190009246166929,
+          "depth": 0.030000000005355743
+        },
+        "rotation": {
+          "x": -1.5707963267948966,
+          "y": -0.0,
           "z": 0.0
         },
         "connections": [
-          "frame_left_seat_support",
-          "frame_left_bottom_runner"
+          "left_front_leg",
+          "base_rear_stretcher"
         ],
-        "material": "Chrome-plated steel tube",
+        "material": "chrome-plated steel tube",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "frame_left_bottom_runner",
-        "label": "Frame Left Bottom Runner",
+        "id": "left_backrest_upright",
+        "label": "Left Backrest Upright",
         "origin": {
-          "x": -0.217541,
-          "y": 0.015002,
-          "z": 0.0045
+          "x": -0.2175411926946433,
+          "y": 0.4697144989388097,
+          "z": 0.21342601966526561
         },
         "dimensions": {
-          "width": 0.03,
-          "height": 0.519001,
-          "depth": 0.03
+          "width": 0.1834837342577651,
+          "height": 0.030036245909477923,
+          "depth": 0.030000006815989577
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": -8.911060239839662e-17,
+          "y": -1.5707963267948994,
+          "z": 1.5356486744067324
         },
         "connections": [
-          "frame_left_front_vertical",
-          "frame_rear_stretcher"
+          "left_backrest_mount",
+          "left_seat_rail"
         ],
-        "material": "Chrome-plated steel tube",
+        "material": "chrome-plated steel tube",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "frame_left_rear_bend",
-        "label": "Frame Left Rear Bend",
+        "id": "seat_cane_panel",
+        "label": "Seat Cane Panel",
         "origin": {
-          "x": -0.217541,
-          "y": 0.469714,
-          "z": 0.213426
+          "x": 1.5265566588595902e-16,
+          "y": 0.45126461240303223,
+          "z": -0.07163208204473502
         },
         "dimensions": {
-          "width": 0.183484,
-          "height": 0.030036,
-          "depth": 0.03
+          "width": 0.38736136959235995,
+          "height": 0.3358043034038054,
+          "depth": 0.006591309258390731
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
-        },
-        "connections": [
-          "frame_left_back_support",
-          "frame_left_seat_support"
-        ],
-        "material": "Chrome-plated steel tube",
-        "status": "intact",
-        "notes": ""
-      },
-      {
-        "id": "seat_caning",
-        "label": "Seat Caning",
-        "origin": {
-          "x": 0.0,
-          "y": 0.451265,
-          "z": -0.071632
-        },
-        "dimensions": {
-          "width": 0.387361,
-          "height": 0.335804,
-          "depth": 0.006591
-        },
-        "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": -1.5298533352213246,
+          "y": -1.0586009989133178e-16,
+          "z": 1.0648497647548972e-16
         },
         "connections": [
           "seat_front_rail",
@@ -299,192 +302,222 @@
           "seat_right_rail",
           "seat_left_rail"
         ],
-        "material": "Woven cane",
+        "material": "woven cane",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "backrest_caning",
-        "label": "Backrest Caning",
+        "id": "backrest_cane_panel",
+        "label": "Backrest Cane Panel",
         "origin": {
-          "x": 0.000799,
-          "y": 0.661,
-          "z": 0.197763
+          "x": 0.0007991566710283046,
+          "y": 0.6610003133455812,
+          "z": 0.1977625024642013
         },
         "dimensions": {
-          "width": 0.390976,
-          "height": 0.21183,
-          "depth": 0.016028
+          "width": 0.39097580313682556,
+          "height": 0.21182955652910507,
+          "depth": 0.016028350671980315
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": -0.20946450970909808,
+          "y": 3.141592653589793,
+          "z": 3.141592653589793
         },
         "connections": [
-          "backrest_left_rail",
           "backrest_top_rail",
           "backrest_bottom_rail",
-          "backrest_right_rail"
+          "backrest_left_stile",
+          "backrest_right_stile"
         ],
-        "material": "Woven cane",
+        "material": "woven cane",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "frame_rear_stretcher",
-        "label": "Frame Rear Stretcher",
+        "id": "base_rear_stretcher",
+        "label": "Base Rear Stretcher",
         "origin": {
-          "x": 0.000842,
-          "y": 0.015002,
-          "z": 0.249001
+          "x": 0.0008421847432122792,
+          "y": 0.015002461201635666,
+          "z": 0.2490005436559283
         },
         "dimensions": {
-          "width": 0.466767,
-          "height": 0.03,
-          "depth": 0.03
+          "width": 0.46676676169170067,
+          "height": 0.030000000000253046,
+          "depth": 0.03000000000025302
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
+          "x": -1.5707963267948966,
+          "y": -0.0,
           "z": 0.0
         },
         "connections": [
-          "frame_left_bottom_runner",
-          "frame_right_bottom_runner"
+          "left_base_runner",
+          "right_base_runner"
         ],
-        "material": "Chrome-plated steel tube",
+        "material": "chrome-plated steel tube",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "frame_right_rear_bend",
-        "label": "Frame Right Rear Bend",
+        "id": "right_backrest_upright",
+        "label": "Right Backrest Upright",
         "origin": {
-          "x": 0.219226,
-          "y": 0.469714,
-          "z": 0.213426
+          "x": 0.21922555657566012,
+          "y": 0.4697144989388096,
+          "z": 0.2134260196652657
         },
         "dimensions": {
-          "width": 0.183484,
-          "height": 0.030036,
-          "depth": 0.03
+          "width": 0.18348373425776499,
+          "height": 0.03003624590947815,
+          "depth": 0.030000018036650422
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": 3.72837572612734e-16,
+          "y": -1.570796326794886,
+          "z": 1.535648674406732
         },
         "connections": [
-          "frame_right_seat_support",
-          "frame_right_back_support"
+          "right_seat_rail",
+          "right_backrest_mount_1",
+          "right_backrest_mount_2"
         ],
-        "material": "Chrome-plated steel tube",
+        "material": "chrome-plated steel tube",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "frame_right_bottom_runner",
-        "label": "Frame Right Bottom Runner",
+        "id": "right_base_runner",
+        "label": "Right Base Runner",
         "origin": {
-          "x": 0.219226,
-          "y": 0.015002,
-          "z": 0.0045
+          "x": 0.21922555657339643,
+          "y": 0.015002461204187028,
+          "z": 0.004500081347722493
         },
         "dimensions": {
-          "width": 0.03,
-          "height": 0.519001,
-          "depth": 0.03
+          "width": 0.03000001803212271,
+          "height": 0.5190009246166929,
+          "depth": 0.030000000005355743
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
+          "x": -1.5707963267948966,
+          "y": -0.0,
           "z": 0.0
         },
         "connections": [
-          "frame_rear_stretcher",
-          "frame_right_front_vertical"
+          "base_rear_stretcher",
+          "right_front_leg"
         ],
-        "material": "Chrome-plated steel tube",
+        "material": "chrome-plated steel tube",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "frame_right_front_vertical",
-        "label": "Frame Right Front Vertical",
+        "id": "right_front_leg",
+        "label": "Right Front Leg",
         "origin": {
-          "x": 0.219226,
-          "y": 0.212469,
-          "z": -0.262539
+          "x": 0.21922556401304713,
+          "y": 0.2124689843235041,
+          "z": -0.262538881233924
         },
         "dimensions": {
-          "width": 0.424141,
-          "height": 0.03007,
-          "depth": 0.03007
+          "width": 0.42414078943905953,
+          "height": 0.030069955543138516,
+          "depth": 0.03006996529167473
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": 0.03514755657538167,
+          "y": 0.0023359172733022505,
+          "z": 1.5708784118386767
         },
         "connections": [
-          "frame_right_bottom_runner",
-          "frame_right_seat_support"
+          "right_base_runner",
+          "right_seat_rail"
         ],
-        "material": "Chrome-plated steel tube",
+        "material": "chrome-plated steel tube",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "frame_right_seat_support",
-        "label": "Frame Right Seat Support",
+        "id": "right_seat_rail",
+        "label": "Right Seat Rail",
         "origin": {
-          "x": 0.219226,
-          "y": 0.400691,
-          "z": -0.007442
+          "x": 0.21922555657164877,
+          "y": 0.4006914223789783,
+          "z": -0.007442434138999283
         },
         "dimensions": {
-          "width": 0.466649,
-          "height": 0.030019,
-          "depth": 0.030019
+          "width": 0.4666493589793276,
+          "height": 0.03001941163965044,
+          "depth": 0.030019405644252477
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": 0.0006460630724575442,
+          "y": 1.5708190437536411,
+          "z": -3.1064449938633345
         },
         "connections": [
+          "seat_back_rail",
           "seat_right_rail",
-          "frame_right_rear_bend",
-          "frame_right_front_vertical"
+          "right_backrest_upright",
+          "right_front_leg"
         ],
-        "material": "Chrome-plated steel tube",
+        "material": "chrome-plated steel tube",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "frame_right_back_support",
-        "label": "Frame Right Back Support",
+        "id": "right_backrest_mount_1",
+        "label": "Right Backrest Mount 1",
         "origin": {
-          "x": 0.219226,
-          "y": 0.675447,
-          "z": 0.244874
+          "x": 0.2192255640223995,
+          "y": 0.6754470493365994,
+          "z": 0.24487421944645046
         },
         "dimensions": {
-          "width": 0.244396,
-          "height": 0.030098,
-          "depth": 0.030098
+          "width": 0.24439613240524027,
+          "height": 0.03009809680311752,
+          "depth": 0.030098092649741177
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": -0.0006809935861475903,
+          "y": -1.5739997619085675,
+          "z": 1.361332907846157
         },
         "connections": [
-          "frame_right_rear_bend",
-          "backrest_right_rail"
+          "right_backrest_upright",
+          "right_backrest_mount_2",
+          "backrest_right_stile"
         ],
-        "material": "Chrome-plated steel tube",
+        "material": "chrome-plated steel tube",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "right_backrest_mount_2",
+        "label": "Right Backrest Mount 2",
+        "origin": {
+          "x": 0.219225564025051,
+          "y": 0.6754470493370535,
+          "z": 0.2448742194443147
+        },
+        "dimensions": {
+          "width": 0.2443961324052401,
+          "height": 0.030030478318443486,
+          "depth": 0.03003047415653181
+        },
+        "rotation": {
+          "x": -0.00021130822138974267,
+          "y": -1.5717903318033684,
+          "z": 1.361331922106523
+        },
+        "connections": [
+          "right_backrest_upright",
+          "right_backrest_mount_1",
+          "backrest_right_stile"
+        ],
+        "material": "chrome-plated steel tube",
         "status": "intact",
         "notes": ""
       },
@@ -492,26 +525,26 @@
         "id": "backrest_top_rail",
         "label": "Backrest Top Rail",
         "origin": {
-          "x": 0.000842,
-          "y": 0.777995,
-          "z": 0.229925
+          "x": 0.0008421847456735881,
+          "y": 0.7779951121074768,
+          "z": 0.22992465197386044
         },
         "dimensions": {
-          "width": 0.466767,
-          "height": 0.05,
-          "depth": 0.041893
+          "width": 0.4667667616966233,
+          "height": 0.050000053761208293,
+          "depth": 0.04189251703190665
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": -0.20946450970912334,
+          "y": 3.141592653589793,
+          "z": 3.141592653589793
         },
         "connections": [
-          "backrest_left_rail",
-          "backrest_caning",
-          "backrest_right_rail"
+          "backrest_left_stile",
+          "backrest_cane_panel",
+          "backrest_right_stile"
         ],
-        "material": "Beech timber",
+        "material": "beech timber, clear lacquer",
         "status": "intact",
         "notes": ""
       },
@@ -519,54 +552,55 @@
         "id": "backrest_bottom_rail",
         "label": "Backrest Bottom Rail",
         "origin": {
-          "x": 0.000842,
-          "y": 0.538941,
-          "z": 0.179106
+          "x": 0.0008421847456735326,
+          "y": 0.5389409177758631,
+          "z": 0.17910587305145803
         },
         "dimensions": {
-          "width": 0.466767,
-          "height": 0.05,
-          "depth": 0.041893
+          "width": 0.46676676169662323,
+          "height": 0.05000003998114358,
+          "depth": 0.04189250211347495
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": -0.2094645097088201,
+          "y": 3.141592653589793,
+          "z": 3.141592653589793
         },
         "connections": [
-          "backrest_left_rail",
-          "backrest_caning",
-          "backrest_right_rail"
+          "backrest_left_stile",
+          "backrest_cane_panel",
+          "backrest_right_stile"
         ],
-        "material": "Beech timber",
+        "material": "beech timber, clear lacquer",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "backrest_right_rail",
-        "label": "Backrest Right Rail",
+        "id": "backrest_right_stile",
+        "label": "Backrest Right Stile",
         "origin": {
-          "x": 0.209226,
-          "y": 0.658468,
-          "z": 0.204515
+          "x": 0.2092255655939852,
+          "y": 0.6584680190869048,
+          "z": 0.20451525958091143
         },
         "dimensions": {
-          "width": 0.294396,
-          "height": 0.05,
-          "depth": 0.041893
+          "width": 0.2943961518293036,
+          "height": 0.04999999999999993,
+          "depth": 0.041892514411116084
         },
         "rotation": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0
+          "x": 0.20946450970909797,
+          "y": 6.187301049303261e-17,
+          "z": 1.5707963267948966
         },
         "connections": [
-          "backrest_caning",
-          "frame_right_back_support",
+          "backrest_cane_panel",
+          "right_backrest_mount_1",
+          "right_backrest_mount_2",
           "backrest_top_rail",
           "backrest_bottom_rail"
         ],
-        "material": "Beech timber",
+        "material": "beech timber, clear lacquer",
         "status": "intact",
         "notes": ""
       }
@@ -574,28 +608,59 @@
     "location": "",
     "provenance": "",
     "notes": "",
-    "createdAt": "2026-05-19T15:07:57.181Z",
-    "sourcePhotoEvidenceId": "ev_a6a5a8b1259"
+    "createdAt": "2026-05-19T15:56:04.108Z",
+    "sourcePhotoEvidenceId": "ev_e822a267c92"
   },
   "evidence": [
     {
-      "id": "ev_a6a5a8b1259",
+      "id": "ev_e822a267c92",
       "kind": "photo",
       "attachedTo": null,
-      "capturedAt": "2026-05-19T15:07:57.181Z",
+      "capturedAt": "2026-05-19T15:56:04.108Z",
       "capturedBy": null,
-      "url": "idb://ev_a6a5a8b1259",
+      "url": "idb://ev_e822a267c92",
       "text": null,
       "measurement": null,
-      "confirmsHypothesisRef": null,
-      "refutesHypothesisRef": null,
+      "confirmsConditionRef": null,
+      "refutesConditionRef": null,
       "fileName": "breuer.jpg",
       "byteSize": 57168
     }
   ],
-  "hypotheses": [],
+  "conditions": [],
   "intent": {
-    "axes": [],
+    "axes": [
+      {
+        "id": "axis_1",
+        "label": "Material Authenticity",
+        "value": 0.5
+      },
+      {
+        "id": "axis_2",
+        "label": "Structural Performance",
+        "value": 0.5
+      },
+      {
+        "id": "axis_3",
+        "label": "Economic Viability",
+        "value": 0.5
+      },
+      {
+        "id": "axis_4",
+        "label": "Cultural Continuity",
+        "value": 0.5
+      },
+      {
+        "id": "axis_5",
+        "label": "Ecological Sustainability",
+        "value": 0.5
+      },
+      {
+        "id": "axis_6",
+        "label": "Aesthetic Intervention",
+        "value": 0.5
+      }
+    ],
     "summary": ""
   },
   "constraints": {
@@ -613,6 +678,6 @@
   "currentPlanId": null,
   "executionLog": [],
   "conversations": [],
-  "createdAt": "2026-05-19T15:07:57.181Z",
-  "updatedAt": "2026-05-19T15:20:28.694Z"
+  "createdAt": "2026-05-19T15:56:04.108Z",
+  "updatedAt": "2026-05-19T15:56:04.108Z"
 }
