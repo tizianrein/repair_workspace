@@ -27,7 +27,9 @@
         "connections": [
           "seat_left_rail",
           "seat_right_rail",
-          "seat_cane_panel"
+          "seat_cane_panel",
+          "left_frame_seat_support",
+          "right_frame_seat_support"
         ],
         "material": "beech timber, clear lacquer",
         "status": "intact",
@@ -55,8 +57,8 @@
           "seat_left_rail",
           "seat_right_rail",
           "seat_cane_panel",
-          "left_seat_rail",
-          "right_seat_rail"
+          "left_frame_seat_support",
+          "right_frame_seat_support"
         ],
         "material": "beech timber, clear lacquer",
         "status": "intact",
@@ -84,7 +86,7 @@
           "seat_front_rail",
           "seat_back_rail",
           "seat_cane_panel",
-          "right_seat_rail"
+          "right_frame_seat_support"
         ],
         "material": "beech timber, clear lacquer",
         "status": "intact",
@@ -112,7 +114,7 @@
           "seat_front_rail",
           "seat_back_rail",
           "seat_cane_panel",
-          "left_seat_rail"
+          "left_frame_seat_support"
         ],
         "material": "beech timber, clear lacquer",
         "status": "intact",
@@ -173,8 +175,8 @@
         "notes": ""
       },
       {
-        "id": "left_seat_rail",
-        "label": "Left Seat Rail",
+        "id": "left_frame_seat_support",
+        "label": "Left Frame Seat Support",
         "origin": {
           "x": -0.21754119269464334,
           "y": 0.4006914223892305,
@@ -194,7 +196,8 @@
           "seat_back_rail",
           "seat_left_rail",
           "left_front_leg",
-          "left_backrest_upright"
+          "left_backrest_upright",
+          "seat_front_rail"
         ],
         "material": "chrome-plated steel tube",
         "status": "intact",
@@ -219,7 +222,7 @@
           "z": 1.570796326798358
         },
         "connections": [
-          "left_seat_rail",
+          "left_frame_seat_support",
           "left_base_runner"
         ],
         "material": "chrome-plated steel tube",
@@ -272,7 +275,7 @@
         },
         "connections": [
           "left_backrest_mount",
-          "left_seat_rail"
+          "left_frame_seat_support"
         ],
         "material": "chrome-plated steel tube",
         "status": "intact",
@@ -379,9 +382,8 @@
           "z": 1.535648674406732
         },
         "connections": [
-          "right_seat_rail",
-          "right_backrest_mount_1",
-          "right_backrest_mount_2"
+          "right_frame_seat_support",
+          "right_backrest_mount_1"
         ],
         "material": "chrome-plated steel tube",
         "status": "intact",
@@ -433,15 +435,15 @@
         },
         "connections": [
           "right_base_runner",
-          "right_seat_rail"
+          "right_frame_seat_support"
         ],
         "material": "chrome-plated steel tube",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "right_seat_rail",
-        "label": "Right Seat Rail",
+        "id": "right_frame_seat_support",
+        "label": "Right Frame Seat Support",
         "origin": {
           "x": 0.21922555657164877,
           "y": 0.4006914223789783,
@@ -461,7 +463,8 @@
           "seat_back_rail",
           "seat_right_rail",
           "right_backrest_upright",
-          "right_front_leg"
+          "right_front_leg",
+          "seat_front_rail"
         ],
         "material": "chrome-plated steel tube",
         "status": "intact",
@@ -487,34 +490,6 @@
         },
         "connections": [
           "right_backrest_upright",
-          "right_backrest_mount_2",
-          "backrest_right_stile"
-        ],
-        "material": "chrome-plated steel tube",
-        "status": "intact",
-        "notes": ""
-      },
-      {
-        "id": "right_backrest_mount_2",
-        "label": "Right Backrest Mount 2",
-        "origin": {
-          "x": 0.219225564025051,
-          "y": 0.6754470493370535,
-          "z": 0.2448742194443147
-        },
-        "dimensions": {
-          "width": 0.2443961324052401,
-          "height": 0.030030478318443486,
-          "depth": 0.03003047415653181
-        },
-        "rotation": {
-          "x": -0.00021130822138974267,
-          "y": -1.5717903318033684,
-          "z": 1.361331922106523
-        },
-        "connections": [
-          "right_backrest_upright",
-          "right_backrest_mount_1",
           "backrest_right_stile"
         ],
         "material": "chrome-plated steel tube",
@@ -596,7 +571,6 @@
         "connections": [
           "backrest_cane_panel",
           "right_backrest_mount_1",
-          "right_backrest_mount_2",
           "backrest_top_rail",
           "backrest_bottom_rail"
         ],
@@ -679,5 +653,5 @@
   "executionLog": [],
   "conversations": [],
   "createdAt": "2026-05-19T15:56:04.108Z",
-  "updatedAt": "2026-05-19T15:56:04.108Z"
+  "updatedAt": "2026-05-19T16:12:39.479Z"
 }
