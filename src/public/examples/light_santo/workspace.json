@@ -27,7 +27,8 @@
         "connections": [
           "front_apron",
           "left_side_apron",
-          "seat"
+          "seat",
+          "front_left_glider"
         ],
         "material": "beech timber, clear lacquer",
         "status": "intact",
@@ -54,7 +55,8 @@
         "connections": [
           "front_apron",
           "right_side_apron",
-          "seat"
+          "seat",
+          "front_right_glider"
         ],
         "material": "beech timber, clear lacquer",
         "status": "intact",
@@ -82,7 +84,8 @@
           "back_apron",
           "left_side_apron",
           "seat",
-          "backrest"
+          "backrest",
+          "back_left_glider"
         ],
         "material": "beech timber, clear lacquer",
         "status": "intact",
@@ -110,7 +113,8 @@
           "back_apron",
           "right_side_apron",
           "seat",
-          "backrest"
+          "backrest",
+          "back_right_glider"
         ],
         "material": "beech timber, clear lacquer",
         "status": "intact",
@@ -281,81 +285,116 @@
         "material": "beech timber, clear lacquer",
         "status": "intact",
         "notes": ""
+      },
+      {
+        "id": "front_left_glider",
+        "label": "Front Left Glider",
+        "origin": {
+          "x": -0.235,
+          "y": 0.004,
+          "z": -0.2225
+        },
+        "dimensions": {
+          "width": 0.025,
+          "height": 0.008,
+          "depth": 0.04
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "front_left_leg"
+        ],
+        "material": "plastic",
+        "status": "missing",
+        "notes": "Glider broken off or lost; leg foot exposed."
+      },
+      {
+        "id": "front_right_glider",
+        "label": "Front Right Glider",
+        "origin": {
+          "x": 0.235,
+          "y": 0.004,
+          "z": -0.2225
+        },
+        "dimensions": {
+          "width": 0.025,
+          "height": 0.008,
+          "depth": 0.04
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "front_right_leg"
+        ],
+        "material": "plastic",
+        "status": "missing",
+        "notes": "Glider broken off or lost; leg foot exposed."
+      },
+      {
+        "id": "back_left_glider",
+        "label": "Back Left Glider",
+        "origin": {
+          "x": -0.235,
+          "y": 0.004,
+          "z": 0.2225
+        },
+        "dimensions": {
+          "width": 0.025,
+          "height": 0.008,
+          "depth": 0.04
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "back_left_leg"
+        ],
+        "material": "plastic",
+        "status": "missing",
+        "notes": "Glider broken off or lost; leg foot exposed."
+      },
+      {
+        "id": "back_right_glider",
+        "label": "Back Right Glider",
+        "origin": {
+          "x": 0.235,
+          "y": 0.004,
+          "z": 0.2225
+        },
+        "dimensions": {
+          "width": 0.025,
+          "height": 0.008,
+          "depth": 0.04
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [
+          "back_right_leg"
+        ],
+        "material": "plastic",
+        "status": "missing",
+        "notes": "Glider broken off or lost; leg foot exposed."
       }
     ],
     "location": "",
     "provenance": "",
     "notes": "",
-    "createdAt": "2026-05-19T16:16:25.519Z",
+    "createdAt": "2026-05-19T16:21:25.017Z",
     "sourcePhotoEvidenceId": null
   },
   "evidence": [],
-  "conditions": [
-    {
-      "id": "cond_missing_glider_front_left_leg",
-      "type": "Missing Part",
-      "description": "Plastic glider on the front-left leg is missing \u2014 broken off or lost. Leg foot exposed.",
-      "partRef": "front_left_leg",
-      "coordinates": {
-        "x": -0.235,
-        "y": 0.004,
-        "z": -0.2225
-      },
-      "status": "confirmed",
-      "confidence": 1.0,
-      "evidenceRefs": [],
-      "createdAt": "2026-05-19T16:16:25.519Z",
-      "updatedAt": "2026-05-19T16:16:25.519Z"
-    },
-    {
-      "id": "cond_missing_glider_front_right_leg",
-      "type": "Missing Part",
-      "description": "Plastic glider on the front-right leg is missing \u2014 broken off or lost. Leg foot exposed.",
-      "partRef": "front_right_leg",
-      "coordinates": {
-        "x": 0.235,
-        "y": 0.004,
-        "z": -0.2225
-      },
-      "status": "confirmed",
-      "confidence": 1.0,
-      "evidenceRefs": [],
-      "createdAt": "2026-05-19T16:16:25.519Z",
-      "updatedAt": "2026-05-19T16:16:25.519Z"
-    },
-    {
-      "id": "cond_missing_glider_back_left_leg",
-      "type": "Missing Part",
-      "description": "Plastic glider on the back-left leg is missing \u2014 broken off or lost. Leg foot exposed.",
-      "partRef": "back_left_leg",
-      "coordinates": {
-        "x": -0.235,
-        "y": 0.004,
-        "z": 0.2225
-      },
-      "status": "confirmed",
-      "confidence": 1.0,
-      "evidenceRefs": [],
-      "createdAt": "2026-05-19T16:16:25.519Z",
-      "updatedAt": "2026-05-19T16:16:25.519Z"
-    },
-    {
-      "id": "cond_missing_glider_back_right_leg",
-      "type": "Missing Part",
-      "description": "Plastic glider on the back-right leg is missing \u2014 broken off or lost. Leg foot exposed.",
-      "partRef": "back_right_leg",
-      "coordinates": {
-        "x": 0.235,
-        "y": 0.004,
-        "z": 0.2225
-      },
-      "status": "confirmed",
-      "confidence": 1.0,
-      "evidenceRefs": [],
-      "createdAt": "2026-05-19T16:16:25.519Z",
-      "updatedAt": "2026-05-19T16:16:25.519Z"
-    }
-  ],
+  "conditions": [],
   "intent": {
     "axes": [
       {
@@ -406,6 +445,6 @@
   "currentPlanId": null,
   "executionLog": [],
   "conversations": [],
-  "createdAt": "2026-05-19T16:16:25.519Z",
-  "updatedAt": "2026-05-19T16:16:25.519Z"
+  "createdAt": "2026-05-19T16:21:25.017Z",
+  "updatedAt": "2026-05-19T16:21:25.017Z"
 }
