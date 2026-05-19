@@ -1,20 +1,68 @@
 {
   "examples": [
     {
-      "slug": "craftsman",
-      "name": "Craftsman",
+      "slug": "bauhaus_table",
+      "name": "Bauhaus Table",
       "description": "",
       "order": 1000
     },
     {
-      "slug": "longterm",
-      "name": "Longterm",
+      "slug": "breuer_chair",
+      "name": "Breuer Chair",
+      "description": "",
+      "order": 1000
+    },
+    {
+      "slug": "chapel_foot",
+      "name": "Chapel Foot",
+      "description": "",
+      "order": 1000
+    },
+    {
+      "slug": "door",
+      "name": "Door",
+      "description": "",
+      "order": 1000
+    },
+    {
+      "slug": "eames_plastic_chair",
+      "name": "Eames Plastic Chair",
+      "description": "",
+      "order": 1000
+    },
+    {
+      "slug": "eiermann_se68_black",
+      "name": "Eiermann SE68 Black",
+      "description": "",
+      "order": 1000
+    },
+    {
+      "slug": "eiermann_se68_red",
+      "name": "Eiermann SE68 Red",
       "description": "",
       "order": 1000
     },
     {
       "slug": "lunch_chair",
       "name": "Lunch Chair",
+      "description": "",
+      "order": 1000
+    },
+    {
+      "slug": "santo_dark_shattered",
+      "name": "Santo Dark Shattered",
+      "description": "",
+      "order": 1000
+    },
+    {
+      "slug": "santo_light_no_feet",
+      "name": "Santo Light No Feet",
+      "description": "",
+      "order": 1000
+    },
+    {
+      "slug": "split_coffee_table",
+      "name": "Split Coffee Table",
       "description": "",
       "order": 1000
     }

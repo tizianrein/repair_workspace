@@ -30,7 +30,7 @@
           "lock_stile",
           "muntin_bar"
         ],
-        "material": "frosted glass",
+        "material": "historic glass",
         "status": "intact",
         "notes": ""
       },
@@ -58,16 +58,16 @@
           "lock_stile",
           "muntin_bar"
         ],
-        "material": "frosted glass",
+        "material": "historic glass",
         "status": "missing",
         "notes": "Pane is physically absent \u2014 opening is empty. Frame intact."
       },
       {
-        "id": "hinge",
-        "label": "Hinge",
+        "id": "upper_hinge",
+        "label": "Upper Hinge",
         "origin": {
           "x": 0.3282484625155452,
-          "y": 0.9192561512823942,
+          "y": 1.85,
           "z": 0.00233015513505749
         },
         "dimensions": {
@@ -228,8 +228,8 @@
         "notes": ""
       },
       {
-        "id": "support_block_front",
-        "label": "Support Block Front",
+        "id": "trim_front",
+        "label": "Trim Front",
         "origin": {
           "x": 0.019574786776643004,
           "y": 0.04251925182578995,
@@ -247,15 +247,15 @@
         },
         "connections": [
           "bottom_rail",
-          "support_block_back"
+          "trim_back"
         ],
-        "material": "plywood",
+        "material": "painted and stained wood",
         "status": "intact",
         "notes": ""
       },
       {
-        "id": "support_block_back",
-        "label": "Support Block Back",
+        "id": "trim_back",
+        "label": "Trim Back",
         "origin": {
           "x": 0.019574786776642983,
           "y": 0.04251925182578995,
@@ -273,9 +273,9 @@
         },
         "connections": [
           "bottom_rail",
-          "support_block_front"
+          "trim_front"
         ],
-        "material": "plywood",
+        "material": "painted and stained wood",
         "status": "intact",
         "notes": ""
       },
@@ -300,8 +300,8 @@
         "connections": [
           "hinge_stile",
           "lock_stile",
-          "support_block_front",
-          "support_block_back",
+          "trim_front",
+          "trim_back",
           "bottom_panel_rail"
         ],
         "material": "painted and stained wood",
@@ -365,9 +365,10 @@
           "upper_glass_pane",
           "lower_glass_pane",
           "muntin_bar",
-          "hinge",
+          "upper_hinge",
           "lower_right_panel",
-          "bottom_panel_rail"
+          "bottom_panel_rail",
+          "lower_hinge"
         ],
         "material": "painted and stained wood",
         "status": "intact",
@@ -491,6 +492,31 @@
         "material": "painted and stained wood",
         "status": "intact",
         "notes": ""
+      },
+      {
+        "id": "lower_hinge",
+        "label": "Lower Hinge",
+        "origin": {
+          "x": 0.3282484625155452,
+          "y": 0.3,
+          "z": 0.00233015513505749
+        },
+        "dimensions": {
+          "width": 0.2172416817748855,
+          "height": 0.11494598700463235,
+          "depth": 0.0425046086311342
+        },
+        "rotation": {
+          "x": 0.017014225595313497,
+          "y": -1.5707963267948966,
+          "z": 1.5707963267948966
+        },
+        "connections": [
+          "hinge_stile"
+        ],
+        "material": "rusted steel",
+        "status": "intact",
+        "notes": ""
       }
     ],
     "location": "",
@@ -567,5 +593,5 @@
   "executionLog": [],
   "conversations": [],
   "createdAt": "2026-05-19T17:27:29.083Z",
-  "updatedAt": "2026-05-19T17:31:22.222Z"
+  "updatedAt": "2026-05-19T19:48:41.289Z"
 }
