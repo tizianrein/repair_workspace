@@ -2,423 +2,600 @@
   "schemaVersion": "2.0.0",
   "template": null,
   "instance": {
-    "id": "lunch_chair",
-    "name": "Lunch Chair",
+    "id": "inst_cantilever_chair",
+    "name": "Cantilever Chair",
     "templateRef": null,
     "parts": [
       {
-        "id": "backrest",
-        "label": "Backrest",
+        "id": "seat_front_rail",
+        "label": "Seat Front Rail",
         "origin": {
-          "x": -0.157503,
-          "y": 0.752163,
-          "z": -0.005168
+          "x": 0.0,
+          "y": 0.44432,
+          "z": -0.254095
         },
         "dimensions": {
-          "width": 0.04529,
-          "height": 0.437329,
-          "depth": 0.084895
+          "width": 0.468728,
+          "height": 0.05,
+          "depth": 0.039194
         },
         "rotation": {
-          "x": -1.570796,
-          "y": 0,
-          "z": 0
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
         },
         "connections": [
-          "back_right_leg",
-          "back_left_leg"
+          "seat_caning",
+          "seat_right_rail",
+          "seat_left_rail"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "Beech timber",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "front_left_leg",
-        "label": "Front Left Leg",
+        "id": "seat_back_rail",
+        "label": "Seat Back Rail",
         "origin": {
-          "x": 0.177713,
-          "y": 0.222923,
-          "z": -0.144027
+          "x": 0.0,
+          "y": 0.431594,
+          "z": 0.109918
         },
         "dimensions": {
-          "width": 0.40512,
-          "height": 0.03755,
-          "depth": 0.03528
+          "width": 0.468728,
+          "height": 0.05,
+          "depth": 0.039194
         },
         "rotation": {
-          "x": -0.006422,
-          "y": -1.570796,
-          "z": 1.570796
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
         },
         "connections": [
-          "front_apron",
-          "rounded_apron",
-          "front_stretcher",
-          "round_stretcher"
+          "seat_caning",
+          "seat_right_rail",
+          "seat_left_rail"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "Beech timber",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "front_right_leg",
-        "label": "Front Right Leg",
+        "id": "seat_right_rail",
+        "label": "Seat Right Rail",
         "origin": {
-          "x": 0.191055,
-          "y": 0.222838,
-          "z": 0.18024
+          "x": 0.209364,
+          "y": 0.437957,
+          "z": -0.072088
         },
         "dimensions": {
-          "width": 0.40512,
-          "height": 0.038881,
-          "depth": 0.03528
+          "width": 0.414236,
+          "height": 0.05,
+          "depth": 0.039194
         },
         "rotation": {
-          "x": 0.049829,
-          "y": -1.570796,
-          "z": 1.570796
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
         },
         "connections": [
-          "rounded_apron",
-          "front_apron",
-          "front_stretcher",
-          "round_stretcher"
+          "seat_front_rail",
+          "seat_back_rail",
+          "seat_caning",
+          "frame_right_seat_support"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "Beech timber",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "back_left_leg",
-        "label": "Back Left Leg",
+        "id": "seat_left_rail",
+        "label": "Seat Left Rail",
         "origin": {
-          "x": -0.181214,
-          "y": 0.381046,
-          "z": -0.129702
+          "x": -0.209364,
+          "y": 0.437957,
+          "z": -0.072088
         },
         "dimensions": {
-          "width": 0.759087,
-          "height": 0.052487,
-          "depth": 0.045646
+          "width": 0.414236,
+          "height": 0.05,
+          "depth": 0.039194
         },
         "rotation": {
-          "x": -0.038933,
-          "y": -1.573305,
-          "z": 1.635148
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
         },
         "connections": [
-          "back_slat_upper",
-          "back_slat_lower",
-          "backrest",
-          "round_stretcher",
-          "rounded_apron"
+          "seat_front_rail",
+          "seat_back_rail",
+          "seat_caning",
+          "frame_left_seat_support"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "Beech timber",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "back_right_leg",
-        "label": "Back Right Leg",
+        "id": "backrest_left_rail",
+        "label": "Backrest Left Rail",
         "origin": {
-          "x": -0.183172,
-          "y": 0.387249,
-          "z": 0.168494
+          "x": -0.207541,
+          "y": 0.658468,
+          "z": 0.204515
         },
         "dimensions": {
-          "width": 0.741169,
-          "height": 0.062518,
-          "depth": 0.046624
+          "width": 0.294396,
+          "height": 0.05,
+          "depth": 0.041893
         },
         "rotation": {
-          "x": -0.040198,
-          "y": -1.575075,
-          "z": 1.6359
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
         },
         "connections": [
-          "backrest",
-          "back_slat_upper",
-          "back_slat_lower",
-          "round_stretcher",
-          "rounded_apron"
+          "frame_left_back_support",
+          "backrest_caning",
+          "backrest_top_rail",
+          "backrest_bottom_rail"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "Beech timber",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "front_stretcher",
-        "label": "Front Stretcher",
+        "id": "frame_left_back_support",
+        "label": "Frame Left Back Support",
         "origin": {
-          "x": 0.181957,
-          "y": 0.302869,
-          "z": 0.020778
+          "x": -0.217541,
+          "y": 0.675447,
+          "z": 0.244874
         },
         "dimensions": {
-          "width": 0.292059,
-          "height": 0.027114,
-          "depth": 0.024037
+          "width": 0.244396,
+          "height": 0.03,
+          "depth": 0.03
         },
         "rotation": {
-          "x": 0,
-          "y": 1.570796,
-          "z": 3.141593
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
         },
         "connections": [
-          "front_left_leg",
-          "front_right_leg"
+          "backrest_left_rail",
+          "frame_left_rear_bend"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "Chrome-plated steel tube",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "front_apron",
-        "label": "Front Apron",
+        "id": "frame_left_seat_support",
+        "label": "Frame Left Seat Support",
         "origin": {
-          "x": 0.191417,
-          "y": 0.443152,
-          "z": 0.018502
+          "x": -0.217541,
+          "y": 0.400691,
+          "z": -0.007442
         },
         "dimensions": {
-          "width": 0.362613,
-          "height": 0.058178,
-          "depth": 0.034912
+          "width": 0.466649,
+          "height": 0.03,
+          "depth": 0.03
         },
         "rotation": {
-          "x": 1.568978,
-          "y": -1.565416,
-          "z": 0
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
         },
         "connections": [
-          "front_left_leg",
-          "seat",
-          "front_right_leg",
-          "rounded_apron"
+          "seat_left_rail",
+          "frame_left_front_vertical",
+          "frame_left_rear_bend"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "Chrome-plated steel tube",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "seat_panel",
-        "label": "Seat Panel",
+        "id": "frame_left_front_vertical",
+        "label": "Frame Left Front Vertical",
         "origin": {
-          "x": 0.023798,
-          "y": 0.462697,
-          "z": 0.019359
+          "x": -0.217541,
+          "y": 0.212469,
+          "z": -0.262539
         },
         "dimensions": {
-          "width": 0.394143,
-          "height": 0.363173,
-          "depth": 0.004181
+          "width": 0.424141,
+          "height": 0.03,
+          "depth": 0.03
         },
         "rotation": {
-          "x": -1.56898,
-          "y": 0.003274,
-          "z": 0
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
         },
         "connections": [
-          "seat"
+          "frame_left_seat_support",
+          "frame_left_bottom_runner"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "Chrome-plated steel tube",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "seat",
-        "label": "Seat",
+        "id": "frame_left_bottom_runner",
+        "label": "Frame Left Bottom Runner",
         "origin": {
-          "x": 0.023798,
-          "y": 0.477304,
-          "z": 0.019332
+          "x": -0.217541,
+          "y": 0.015002,
+          "z": 0.0045
         },
         "dimensions": {
-          "width": 0.394143,
-          "height": 0.363173,
-          "depth": 0.025034
+          "width": 0.03,
+          "height": 0.519001,
+          "depth": 0.03
         },
         "rotation": {
-          "x": -1.56898,
-          "y": 0.003274,
-          "z": 0
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
         },
         "connections": [
-          "front_apron",
-          "seat_panel",
-          "rounded_apron"
+          "frame_left_front_vertical",
+          "frame_rear_stretcher"
         ],
-        "material": "Weathered solid timber",
-        "status": "new",
+        "material": "Chrome-plated steel tube",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "rounded_apron",
-        "label": "Rounded Apron",
+        "id": "frame_left_rear_bend",
+        "label": "Frame Left Rear Bend",
         "origin": {
-          "x": -0.005127,
-          "y": 0.443264,
-          "z": 0.01966
+          "x": -0.217541,
+          "y": 0.469714,
+          "z": 0.213426
         },
         "dimensions": {
-          "width": 0.363389,
-          "height": 0.336901,
-          "depth": 0.034695
+          "width": 0.183484,
+          "height": 0.030036,
+          "depth": 0.03
         },
         "rotation": {
-          "x": 1.568952,
-          "y": -1.569205,
-          "z": 0
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
         },
         "connections": [
-          "front_right_leg",
-          "seat",
-          "front_left_leg",
-          "front_apron",
-          "back_right_leg",
-          "back_left_leg"
+          "frame_left_back_support",
+          "frame_left_seat_support"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "Chrome-plated steel tube",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "round_stretcher",
-        "label": "Round Stretcher",
+        "id": "seat_caning",
+        "label": "Seat Caning",
         "origin": {
-          "x": -0.005127,
-          "y": 0.332098,
-          "z": 0.01966
+          "x": 0.0,
+          "y": 0.451265,
+          "z": -0.071632
         },
         "dimensions": {
-          "width": 0.363342,
-          "height": 0.336901,
-          "depth": 0.018362
+          "width": 0.387361,
+          "height": 0.335804,
+          "depth": 0.006591
         },
         "rotation": {
-          "x": 1.569827,
-          "y": -1.569205,
-          "z": 0
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
         },
         "connections": [
-          "back_left_leg",
-          "back_right_leg",
-          "front_left_leg",
-          "front_right_leg"
+          "seat_front_rail",
+          "seat_back_rail",
+          "seat_right_rail",
+          "seat_left_rail"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "Woven cane",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "back_slat_upper",
-        "label": "Back Slat Upper",
+        "id": "backrest_caning",
+        "label": "Backrest Caning",
         "origin": {
-          "x": -0.176334,
-          "y": 0.631842,
-          "z": 0.000074
+          "x": 0.000799,
+          "y": 0.661,
+          "z": 0.197763
         },
         "dimensions": {
-          "width": 0.248498,
-          "height": 0.045587,
-          "depth": 0.019058
+          "width": 0.390976,
+          "height": 0.21183,
+          "depth": 0.016028
         },
         "rotation": {
-          "x": 0.081093,
-          "y": 1.570796,
-          "z": 3.141593
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
         },
         "connections": [
-          "back_left_leg",
-          "back_right_leg"
+          "backrest_left_rail",
+          "backrest_top_rail",
+          "backrest_bottom_rail",
+          "backrest_right_rail"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "Woven cane",
+        "status": "intact",
         "notes": ""
       },
       {
-        "id": "back_slat_lower",
-        "label": "Back Slat Lower",
+        "id": "frame_rear_stretcher",
+        "label": "Frame Rear Stretcher",
         "origin": {
-          "x": -0.178298,
-          "y": 0.561717,
-          "z": 0.004252
+          "x": 0.000842,
+          "y": 0.015002,
+          "z": 0.249001
         },
         "dimensions": {
-          "width": 0.248498,
-          "height": 0.045587,
-          "depth": 0.019058
+          "width": 0.466767,
+          "height": 0.03,
+          "depth": 0.03
         },
         "rotation": {
-          "x": 0.118593,
-          "y": 1.570796,
-          "z": -3.141593
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
         },
         "connections": [
-          "back_left_leg",
-          "back_right_leg"
+          "frame_left_bottom_runner",
+          "frame_right_bottom_runner"
         ],
-        "material": "Weathered solid timber",
-        "status": "defective",
+        "material": "Chrome-plated steel tube",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "frame_right_rear_bend",
+        "label": "Frame Right Rear Bend",
+        "origin": {
+          "x": 0.219226,
+          "y": 0.469714,
+          "z": 0.213426
+        },
+        "dimensions": {
+          "width": 0.183484,
+          "height": 0.030036,
+          "depth": 0.03
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "frame_right_seat_support",
+          "frame_right_back_support"
+        ],
+        "material": "Chrome-plated steel tube",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "frame_right_bottom_runner",
+        "label": "Frame Right Bottom Runner",
+        "origin": {
+          "x": 0.219226,
+          "y": 0.015002,
+          "z": 0.0045
+        },
+        "dimensions": {
+          "width": 0.03,
+          "height": 0.519001,
+          "depth": 0.03
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "frame_rear_stretcher",
+          "frame_right_front_vertical"
+        ],
+        "material": "Chrome-plated steel tube",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "frame_right_front_vertical",
+        "label": "Frame Right Front Vertical",
+        "origin": {
+          "x": 0.219226,
+          "y": 0.212469,
+          "z": -0.262539
+        },
+        "dimensions": {
+          "width": 0.424141,
+          "height": 0.03007,
+          "depth": 0.03007
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "frame_right_bottom_runner",
+          "frame_right_seat_support"
+        ],
+        "material": "Chrome-plated steel tube",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "frame_right_seat_support",
+        "label": "Frame Right Seat Support",
+        "origin": {
+          "x": 0.219226,
+          "y": 0.400691,
+          "z": -0.007442
+        },
+        "dimensions": {
+          "width": 0.466649,
+          "height": 0.030019,
+          "depth": 0.030019
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "seat_right_rail",
+          "frame_right_rear_bend",
+          "frame_right_front_vertical"
+        ],
+        "material": "Chrome-plated steel tube",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "frame_right_back_support",
+        "label": "Frame Right Back Support",
+        "origin": {
+          "x": 0.219226,
+          "y": 0.675447,
+          "z": 0.244874
+        },
+        "dimensions": {
+          "width": 0.244396,
+          "height": 0.030098,
+          "depth": 0.030098
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "frame_right_rear_bend",
+          "backrest_right_rail"
+        ],
+        "material": "Chrome-plated steel tube",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "backrest_top_rail",
+        "label": "Backrest Top Rail",
+        "origin": {
+          "x": 0.000842,
+          "y": 0.777995,
+          "z": 0.229925
+        },
+        "dimensions": {
+          "width": 0.466767,
+          "height": 0.05,
+          "depth": 0.041893
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "backrest_left_rail",
+          "backrest_caning",
+          "backrest_right_rail"
+        ],
+        "material": "Beech timber",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "backrest_bottom_rail",
+        "label": "Backrest Bottom Rail",
+        "origin": {
+          "x": 0.000842,
+          "y": 0.538941,
+          "z": 0.179106
+        },
+        "dimensions": {
+          "width": 0.466767,
+          "height": 0.05,
+          "depth": 0.041893
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "backrest_left_rail",
+          "backrest_caning",
+          "backrest_right_rail"
+        ],
+        "material": "Beech timber",
+        "status": "intact",
+        "notes": ""
+      },
+      {
+        "id": "backrest_right_rail",
+        "label": "Backrest Right Rail",
+        "origin": {
+          "x": 0.209226,
+          "y": 0.658468,
+          "z": 0.204515
+        },
+        "dimensions": {
+          "width": 0.294396,
+          "height": 0.05,
+          "depth": 0.041893
+        },
+        "rotation": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "connections": [
+          "backrest_caning",
+          "frame_right_back_support",
+          "backrest_top_rail",
+          "backrest_bottom_rail"
+        ],
+        "material": "Beech timber",
+        "status": "intact",
         "notes": ""
       }
     ],
     "location": "",
     "provenance": "",
     "notes": "",
-    "createdAt": "2026-05-16T15:04:11.777Z",
-    "sourcePhotoEvidenceId": "ev_7f43309a26f"
+    "createdAt": "2026-05-19T15:07:57.181Z",
+    "sourcePhotoEvidenceId": "ev_a6a5a8b1259"
   },
   "evidence": [
     {
-      "id": "ev_7f43309a26f",
+      "id": "ev_a6a5a8b1259",
       "kind": "photo",
       "attachedTo": null,
-      "capturedAt": "2026-05-16T15:04:11.777Z",
+      "capturedAt": "2026-05-19T15:07:57.181Z",
       "capturedBy": null,
-      "url": "idb://ev_7f43309a26f",
+      "url": "idb://ev_a6a5a8b1259",
       "text": null,
       "measurement": null,
-      "confirmsConditionRef": null,
-      "refutesConditionRef": null,
-      "fileName": "IMG_6692.JPG",
-      "byteSize": 2552032
+      "confirmsHypothesisRef": null,
+      "refutesHypothesisRef": null,
+      "fileName": "breuer.jpg",
+      "byteSize": 57168
     }
   ],
-  "conditions": [],
+  "hypotheses": [],
   "intent": {
-    "axes": [
-      {
-        "id": "axis_1",
-        "label": "Material Authenticity",
-        "value": 0.5
-      },
-      {
-        "id": "axis_2",
-        "label": "Structural Performance",
-        "value": 0.5
-      },
-      {
-        "id": "axis_3",
-        "label": "Economic Viability",
-        "value": 0.5
-      },
-      {
-        "id": "axis_4",
-        "label": "Cultural Continuity",
-        "value": 0.5
-      },
-      {
-        "id": "axis_5",
-        "label": "Ecological Sustainability",
-        "value": 0.5
-      },
-      {
-        "id": "axis_6",
-        "label": "Aesthetic Intervention",
-        "value": 0.5
-      }
-    ],
+    "axes": [],
     "summary": ""
   },
   "constraints": {
@@ -436,6 +613,6 @@
   "currentPlanId": null,
   "executionLog": [],
   "conversations": [],
-  "createdAt": "2026-05-16T15:04:11.777Z",
-  "updatedAt": "2026-05-16T15:48:08.842Z"
+  "createdAt": "2026-05-19T15:07:57.181Z",
+  "updatedAt": "2026-05-19T15:20:28.694Z"
 }
