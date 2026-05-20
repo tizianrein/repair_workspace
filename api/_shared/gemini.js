@@ -195,6 +195,7 @@ export async function callGeminiWithTools({
   workspaceSnapshot,       // Stringified workspace summary for context
   tools,                   // Array of function declarations
   executeTool,             // async (name, args) => result
+  files = [],              // Attached images: [{ mimeType, data(base64) }]
   model = 'gemini-2.5-flash',
   temperature = 0.5,
   maxTurns = 8,
@@ -217,6 +218,16 @@ export async function callGeminiWithTools({
     });
   }
   userParts.push({ text: userMessage });
+
+  // Attached images. Gemini 2.5 Flash is multimodal — feed each photo as
+  // an inline_data part alongside the text so the model can actually see
+  // what the user attached. Without this the model only gets the text and
+  // correctly says it can't process images.
+  for (const f of files) {
+    if (f && f.data && f.mimeType) {
+      userParts.push({ inline_data: { mime_type: f.mimeType, data: f.data } });
+    }
+  }
 
   const contents = [...history, { role: 'user', parts: userParts }];
 
@@ -342,6 +353,7 @@ export async function streamGeminiWithTools({
   tools,
   executeTool,
   onEvent,
+  files = [],              // Attached images: [{ mimeType, data(base64) }]
   model = 'gemini-2.5-flash',
   temperature = 0.5,
   maxTurns = 8,
@@ -362,6 +374,13 @@ export async function streamGeminiWithTools({
     });
   }
   userParts.push({ text: userMessage });
+
+  // Attached images — see callGeminiWithTools above for rationale.
+  for (const f of files) {
+    if (f && f.data && f.mimeType) {
+      userParts.push({ inline_data: { mime_type: f.mimeType, data: f.data } });
+    }
+  }
 
   const contents = [...history, { role: 'user', parts: userParts }];
 

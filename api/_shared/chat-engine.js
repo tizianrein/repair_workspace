@@ -230,6 +230,7 @@ export async function runChat({ thread, userMessage, workspace, files }) {
       workspaceSnapshot: snapshot,
       tools: CHAT_TOOLS,
       executeTool,
+      files,
       model: 'gemini-2.5-flash',
       temperature: 0.6,
       maxTurns: 12,
@@ -295,6 +296,7 @@ export async function runChat({ thread, userMessage, workspace, files }) {
         workspaceSnapshot: snapshot,
         tools: CHAT_TOOLS,
         executeTool,
+        files,
         model: 'gemini-2.5-flash',
         temperature: 0.4,  // a touch lower — we want compliance, not creativity
         maxTurns: 12,
