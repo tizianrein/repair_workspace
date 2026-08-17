@@ -5,14 +5,21 @@
  * here. Centralized error handling, JSON unwrapping, multimodal support.
  */
 
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+export const DEFAULT_TEXT_MODEL = 'gemini-3.7-flash';
+export const DEFAULT_IMAGE_MODEL = 'gemini-3.1-flash-image';
 
-export async function callGemini({ systemPrompt, userPayload, files = [], model, temperature = 0.4, maxOutputTokens }) {
+export async function callGemini({
+  systemPrompt,
+  userPayload,
+  files = [],
+  model = DEFAULT_TEXT_MODEL,
+  thinkingLevel = 'medium',
+  maxOutputTokens,
+}) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY not configured on the server');
 
-  const m = model || DEFAULT_MODEL;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const parts = [];
   if (systemPrompt) parts.push({ text: systemPrompt });
@@ -27,10 +34,10 @@ export async function callGemini({ systemPrompt, userPayload, files = [], model,
     contents: [{ parts }],
     generationConfig: {
       responseMimeType: 'application/json',
-      temperature,
-      // Default was 8192, too small for plan generation. Bumped to 32k —
-      // Gemini 2.5 supports up to 65k. Callers can override.
-      maxOutputTokens: maxOutputTokens || 32768
+      thinkingConfig: { thinkingLevel },
+      // Gemini 3.7 Flash supports up to 65k output tokens. Callers can
+      // lower this for compact structured tasks.
+      maxOutputTokens: maxOutputTokens || 32768,
     }
   };
 
@@ -196,8 +203,8 @@ export async function callGeminiWithTools({
   tools,                   // Array of function declarations
   executeTool,             // async (name, args) => result
   files = [],              // Attached images: [{ mimeType, data(base64) }]
-  model = 'gemini-2.5-flash',
-  temperature = 0.5,
+  model = DEFAULT_TEXT_MODEL,
+  thinkingLevel = 'medium',
   maxTurns = 8,
   maxOutputTokens = 16384
 }) {
@@ -219,7 +226,7 @@ export async function callGeminiWithTools({
   }
   userParts.push({ text: userMessage });
 
-  // Attached images. Gemini 2.5 Flash is multimodal — feed each photo as
+  // Gemini 3.7 Flash is multimodal — feed each attached photo as
   // an inline_data part alongside the text so the model can actually see
   // what the user attached. Without this the model only gets the text and
   // correctly says it can't process images.
@@ -242,9 +249,9 @@ export async function callGeminiWithTools({
       systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
       tools: tools && tools.length ? [{ functionDeclarations: tools }] : undefined,
       generationConfig: {
-        temperature,
-        maxOutputTokens
-      }
+        thinkingConfig: { thinkingLevel },
+        maxOutputTokens,
+      },
     };
 
     const res = await fetch(url, {
@@ -283,7 +290,7 @@ export async function callGeminiWithTools({
     for (const p of parts) {
       if (p.text) turnText += p.text;
       const fc = p.functionCall || p.function_call;
-      if (fc) turnCalls.push({ name: fc.name, args: fc.args || {} });
+      if (fc) turnCalls.push({ id: fc.id || null, name: fc.name, args: fc.args || {} });
     }
 
     // Append model's response to contents
@@ -315,12 +322,13 @@ export async function callGeminiWithTools({
         result = { error: err.message };
       }
       toolCalls.push({ name: call.name, args: call.args, result });
-      responseParts.push({
-        functionResponse: {
-          name: call.name,
-          response: typeof result === 'object' && result !== null ? result : { value: result }
-        }
-      });
+      const functionResponse = {
+        name: call.name,
+        response: typeof result === 'object' && result !== null ? result : { value: result },
+      };
+      // Gemini 3.x requires the response id to match the preceding call.
+      if (call.id) functionResponse.id = call.id;
+      responseParts.push({ functionResponse });
     }
 
     // Feed the tool results back as a user turn
@@ -354,8 +362,8 @@ export async function streamGeminiWithTools({
   executeTool,
   onEvent,
   files = [],              // Attached images: [{ mimeType, data(base64) }]
-  model = 'gemini-2.5-flash',
-  temperature = 0.5,
+  model = DEFAULT_TEXT_MODEL,
+  thinkingLevel = 'medium',
   maxTurns = 8,
   maxOutputTokens = 16384
 }) {
@@ -393,7 +401,10 @@ export async function streamGeminiWithTools({
       contents,
       systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : undefined,
       tools: tools && tools.length ? [{ functionDeclarations: tools }] : undefined,
-      generationConfig: { temperature, maxOutputTokens }
+      generationConfig: {
+        thinkingConfig: { thinkingLevel },
+        maxOutputTokens,
+      },
     };
 
     const res = await fetch(url, {
@@ -432,15 +443,14 @@ export async function streamGeminiWithTools({
         const cand = chunk?.candidates?.[0];
         const parts = cand?.content?.parts || [];
         for (const p of parts) {
+          const fc = p.functionCall || p.function_call;
+          if (p.text || fc) turnParts.push(p);
           if (p.text) {
             turnText += p.text;
-            turnParts.push({ text: p.text });
             onEvent?.({ kind: 'text_delta', text: p.text });
           }
-          const fc = p.functionCall || p.function_call;
           if (fc) {
-            turnCalls.push({ name: fc.name, args: fc.args || {} });
-            turnParts.push({ functionCall: { name: fc.name, args: fc.args || {} } });
+            turnCalls.push({ id: fc.id || null, name: fc.name, args: fc.args || {} });
             // We delay emitting the tool_call event until we actually execute
             // it below — so the client gets it together with its result.
           }
@@ -470,12 +480,12 @@ export async function streamGeminiWithTools({
       const record = { name: call.name, args: call.args, result };
       allToolCalls.push(record);
       onEvent?.({ kind: 'tool_call', ...record });
-      responseParts.push({
-        functionResponse: {
-          name: call.name,
-          response: typeof result === 'object' && result !== null ? result : { value: result }
-        }
-      });
+      const functionResponse = {
+        name: call.name,
+        response: typeof result === 'object' && result !== null ? result : { value: result },
+      };
+      if (call.id) functionResponse.id = call.id;
+      responseParts.push({ functionResponse });
     }
     contents.push({ role: 'user', parts: responseParts });
   }
@@ -503,12 +513,8 @@ export async function callGeminiImage({ prompt, files = [] }) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY not configured on the server');
 
-  // Nano Banana 2 — successor to gemini-2.5-flash-image. Same generateContent
-  // shape, better prompt adherence and text rendering, lower cost per call.
-  // Still a "preview" id at the time of writing; swap to the stable id when
-  // Google promotes it.
-  const model = 'gemini-3.1-flash-image-preview';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  // Stable Nano Banana 2 model for image generation and editing.
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${DEFAULT_IMAGE_MODEL}:generateContent?key=${apiKey}`;
 
   const parts = [];
   if (prompt) parts.push({ text: prompt });

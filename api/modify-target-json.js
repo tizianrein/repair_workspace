@@ -23,8 +23,8 @@
  *     rationale: "2-3 sentences explaining what was changed and why"
  *   }
  *
- * Uses gemini-2.5-flash — small structured edits are well within its
- * capability, and the input is small so it's fast.
+ * Uses Gemini 3.7 Flash with low thinking; the input is small so the
+ * iterative loop stays responsive.
  */
 
 import { callGemini } from './_shared/gemini.js';
@@ -52,8 +52,7 @@ export default async function handler(req, res) {
     const result = await callGemini({
       systemPrompt,
       userPayload,
-      model: 'gemini-2.5-flash',
-      temperature: 0.3,
+      thinkingLevel: 'low',
       maxOutputTokens: 8192
     });
 

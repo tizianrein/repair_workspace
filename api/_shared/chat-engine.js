@@ -231,10 +231,9 @@ export async function runChat({ thread, userMessage, workspace, files }) {
       tools: CHAT_TOOLS,
       executeTool,
       files,
-      model: 'gemini-2.5-flash',
-      temperature: 0.6,
+      thinkingLevel: 'medium',
       maxTurns: 12,
-      // Gemini 2.5 Flash supports up to 65k output tokens. We use a
+      // Gemini 3.7 Flash supports up to 65k output tokens. We use a
       // generous budget so big plans (20+ steps with full descriptions)
       // can fit. The bottleneck for big plans is rarely tokens — it's
       // Gemini's tool-call argument decoder choking on deeply nested
@@ -297,8 +296,7 @@ export async function runChat({ thread, userMessage, workspace, files }) {
         tools: CHAT_TOOLS,
         executeTool,
         files,
-        model: 'gemini-2.5-flash',
-        temperature: 0.4,  // a touch lower — we want compliance, not creativity
+        thinkingLevel: 'medium',
         maxTurns: 12,
         maxOutputTokens: 32768
       });
@@ -337,8 +335,7 @@ export async function runChat({ thread, userMessage, workspace, files }) {
         // No tools on the retry — we want a conversational fallback only.
         tools: [],
         executeTool: async () => ({ ok: true }),
-        model: 'gemini-2.5-flash',
-        temperature: 0.5,
+        thinkingLevel: 'low',
         maxTurns: 1,
         maxOutputTokens: 2048
       });

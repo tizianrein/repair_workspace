@@ -6,9 +6,8 @@
  * Why a dedicated endpoint instead of using /api/propose?
  *   1. Plans need a much more specific prompt with graph-construction rules
  *      that would clutter the generic propose prompt for all other operations.
- *   2. Plans benefit from a stronger reasoning model. We use gemini-2.5-pro
- *      here, while /api/propose runs the faster gemini-2.5-flash for typical
- *      single-purpose operations (add condition, update intent, etc.).
+ *   2. Plans benefit from deeper reasoning. We use Gemini 3.7 Flash with
+ *      high thinking here, while ordinary proposals use medium thinking.
  *   3. Plans have much higher token budgets — a real plan can have 10-25
  *      steps, each with detailed descriptions and justifications.
  *
@@ -63,8 +62,7 @@ export default async function handler(req, res) {
       systemPrompt,
       userPayload,
       files: files || [],
-      model: 'gemini-2.5-pro',
-      temperature: 0.4,
+      thinkingLevel: 'high',
       maxOutputTokens: 32768
     });
 

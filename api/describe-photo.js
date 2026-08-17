@@ -78,8 +78,7 @@ export default async function handler(req, res) {
       systemPrompt: SYSTEM_PROMPT + hint,
       userPayload: 'Describe the artefact in this photo according to the schema above.',
       files: [file],
-      model: 'gemini-2.5-flash',
-      temperature: 0.2,
+      thinkingLevel: 'low',
       maxOutputTokens: 4096
     });
 

@@ -12,6 +12,7 @@
     "test:commands": "node tests/test-commands.mjs",
     "test:step-resolution": "node tests/test-step-resolution.mjs",
     "test:collaboration": "node tests/test-collaboration.mjs",
+    "test:gemini": "node tests/test-gemini-config.mjs",
     "test:cloudflare-api": "node tests/test-cloudflare-api.mjs",
     "cloudflare:dev": "wrangler dev --config cloudflare/wrangler.jsonc --port 8787",
     "cloudflare:migrate:local": "wrangler d1 migrations apply repair-workspace-db --local --config cloudflare/wrangler.jsonc",

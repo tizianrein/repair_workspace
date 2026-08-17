@@ -9,8 +9,8 @@
  *   - justification with rationale and driving axes/conditions
  *   - confidence
  *
- * Uses gemini-2.5-flash because this is straightforward field-filling
- * rather than novel structural reasoning. Output volume is moderate
+ * Uses Gemini 3.7 Flash with low thinking because this is straightforward
+ * field-filling rather than novel structural reasoning. Output volume is moderate
  * (~200-400 tokens per step × N steps).
  *
  * Body:
@@ -64,8 +64,7 @@ export default async function handler(req, res) {
     const result = await callGemini({
       systemPrompt,
       userPayload,
-      model: 'gemini-2.5-flash',
-      temperature: 0.3,
+      thinkingLevel: 'low',
       maxOutputTokens: 32768
     });
 

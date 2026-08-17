@@ -44,6 +44,7 @@ const expected = [
   'tests/test-migration.mjs',
   'tests/test-commands.mjs',
   'tests/test-collaboration.mjs',
+  'tests/test-gemini-config.mjs',
   'tests/test-cloudflare-api.mjs',
   'tests/fixtures/v1-repair-workspace.json',
   'docs/workflow.md',

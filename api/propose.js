@@ -63,8 +63,7 @@ export default async function handler(req, res) {
       systemPrompt,
       userPayload,
       files: files || [],
-      model: scope === 'assembly' ? 'gemini-2.5-pro' : 'gemini-2.5-flash',
-      temperature: 0.4
+      thinkingLevel: scope === 'assembly' ? 'high' : 'medium',
     });
 
     if (!result || typeof result !== 'object') {

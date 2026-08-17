@@ -1040,7 +1040,7 @@ async function runPropose({ scope = 'all', userMessage }) {
   const thinking = document.createElement('div');
   thinking.className = 'chat-bubble chat-llm chat-thinking';
   const baseText = isPlanGenRequestForUi
-    ? `Generating plan structure (Gemini 2.5 Pro). Tools/materials/rationale will fill in afterwards in the background.`
+    ? `Generating plan structure (Gemini 3.7 Flash, high reasoning). Tools/materials/rationale will fill in afterwards in the background.`
     : `Proposing changes (${scope})`;
   thinking.textContent = `${baseText} … 0s`;
   $('chat-history').appendChild(thinking);
@@ -1064,7 +1064,7 @@ async function runPropose({ scope = 'all', userMessage }) {
 
   try {
     // Plan-generation requests go to the dedicated /api/generate-plan
-    // endpoint, which uses a specialized prompt and gemini-2.5-pro for
+    // endpoint, which uses a specialized prompt and high Gemini 3.7 reasoning for
     // higher-quality results. Other interventions scope requests (small
     // modifications to an existing plan) still go through /api/propose.
     const endpoint = isPlanGenRequestForUi ? '/api/generate-plan' : '/api/propose';

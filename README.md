@@ -47,6 +47,10 @@ vercel dev           # serves /api on :3000, vite proxies
 
 Get a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) — free tier is enough for a workshop with a dozen participants.
 
+AI text, multimodal analysis, planning, and tool-calling routes use the stable
+`gemini-3.7-flash` model with task-specific thinking levels. Image generation
+uses the stable `gemini-3.1-flash-image` model (Nano Banana 2).
+
 ## Deploy to Vercel
 
 ```bash

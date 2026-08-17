@@ -135,8 +135,7 @@ export default async function handler(req, res) {
     const result = await callGemini({
       systemPrompt: SYSTEM_PROMPT,
       userPayload,
-      model: 'gemini-2.5-flash',
-      temperature: 0.3,
+      thinkingLevel: 'low',
       maxOutputTokens: 8192
     });
 
