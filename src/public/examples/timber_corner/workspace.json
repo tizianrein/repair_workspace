@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "2.1.0",
+  "template": null,
+  "instance": {
+    "id": "inst_timber_corner",
+    "name": "Timber Corner",
+    "templateRef": null,
+    "parts": [
+      {
+        "id": "timber_corner_structure",
+        "label": "Timber Corner Structure",
+        "origin": {
+          "x": 4.8307,
+          "y": -4.8341,
+          "z": 13.0028
+        },
+        "dimensions": {
+          "width": 30.449,
+          "height": 25.4949,
+          "depth": 25.1557
+        },
+        "rotation": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "connections": [],
+        "material": "historic timber",
+        "status": "intact",
+        "notes": "Photogrammetric mesh represented as one condition-mapping surface. Individual timbers have not yet been segmented."
+      }
+    ],
+    "location": "",
+    "provenance": "ROB|ARCH 2026 workshop scan",
+    "notes": "Full timber corner structure supplied as a RealityScan GLB.",
+    "coverImage": null,
+    "sourcePhotoEvidenceId": "ev_timber_corner_reference",
+    "defaultDisplayMode": "mesh",
+    "createdAt": "2026-08-17T12:15:00.000Z"
+  },
+  "evidence": [
+    {
+      "id": "ev_timber_corner_reference",
+      "kind": "photo",
+      "attachedTo": null,
+      "capturedAt": "2026-08-12T11:58:00.000Z",
+      "capturedBy": null,
+      "url": "idb://ev_timber_corner_reference",
+      "text": null,
+      "measurement": null,
+      "confirmsConditionRef": null,
+      "refutesConditionRef": null,
+      "fileName": "timber_corner.jpg",
+      "byteSize": 3466543
+    }
+  ],
+  "conditions": [],
+  "plans": [],
+  "currentPlanId": null,
+  "executionLog": [],
+  "conversations": [],
+  "createdAt": "2026-08-17T12:15:00.000Z",
+  "updatedAt": "2026-08-17T12:15:00.000Z"
+}
