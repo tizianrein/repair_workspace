@@ -37,6 +37,10 @@ import { showProposeReview } from './views/propose-review.js';
 import { showExecutionEntry } from './views/execution-log.js';
 import { createDetailEditor } from './views/detail-editor.js';
 import { payloadForPropose } from './ai/ai-payload.js';
+import {
+  CollaborationApi, createProjectId, exampleProjectId,
+  normalizeAuthorKey, normalizeAuthorName, projectShareUrl, projectTemplate
+} from './core/collaboration.js';
 
 const state = createState();
 let viewer3D = null, actionGraph = null, spatialGraph = null;
@@ -46,6 +50,8 @@ let activeTab = 'pane-3d';
 let selectedStepId = null;
 let proposeInFlight = false;
 let viewerDirty = {};
+let collaborationSaveTimer = null;
+let collaborationSuppressSync = false;
 
 const $ = id => document.getElementById(id);
 function log(msg) { $('console-output').textContent = msg; }
@@ -249,6 +255,10 @@ let inPlaceMode = false;
 
 function enterPlaceMode() {
   if (inPlaceMode) return;
+  if (state.collaboration?.readOnly) {
+    log('All conditions is a read-only overview. Switch to My conditions to add an observation.');
+    return;
+  }
   const ws = state.workspace;
   if (!ws.instance?.parts?.length) {
     log('No parts to attach a condition to. Load an artefact first.');
@@ -272,7 +282,9 @@ function enterPlaceMode() {
         partRef: part.id,
         coordinates: { x: point.x, y: point.y, z: point.z },
         status: 'suspected',
-        confidence: 0.5
+        confidence: 0.5,
+        authorName: state.collaboration?.activeAuthorName || null,
+        authorKey: state.collaboration?.activeAuthorKey || null
       });
       apply(state, { type: 'add-condition', payload: { condition: newHyp } });
       exitPlaceMode();
@@ -468,6 +480,7 @@ function exportStrategy(planId) {
 }
 
 subscribe(state, renderAll);
+subscribe(state, queueCollaborationSave);
 
 // -------------------------------------------------------------------------
 // Tabs
@@ -616,6 +629,7 @@ $('workspace-file').addEventListener('change', async e => {
     const { workspace: parsed, photoCount } = await importWorkspaceBundle(file);
     loadWorkspaceJson(parsed);
     log(`Loaded ${file.name}${photoCount ? ` (+ ${photoCount} photos)` : ''}`);
+    await startSharedProject({ sourceType: 'upload' });
   } catch (err) {
     console.error(err);
     log(`Load failed: ${err.message}`);
@@ -640,7 +654,7 @@ function loadWorkspaceJson(parsed) {
     if (warnings.length) { console.warn('Migration warnings:', warnings); log(`Migrated (${warnings.length} warnings — see console)`); }
   }
   const v = validateWorkspace(ws);
-  if (!v.ok) { log(`Validation failed: ${v.errors[0]}`); return; }
+  if (!v.ok) { log(`Validation failed: ${v.errors[0]}`); return false; }
   state.workspace = ws;
   state.history = [];
   state.future = [];
@@ -650,6 +664,7 @@ function loadWorkspaceJson(parsed) {
   // freshly loaded workspace.
   resetChatScope();
   chatSheet.refresh();
+  return true;
 }
 
 $('download-state-btn').onclick = async () => {
@@ -683,6 +698,11 @@ $('load-example-select').onchange = async (e) => {
     // remembered in localStorage so reload can re-fetch).
     await attachExampleAssets(slug);
     log(`Loaded example: ${slug}`);
+    await startSharedProject({
+      projectId: exampleProjectId(slug),
+      sourceType: 'example',
+      sourceRef: slug,
+    });
   } catch (err) {
     console.error(err);
     log(`Example load failed: ${err.message}`);
@@ -731,7 +751,16 @@ $('reset-btn').onclick = () => {
   state.listeners.forEach(fn => fn(state.workspace, { type: 'reset' }));
   resetChatScope();
   chatSheet.refresh();
+  leaveSharedProject();
   log('Workspace reset.');
+};
+
+$('start-shared-project-btn').onclick = async () => {
+  if (state.collaboration.projectId) {
+    await copySharedProjectLink();
+    return;
+  }
+  await startSharedProject({ sourceType: 'custom' });
 };
 
 // -------------------------------------------------------------------------
@@ -874,7 +903,8 @@ const detailEditor = createDetailEditor({
   getWorkspace: () => state.workspace,
   getPhotoBlob: id => PhotoStorage.get(id),
   dispatch: cmd => apply(state, cmd),
-  onAttachPhoto: target => attachPhotoToEntity(target)
+  onAttachPhoto: target => attachPhotoToEntity(target),
+  canEditCondition: () => !state.collaboration?.readOnly
 });
 
 let lastDetailTarget = null;
@@ -1609,21 +1639,23 @@ function renderCover(ws) {
   wrap.onclick = () => openImageLightbox(src);
 }
 
-// Try /examples/<slug>/cover.{jpg,jpeg,png,webp} in order. First hit
-// wins and is stored as a data URL on instance.coverImage. If none
-// exist, the workspace is left without a cover — a graceful no-op.
+// Try /examples/<slug>/cover.{jpg,jpeg,png,webp} in order. Small covers are
+// embedded as data URLs so they travel with exports. Large example covers
+// keep their static URL; embedding multi-megabyte photos can exceed both
+// localStorage and D1 project-row limits.
 async function attachExampleCover(slug) {
   for (const ext of COVER_EXTS) {
     try {
-      const res = await fetch(`/examples/${slug}/cover.${ext}`);
+      const assetUrl = `/examples/${slug}/cover.${ext}`;
+      const res = await fetch(assetUrl);
       if (!res.ok) continue;
       const blob = await res.blob();
-      const dataUrl = await blobToDataUrl(blob);
+      const coverImage = blob.size > 500_000 ? assetUrl : await blobToDataUrl(blob);
       // Mutate via the same channel as other workspace edits so
       // autoPersist captures it and renderAll re-runs.
       state.workspace = {
         ...state.workspace,
-        instance: { ...state.workspace.instance, coverImage: dataUrl }
+        instance: { ...state.workspace.instance, coverImage }
       };
       state.listeners.forEach(fn => fn(state.workspace, { type: 'set-cover' }));
       return true;
@@ -1656,6 +1688,12 @@ async function attachExampleMesh(slug) {
   }
   log(`Loading 3D scan…`);
   const ok = await viewer3D.loadMesh(url);
+  if (ok) {
+    const preferredMode = state.workspace.instance?.defaultDisplayMode;
+    if (['boxes', 'mesh', 'both'].includes(preferredMode)) {
+      viewer3D.setDisplayMode(preferredMode);
+    }
+  }
   syncDisplayModeBtn();
   if (ok) log(`3D scan loaded for ${slug}.`);
   else log(`3D scan present but failed to parse (see console).`);
@@ -1904,6 +1942,262 @@ async function dataUrlToBlob(dataUrl) {
   return r.blob();
 }
 
+// -------------------------------------------------------------------------
+// Shared condition layers (Cloudflare Worker + D1)
+// -------------------------------------------------------------------------
+
+function setCollaborationStatus(message, status = 'idle') {
+  const el = $('collab-status');
+  if (!el) return;
+  el.textContent = message;
+  el.dataset.state = status;
+  state.collaboration.syncState = status;
+}
+
+function updateCollaborationUi() {
+  const collab = state.collaboration;
+  const active = !!collab.projectId;
+  $('collab-controls').hidden = !active;
+  $('collab-project-title').textContent = collab.projectTitle || state.workspace.instance?.name || 'Shared project';
+  $('collab-author-btn').textContent = collab.activeAuthorName || 'Choose name';
+  $('collab-mine-btn').classList.toggle('active', collab.scope === 'mine');
+  $('collab-all-btn').classList.toggle('active', collab.scope === 'all');
+  $('new-condition-btn').disabled = !!collab.readOnly;
+  $('new-condition-btn').title = collab.readOnly ? 'Switch to My conditions to add an observation' : '';
+  const shareBtn = $('start-shared-project-btn');
+  shareBtn.innerHTML = active ? '<span>🔗</span> Copy project link' : '<span>👥</span> Start shared project';
+}
+
+function replaceVisibleConditions(conditions, eventType) {
+  collaborationSuppressSync = true;
+  state.workspace = {
+    ...state.workspace,
+    conditions: conditions || [],
+    collaboration: state.collaboration.projectId
+      ? { projectId: state.collaboration.projectId, modelVersion: '1' }
+      : state.workspace.collaboration,
+    updatedAt: new Date().toISOString(),
+  };
+  state.history = [];
+  state.future = [];
+  state.listeners.forEach(fn => fn(state.workspace, { type: eventType }));
+  collaborationSuppressSync = false;
+}
+
+function openParticipantNameModal() {
+  if (!state.collaboration.projectId) return;
+  $('collab-name-error').textContent = '';
+  $('collab-name-input').value = state.collaboration.activeAuthorName || '';
+  $('collab-name-modal').classList.add('on');
+  setTimeout(() => $('collab-name-input').focus(), 30);
+}
+
+function closeParticipantNameModal() {
+  $('collab-name-modal').classList.remove('on');
+  $('collab-name-error').textContent = '';
+}
+
+async function startSharedProject({ projectId = null, sourceType = 'custom', sourceRef = null } = {}) {
+  if (!state.workspace.instance?.parts?.length) {
+    log('Create or load an artefact before starting a shared project.');
+    return false;
+  }
+  const id = projectId || state.workspace.collaboration?.projectId || createProjectId();
+  const baseWorkspace = projectTemplate(state.workspace, id);
+  setCollaborationStatus('Creating shared project…', 'saving');
+  try {
+    const project = await CollaborationApi.ensureProject({
+      projectId: id,
+      title: state.workspace.instance?.name || 'Untitled project',
+      baseWorkspace,
+      sourceType,
+      sourceRef,
+    });
+    state.collaboration.projectId = project.id;
+    state.collaboration.projectTitle = project.title;
+    state.collaboration.scope = 'mine';
+    state.collaboration.readOnly = false;
+    collaborationSuppressSync = true;
+    state.workspace = { ...state.workspace, collaboration: { projectId: project.id, modelVersion: project.modelVersion || '1' } };
+    state.listeners.forEach(fn => fn(state.workspace, { type: 'collaboration-project-opened' }));
+    collaborationSuppressSync = false;
+    const url = new URL(window.location.href);
+    url.searchParams.set('project', project.id);
+    history.replaceState(null, '', url);
+    updateCollaborationUi();
+    setCollaborationStatus('Choose a name to load conditions', 'idle');
+    openParticipantNameModal();
+    return true;
+  } catch (error) {
+    console.error(error);
+    setCollaborationStatus(error.message, 'error');
+    log(`Shared project failed: ${error.message}`);
+    return false;
+  }
+}
+
+async function loadSharedProject(projectId) {
+  setCollaborationStatus('Loading shared project…', 'saving');
+  try {
+    const project = await CollaborationApi.getProject(projectId);
+    if (!project?.baseWorkspace) throw new Error('Shared project has no workspace');
+    if (!loadWorkspaceJson(project.baseWorkspace)) {
+      throw new Error('Shared project contains an invalid workspace');
+    }
+    if (project.sourceType === 'example' && project.sourceRef) {
+      await attachExampleAssets(project.sourceRef);
+    }
+    state.collaboration.projectId = project.id;
+    state.collaboration.projectTitle = project.title;
+    state.collaboration.scope = 'mine';
+    state.collaboration.readOnly = false;
+    updateCollaborationUi();
+    setCollaborationStatus('Choose a name to load conditions', 'idle');
+    openParticipantNameModal();
+    return true;
+  } catch (error) {
+    console.error(error);
+    log(`Could not open shared project: ${error.message}`);
+    setCollaborationStatus(error.message, 'error');
+    return false;
+  }
+}
+
+async function loadParticipantConditions(authorName) {
+  const name = normalizeAuthorName(authorName);
+  const key = normalizeAuthorKey(name);
+  if (!name || !key) return;
+  const submit = $('collab-name-submit');
+  submit.disabled = true;
+  $('collab-name-error').textContent = '';
+  setCollaborationStatus(`Loading ${name}…`, 'saving');
+  try {
+    if (state.collaboration.scope === 'mine' && state.collaboration.activeAuthorName) {
+      await saveCurrentConditionLayer();
+    }
+    const conditions = await CollaborationApi.getConditions(state.collaboration.projectId, name);
+    state.collaboration.activeAuthorName = name;
+    state.collaboration.activeAuthorKey = key;
+    state.collaboration.scope = 'mine';
+    state.collaboration.readOnly = false;
+    replaceVisibleConditions(conditions, 'collaboration-author-loaded');
+    closeParticipantNameModal();
+    updateCollaborationUi();
+    setCollaborationStatus(`${conditions.length} condition${conditions.length === 1 ? '' : 's'} · saved`, 'idle');
+    log(`Working as ${name}: ${conditions.length} conditions loaded.`);
+  } catch (error) {
+    console.error(error);
+    $('collab-name-error').textContent = error.message;
+    setCollaborationStatus(error.message, 'error');
+  } finally {
+    submit.disabled = false;
+  }
+}
+
+async function showAllSharedConditions() {
+  if (!state.collaboration.projectId || !state.collaboration.activeAuthorName) {
+    openParticipantNameModal();
+    return;
+  }
+  setCollaborationStatus('Loading all conditions…', 'saving');
+  try {
+    await saveCurrentConditionLayer();
+    const conditions = await CollaborationApi.getConditions(state.collaboration.projectId);
+    state.collaboration.scope = 'all';
+    state.collaboration.readOnly = true;
+    replaceVisibleConditions(conditions, 'collaboration-all-loaded');
+    updateCollaborationUi();
+    setCollaborationStatus(`${conditions.length} conditions from all participants`, 'idle');
+  } catch (error) {
+    console.error(error);
+    setCollaborationStatus(error.message, 'error');
+  }
+}
+
+async function showMySharedConditions() {
+  if (!state.collaboration.activeAuthorName) {
+    openParticipantNameModal();
+    return;
+  }
+  await loadParticipantConditions(state.collaboration.activeAuthorName);
+}
+
+function queueCollaborationSave(workspace, event) {
+  if (collaborationSuppressSync) return;
+  if (!state.collaboration.projectId || !state.collaboration.activeAuthorName) return;
+  if (state.collaboration.scope !== 'mine' || state.collaboration.readOnly) return;
+  if (event?.type?.startsWith('collaboration-')) return;
+  clearTimeout(collaborationSaveTimer);
+  setCollaborationStatus('Saving…', 'saving');
+  collaborationSaveTimer = setTimeout(() => saveCurrentConditionLayer(), 450);
+}
+
+async function saveCurrentConditionLayer() {
+  if (!state.collaboration.projectId || !state.collaboration.activeAuthorName) return;
+  if (state.collaboration.scope !== 'mine' || state.collaboration.readOnly) return;
+  clearTimeout(collaborationSaveTimer);
+  collaborationSaveTimer = null;
+  const authorName = state.collaboration.activeAuthorName;
+  const authorKey = state.collaboration.activeAuthorKey;
+  const conditions = (state.workspace.conditions || []).map(condition => ({
+    ...condition,
+    authorName,
+    authorKey,
+  }));
+  try {
+    await CollaborationApi.saveConditions(state.collaboration.projectId, authorName, conditions);
+    setCollaborationStatus(`${conditions.length} condition${conditions.length === 1 ? '' : 's'} · saved`, 'idle');
+  } catch (error) {
+    console.error(error);
+    setCollaborationStatus(`Local copy kept · ${error.message}`, 'error');
+  }
+}
+
+async function copySharedProjectLink() {
+  if (!state.collaboration.projectId) return;
+  const link = projectShareUrl(state.collaboration.projectId);
+  try {
+    await navigator.clipboard.writeText(link);
+    setCollaborationStatus('Project link copied', 'idle');
+  } catch {
+    window.prompt('Copy this project link:', link);
+  }
+}
+
+function leaveSharedProject() {
+  clearTimeout(collaborationSaveTimer);
+  Object.assign(state.collaboration, {
+    projectId: null,
+    projectTitle: '',
+    activeAuthorName: '',
+    activeAuthorKey: '',
+    scope: 'mine',
+    readOnly: false,
+    syncState: 'idle',
+  });
+  const url = new URL(window.location.href);
+  url.searchParams.delete('project');
+  history.replaceState(null, '', url);
+  updateCollaborationUi();
+}
+
+$('collab-name-form').addEventListener('submit', event => {
+  event.preventDefault();
+  loadParticipantConditions($('collab-name-input').value);
+});
+$('collab-name-cancel').onclick = closeParticipantNameModal;
+$('collab-name-close').onclick = closeParticipantNameModal;
+$('collab-author-btn').onclick = openParticipantNameModal;
+$('collab-mine-btn').onclick = showMySharedConditions;
+$('collab-all-btn').onclick = showAllSharedConditions;
+$('collab-copy-link').onclick = copySharedProjectLink;
+
+async function openProjectFromUrl() {
+  const projectId = new URL(window.location.href).searchParams.get('project');
+  if (!projectId) return false;
+  return loadSharedProject(projectId);
+}
+
 renderAll();
 setTimeout(() => viewer3D.resize(), 50);
 resetChatScope();
@@ -1912,7 +2206,8 @@ resetChatScope();
 // an example. The slug lives in localStorage (not the workspace JSON)
 // because mesh.glb is large and tied to the example folder, not the
 // artefact. Silent no-op when there's nothing to rehydrate.
-(async function rehydrateMesh() {
+(async function rehydrateProject() {
+  if (await openProjectFromUrl()) return;
   const slug = recalledExampleSlug();
   if (!slug) return;
   await attachExampleMesh(slug);

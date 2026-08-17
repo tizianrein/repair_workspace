@@ -29,7 +29,8 @@ if (workspace.plans.length) {
     console.log(`  Plan ${i + 1}: "${p.label}" — ${p.steps.length} steps, ${p.edges.length} edges`);
   });
 }
-console.log(`Intent axes: ${workspace.intent.axes.length}`);
+const activePlan = workspace.plans.find(plan => plan.id === workspace.currentPlanId) || workspace.plans[0];
+console.log(`Intent axes: ${activePlan?.intent?.axes?.length || 0}`);
 
 if (warnings.length) {
   console.log('\n=== WARNINGS ===');

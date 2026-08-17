@@ -15,7 +15,18 @@ export function createState() {
     workspace: newWorkspace(),
     history: [],
     future: [],
-    listeners: new Set()
+    listeners: new Set(),
+    // Transient project/name/view state. The shared condition data itself
+    // remains in workspace.conditions so every existing view keeps working.
+    collaboration: {
+      projectId: null,
+      projectTitle: '',
+      activeAuthorName: '',
+      activeAuthorKey: '',
+      scope: 'mine',
+      readOnly: false,
+      syncState: 'idle'
+    }
   };
 }
 

@@ -126,6 +126,10 @@ export function newCondition(opts = {}) {
     status: opts.status || 'suspected',
     confidence: opts.confidence ?? 0.5,
     evidenceRefs: opts.evidenceRefs || [],
+    // Present for shared projects. Kept optional so existing JSON files and
+    // offline/local workspaces remain fully compatible.
+    authorName: opts.authorName || null,
+    authorKey: opts.authorKey || null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };

@@ -50,6 +50,7 @@
           </select>
           <button class="data-btn" id="reset-btn"><span>↺</span> Reset</button>
         </div>
+        <button class="data-btn data-btn-full" id="start-shared-project-btn"><span>👥</span> Start shared project</button>
         <!-- 3D-scan overlay toggle. Only appears when the loaded
              example has a mesh.glb. Cycles Boxes / Mesh / Both. -->
         <button class="data-btn data-btn-full" id="display-mode-btn" hidden></button>
@@ -185,6 +186,25 @@
       <button class="drawer-close" data-close="right" title="Close">✕</button>
     </header>
 
+    <div class="collab-controls" id="collab-controls" hidden>
+      <div class="collab-project-row">
+        <div>
+          <div class="collab-kicker">Shared project</div>
+          <div class="collab-project-title" id="collab-project-title">—</div>
+        </div>
+        <button class="mini-btn" id="collab-copy-link" title="Copy project link">🔗</button>
+      </div>
+      <div class="collab-author-row">
+        <span>Working as</span>
+        <button class="collab-author-btn" id="collab-author-btn">—</button>
+      </div>
+      <div class="collab-scope" role="group" aria-label="Condition visibility">
+        <button class="active" id="collab-mine-btn">My conditions</button>
+        <button id="collab-all-btn">All conditions</button>
+      </div>
+      <div class="collab-status" id="collab-status">Saved</div>
+    </div>
+
     <div class="list-tools">
       <input id="entity-search" type="search" placeholder="Search parts and conditions…" />
       <select id="entity-filter">
@@ -258,6 +278,30 @@
       <div class="spacer"></div>
       <button class="btn" data-close-modal="detail-modal">Close</button>
     </div>
+  </div>
+</div>
+
+<!-- Participant name is requested only after a shared project is loaded. -->
+<div class="modal" id="collab-name-modal">
+  <div class="modal-card collab-name-card">
+    <div class="modal-head">
+      <h3>Open condition layer</h3>
+      <button class="icon-btn" id="collab-name-close" title="Cancel">✕</button>
+    </div>
+    <form id="collab-name-form">
+      <div class="modal-body">
+        <p class="collab-name-copy">Type your name. An existing name loads its mapped conditions; a new name starts an empty layer for this project.</p>
+        <label class="detail-field">
+          <span class="detail-field-label">Your name</span>
+          <input class="detail-input" id="collab-name-input" type="text" maxlength="80" autocomplete="name" placeholder="e.g. Tizian" required>
+        </label>
+        <div class="collab-name-error" id="collab-name-error"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" type="button" id="collab-name-cancel">Cancel</button>
+        <button class="btn" type="submit" id="collab-name-submit">Load conditions</button>
+      </div>
+    </form>
   </div>
 </div>
 

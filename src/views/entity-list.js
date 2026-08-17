@@ -72,12 +72,15 @@ export function createEntityList(container, searchInput, filterSelect, countEl, 
         const card = document.createElement('div');
         card.className = 'entity-card dmg' + (h.id === selection.conditionId ? ' selected' : '');
         const statusBadge = `<span class="ec-status ${h.status}">${h.status.toUpperCase()}</span>`;
+        const author = h.authorName
+          ? `<span class="ec-author">by ${escapeHtml(h.authorName)}</span>`
+          : '';
         card.innerHTML = `
           <div class="ec-row">
             <span class="ec-id"><span class="ec-type-pill">${escapeHtml(h.type || 'condition')}</span>${escapeHtml(h.id)}</span>
             ${statusBadge}
           </div>
-          <div class="ec-meta">on ${escapeHtml(h.partRef || '—')}${h.description ? ' · ' + escapeHtml(h.description.slice(0, 80)) : ''}</div>
+          <div class="ec-meta">on ${escapeHtml(h.partRef || '—')}${h.description ? ' · ' + escapeHtml(h.description.slice(0, 80)) : ''}${author}</div>
         `;
         card.onclick = () => onDetail?.({ type: 'condition', id: h.id });
         container.appendChild(card);

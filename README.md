@@ -54,6 +54,16 @@ vercel               # first time: link the project
 vercel --prod        # deploy to production URL
 ```
 
+## Shared condition layers with Cloudflare
+
+Repair Workspace can now keep one shared artefact project with separate
+condition layers selected by participant name. The existing interface remains
+in place; Cloudflare Workers, D1, and R2 provide the collaboration backend.
+
+See [`docs/cloudflare-collaboration.md`](docs/cloudflare-collaboration.md) for
+resource creation, migration, deployment, local development, and workshop
+testing instructions.
+
 In Vercel project settings → Environment Variables, add `GEMINI_API_KEY`. Every deploy gets a unique URL; share it with participants.
 
 ## Repo layout

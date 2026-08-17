@@ -1,0 +1,23 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "repair-workspace-collaboration",
+  "main": "./worker.js",
+  "compatibility_date": "2026-08-17",
+  "vars": {
+    "ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,https://repair-workspace.vercel.app,https://repair-workspace-tizian-reins-projects.vercel.app,https://repair-workspace-git-main-tizian-reins-projects.vercel.app"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "repair-workspace-db",
+      "database_id": "61362e75-5e4b-4b76-b49f-7af506332f1d",
+      "migrations_dir": "./migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "FILES",
+      "bucket_name": "repair-workspace-files"
+    }
+  ]
+}

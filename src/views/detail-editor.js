@@ -18,7 +18,7 @@
 import { PART_STATUS, CONDITION_STATUS, STEP_STATUS } from '../core/schema.js';
 import { createMiniViewer3D } from './mini-viewer-3d.js';
 
-export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, getPhotoBlob, dispatch, onAttachPhoto }) {
+export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, getPhotoBlob, dispatch, onAttachPhoto, canEditCondition }) {
 
   // The mini-3D-viewer is created on demand inside the modal body. We
   // destroy and recreate it each time the modal opens to avoid context
@@ -252,8 +252,17 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
   function openCondition(id, ws) {
     const h = (ws.conditions || []).find(x => x.id === id);
     if (!h) return;
+    const editable = canEditCondition ? canEditCondition(h) : true;
     titleEl.textContent = `Condition: ${h.type || h.id}`;
     bodyEl.innerHTML = '';
+
+    if (h.authorName) {
+      const ownership = el('div', editable ? 'condition-owner' : 'condition-owner readonly');
+      ownership.textContent = editable
+        ? `Recorded by ${h.authorName}`
+        : `Recorded by ${h.authorName} · read-only in All conditions`;
+      bodyEl.appendChild(ownership);
+    }
 
     // Mini 3D-Preview: highlight the affected part + this condition's marker
     buildMiniViewer3D(bodyEl, `cond:${id}`, h.partRef ? [h.partRef] : [], [id]);
@@ -279,23 +288,31 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     coordRow.appendChild(field('Z', numInput(c.z, v => patchCondition(id, { coordinates: { ...c, z: v } }))));
     form.appendChild(coordRow);
 
+    if (!editable) {
+      form.querySelectorAll('input, textarea, select').forEach(control => {
+        control.disabled = true;
+      });
+    }
+
     bodyEl.appendChild(form);
 
     // Photo gallery for this condition (direct attachments only)
     const photos = (ws.evidence || []).filter(e =>
       e.kind === 'photo' && e.attachedTo?.type === 'condition' && e.attachedTo.id === id);
-    appendPhotoSection(bodyEl, photos, { type: 'condition', id });
+    appendPhotoSection(bodyEl, photos, { type: 'condition', id }, { readOnly: !editable });
 
     // Delete button
-    const actions = el('div', 'detail-actions');
-    const del = el('button', 'detail-delete', 'Delete condition');
-    del.onclick = () => {
-      if (!confirm(`Delete condition "${h.type}"? This can be undone with Ctrl+Z.`)) return;
-      dispatch({ type: 'remove-condition', payload: { conditionId: id } });
-      hideModal();
-    };
-    actions.appendChild(del);
-    bodyEl.appendChild(actions);
+    if (editable) {
+      const actions = el('div', 'detail-actions');
+      const del = el('button', 'detail-delete', 'Delete condition');
+      del.onclick = () => {
+        if (!confirm(`Delete condition "${h.type}"? This can be undone with Ctrl+Z.`)) return;
+        dispatch({ type: 'remove-condition', payload: { conditionId: id } });
+        hideModal();
+      };
+      actions.appendChild(del);
+      bodyEl.appendChild(actions);
+    }
 
     showModal();
   }
@@ -455,7 +472,7 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
    * Photos load asynchronously; the section is appended synchronously
    * so the button is immediately visible.
    */
-  function appendPhotoSection(parentEl, photos, attachTarget) {
+  function appendPhotoSection(parentEl, photos, attachTarget, { readOnly = false } = {}) {
     const wrap = el('div', 'detail-section');
     const labelText = photos.length ? `Photos (${photos.length})` : 'Photos';
     wrap.appendChild(el('div', 'detail-section-label', labelText));
@@ -488,7 +505,7 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     wrap.appendChild(grid);
 
     // Add-photo button (only if a handler was provided)
-    if (onAttachPhoto) {
+    if (onAttachPhoto && !readOnly) {
       const addBtn = el('button', 'detail-photo-add-btn', '📷  Add photo');
       addBtn.onclick = () => onAttachPhoto(attachTarget);
       wrap.appendChild(addBtn);

@@ -444,6 +444,112 @@
   flex-shrink: 0;
 }
 
+/* =========================================================
+   Shared condition layers — deliberately reuses the existing
+   right-drawer scale, borders, colors, and mono labels.
+   ========================================================= */
+.collab-controls {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.collab-controls[hidden] { display: none; }
+.collab-project-row,
+.collab-author-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.collab-project-row .mini-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  flex: 0 0 28px;
+}
+.collab-kicker {
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.collab-project-title {
+  font-family: var(--display);
+  font-size: 13px;
+  line-height: 1.2;
+}
+.collab-author-row {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-soft);
+}
+.collab-author-btn {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 5px 8px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 10px;
+  cursor: pointer;
+}
+.collab-scope {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.collab-scope button {
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+  padding: 6px 7px;
+  font-family: var(--mono);
+  font-size: 9px;
+  cursor: pointer;
+}
+.collab-scope button:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.collab-scope button:last-child { border-radius: 0 var(--radius) var(--radius) 0; border-left: 0; }
+.collab-scope button.active { background: var(--ink); color: white; }
+.collab-status {
+  min-height: 13px;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink-mute);
+}
+.collab-status[data-state="error"] { color: var(--accent-deep); }
+.collab-status[data-state="saving"] { color: var(--info); }
+.ec-author {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--info);
+}
+.condition-owner {
+  padding: 7px 9px;
+  border: 1px solid var(--info);
+  border-radius: var(--radius);
+  background: var(--info-soft);
+  color: var(--info);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.condition-owner.readonly { border-style: dashed; }
+.collab-name-card { max-width: 430px; }
+.collab-name-copy { margin: 0; color: var(--ink-soft); }
+.collab-name-error {
+  min-height: 18px;
+  color: var(--accent-deep);
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
 .modal {
   position: fixed;
   inset: 0;
@@ -1467,6 +1573,11 @@ select.detail-input { cursor: pointer; }
   text-align: center;
 }
 .new-condition-btn:hover { background: #a01f24; }
+.new-condition-btn:disabled {
+  background: var(--line-soft);
+  color: var(--ink-mute);
+  cursor: not-allowed;
+}
 .new-condition-btn.active {
   background: var(--info);
   animation: pulse-bg 1.4s ease-in-out infinite;
