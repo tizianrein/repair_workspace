@@ -212,9 +212,9 @@ $('explode-btn').onclick = () => {
   $('explode-btn').title = viewer3D.isExploded() ? 'Restore view' : 'Explode view';
 };
 
-// Display-mode toggle for the textured-mesh overlay. Lives in the
-// Data section of the left sidebar. Cycles boxes → mesh → both →
-// boxes. Hidden unless a mesh is actually loaded into the viewer.
+// Display-mode toggle for the GLB-derived views. Lives in the Data section
+// of the left sidebar and cycles boxes → boxes + point cloud → mesh → boxes.
+// Hidden unless a mesh is actually loaded into the viewer.
 function syncDisplayModeBtn() {
   const btn = $('display-mode-btn');
   if (!btn) return;
@@ -225,14 +225,14 @@ function syncDisplayModeBtn() {
   // has room, and because users don't always remember what the icons
   // mean. The leading glyph mirrors what the viewer is currently
   // displaying so it doubles as a state indicator.
-  if (mode === 'both')        { btn.textContent = '🟰 Showing both · click for mesh'; }
-  else if (mode === 'mesh')   { btn.textContent = '🧊 Showing mesh · click for boxes'; }
-  else                        { btn.textContent = '📦 Showing boxes · click for both'; }
+  if (mode === 'boxes-points') { btn.textContent = '✣ Boxes + point cloud → mesh'; }
+  else if (mode === 'mesh')    { btn.textContent = '🧊 Showing mesh → boxes'; }
+  else                         { btn.textContent = '📦 Showing boxes → boxes + point cloud'; }
 }
 $('display-mode-btn').onclick = () => {
   if (!viewer3D || !viewer3D.hasMesh()) return;
   const mode = viewer3D.getDisplayMode();
-  const next = mode === 'both' ? 'mesh' : mode === 'mesh' ? 'boxes' : 'both';
+  const next = mode === 'boxes' ? 'boxes-points' : mode === 'boxes-points' ? 'mesh' : 'boxes';
   viewer3D.setDisplayMode(next);
   syncDisplayModeBtn();
 };
@@ -1726,12 +1726,6 @@ async function attachExampleMesh(slug) {
   }
   log(`Loading 3D scan…`);
   const ok = await viewer3D.loadMesh(url);
-  if (ok) {
-    const preferredMode = state.workspace.instance?.defaultDisplayMode;
-    if (['boxes', 'mesh', 'both'].includes(preferredMode)) {
-      viewer3D.setDisplayMode(preferredMode);
-    }
-  }
   syncDisplayModeBtn();
   if (ok) log(`3D scan loaded for ${slug}.`);
   else log(`3D scan present but failed to parse (see console).`);

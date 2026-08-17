@@ -58,9 +58,13 @@ export function createViewer3D(canvas, infoBox, onSelect) {
   // the example author is responsible for alignment.
   const meshGroup = new THREE.Group();
   scene.add(meshGroup);
-  // displayMode controls visibility of box parts vs. the textured mesh.
-  // 'boxes' | 'mesh' | 'both'. Defaults to 'boxes'; flipped to 'both'
-  // automatically when a mesh is loaded.
+  // Point-cloud view generated from the loaded GLB's vertex positions.
+  // It stays separate from the textured triangle mesh so the display-mode
+  // control can show boxes + points without drawing the mesh surfaces.
+  const pointCloudGroup = new THREE.Group();
+  scene.add(pointCloudGroup);
+  // 'boxes' | 'boxes-points' | 'mesh'. Every mesh/project load starts at
+  // 'boxes', then the sidebar control cycles through the other two states.
   let displayMode = 'boxes';
   let loadedMesh = null;     // root Object3D from GLTFLoader
   const gltfLoader = new GLTFLoader();
@@ -485,17 +489,14 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     return `${parts}::${hyps}`;
   }
 
-  // Apply the current displayMode to the two groups. Toggling visibility
-  // is enough — the raycast lookups gate themselves on meshIsHittable()
-  // so invisible objects don't grab clicks. We also tune the mesh
-  // material opacity here so that "Both" mode lets the colored box
-  // parts read through, while "Mesh" mode shows the scan at full
-  // opacity for an undisturbed look.
+  // Apply the current displayMode to boxes, derived points, and the textured
+  // mesh. Point-cloud mode keeps box picking active; mesh mode uses the
+  // triangle mesh for precise surface placement.
   function applyDisplayMode() {
     objectGroup.visible = displayMode !== 'mesh';
-    meshGroup.visible = displayMode !== 'boxes';
-    const opacity = displayMode === 'both' ? 0.45 : 1.0;
-    setMeshOpacity(opacity);
+    pointCloudGroup.visible = displayMode === 'boxes-points';
+    meshGroup.visible = displayMode === 'mesh';
+    setMeshOpacity(1.0);
   }
 
   // Walk the loaded glTF scene and set each mesh material's opacity.
@@ -522,12 +523,89 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     });
   }
 
+  // Build one point per GLB vertex. Indexed triangle meshes normally repeat
+  // vertex indices for every face; copying only POSITION/UV avoids drawing
+  // those duplicates and keeps the point count bounded by the source vertex
+  // count. The custom shader samples the original base-colour texture at each
+  // vertex UV, so textured scans retain their visible timber colouring.
+  function rebuildPointCloud() {
+    clearPointCloudGroup();
+    if (!loadedMesh) return;
+    loadedMesh.updateWorldMatrix(true, true);
+    loadedMesh.traverse(obj => {
+      if (!obj.isMesh || !obj.geometry?.getAttribute('position')) return;
+      const sourceGeometry = obj.geometry;
+      const pointGeometry = new THREE.BufferGeometry();
+      pointGeometry.setAttribute('position', sourceGeometry.getAttribute('position').clone());
+      const sourceUv = sourceGeometry.getAttribute('uv');
+      if (sourceUv) pointGeometry.setAttribute('uv', sourceUv.clone());
+      pointGeometry.computeBoundingSphere();
+
+      const sourceMaterial = Array.isArray(obj.material) ? obj.material[0] : obj.material;
+      const texture = sourceUv ? (sourceMaterial?.map || null) : null;
+      const baseColor = sourceMaterial?.color?.clone?.() || new THREE.Color(0x6f6253);
+      const pointMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+          baseColor: { value: baseColor },
+          pointTexture: { value: texture },
+          useTexture: { value: !!texture },
+          pointSize: { value: Math.max(1.5, renderer.getPixelRatio() * 1.35) },
+        },
+        vertexShader: `
+          uniform float pointSize;
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_PointSize = pointSize;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 baseColor;
+          uniform sampler2D pointTexture;
+          uniform bool useTexture;
+          varying vec2 vUv;
+          void main() {
+            vec2 delta = gl_PointCoord - vec2(0.5);
+            if (dot(delta, delta) > 0.25) discard;
+            vec4 sampled = useTexture ? texture2D(pointTexture, vUv) : vec4(1.0);
+            if (sampled.a < 0.05) discard;
+            gl_FragColor = vec4(sampled.rgb * baseColor, 1.0);
+            #include <tonemapping_fragment>
+            #include <colorspace_fragment>
+          }
+        `,
+        depthTest: true,
+        depthWrite: true,
+      });
+      const points = new THREE.Points(pointGeometry, pointMaterial);
+      // The Points object lives directly under the scene-level point group,
+      // so copy the source mesh's complete world transform.
+      points.matrix.copy(obj.matrixWorld);
+      points.matrixAutoUpdate = false;
+      points.name = `${obj.name || 'mesh'}-point-cloud`;
+      pointCloudGroup.add(points);
+    });
+  }
+
+  function clearPointCloudGroup() {
+    pointCloudGroup.traverse(obj => {
+      if (!obj.isPoints) return;
+      obj.geometry?.dispose();
+      obj.material?.dispose();
+    });
+    while (pointCloudGroup.children.length) {
+      pointCloudGroup.remove(pointCloudGroup.children[0]);
+    }
+  }
+
   // Disposes anything currently in meshGroup. We recurse because a glTF
   // scene can be a tree of Mesh / Group / Object3D nodes, each owning
   // geometry/materials/textures. Without this, repeated mesh loads
   // would leak GPU resources just like the WebGL-context bug from
   // earlier in the session.
   function clearMeshGroup() {
+    clearPointCloudGroup();
     meshGroup.traverse(obj => {
       if (obj.isMesh) {
         obj.geometry?.dispose();
@@ -563,12 +641,9 @@ export function createViewer3D(canvas, infoBox, onSelect) {
         gltf => {
           loadedMesh = gltf.scene;
           meshGroup.add(loadedMesh);
-          // Auto-switch to 'both' on first mesh load so the user
-          // immediately sees the scan. If they had explicitly set a
-          // mode before loading, this overrides — but in practice
-          // mesh loading happens during example load, before any
-          // mode interaction.
-          displayMode = 'both';
+          rebuildPointCloud();
+          // A newly loaded project always begins with the proxy boxes.
+          displayMode = 'boxes';
           applyDisplayMode();
           // Reframe so the user actually sees the mesh, even if it's
           // far from the box parts. Without this a misaligned scan
@@ -592,9 +667,11 @@ export function createViewer3D(canvas, infoBox, onSelect) {
   }
 
   function setDisplayMode(mode) {
-    if (!['boxes', 'mesh', 'both'].includes(mode)) return;
-    // 'mesh' / 'both' are meaningful only when a mesh is loaded.
-    if ((mode === 'mesh' || mode === 'both') && !loadedMesh) mode = 'boxes';
+    // Accept old persisted "both" values as the new boxes + points mode.
+    if (mode === 'both') mode = 'boxes-points';
+    if (!['boxes', 'boxes-points', 'mesh'].includes(mode)) return;
+    // Point-cloud / mesh modes are meaningful only when a GLB is loaded.
+    if ((mode === 'mesh' || mode === 'boxes-points') && !loadedMesh) mode = 'boxes';
     displayMode = mode;
     applyDisplayMode();
   }
