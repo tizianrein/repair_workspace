@@ -16,12 +16,13 @@ async function jsonRequest(url, options = {}) {
   return payload;
 }
 
-const preflight = await fetch(`${apiRoot}/health`, {
+const preflight = await fetch(`${apiRoot}/projects/integration:shared_conditions/evidence/ev_preflight`, {
   method: 'OPTIONS',
   headers: { ...headers, 'Access-Control-Request-Method': 'GET' },
 });
 assert.equal(preflight.status, 204);
 assert.match(preflight.headers.get('access-control-allow-methods') || '', /PUT/);
+assert.match(preflight.headers.get('access-control-allow-headers') || '', /X-File-Name/i);
 
 const health = await jsonRequest(`${apiRoot}/health`);
 assert.equal(health.ok, true);
@@ -66,6 +67,25 @@ assert.deepEqual(new Set(all.conditions.map(item => item.authorName)), new Set([
 const authors = await jsonRequest(`${projectUrl}/authors`);
 assert.equal(authors.authors.length, 2);
 
+const evidenceId = 'ev_shared_photo';
+const photoBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+const photoSaved = await jsonRequest(`${projectUrl}/evidence/${evidenceId}`, {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'image/jpeg',
+    'X-File-Name': encodeURIComponent('condition photo.jpg'),
+    'X-Author-Name': encodeURIComponent('Tizian'),
+  },
+  body: photoBytes,
+});
+assert.equal(photoSaved.evidenceId, evidenceId);
+
+const photo = await fetch(`${projectUrl}/evidence/${evidenceId}`, { headers });
+assert.equal(photo.ok, true);
+assert.equal(photo.headers.get('content-type'), 'image/jpeg');
+assert.equal(decodeURIComponent(photo.headers.get('x-file-name')), 'condition photo.jpg');
+assert.deepEqual(new Uint8Array(await photo.arrayBuffer()), photoBytes);
+
 const modelBytes = new Uint8Array([0x67, 0x6c, 0x54, 0x46]);
 const modelSaved = await jsonRequest(`${projectUrl}/model`, {
   method: 'PUT',
@@ -78,4 +98,4 @@ const model = await fetch(`${projectUrl}/model`, { headers });
 assert.equal(model.ok, true);
 assert.deepEqual(new Uint8Array(await model.arrayBuffer()), modelBytes);
 
-console.log('✓ Cloudflare Worker, D1 snapshots, CORS, and R2 model storage work');
+console.log('✓ Cloudflare Worker, D1 snapshots, CORS, and R2 model/photo storage work');

@@ -38,7 +38,8 @@ import { showExecutionEntry } from './views/execution-log.js';
 import { createDetailEditor } from './views/detail-editor.js';
 import { payloadForPropose } from './ai/ai-payload.js';
 import {
-  CollaborationApi, createProjectId, exampleProjectId,
+  CollaborationApi, conditionLayerSnapshot, createProjectId, exampleProjectId,
+  mergeConditionLayer,
   normalizeAuthorKey, normalizeAuthorName, projectShareUrl, projectTemplate
 } from './core/collaboration.js';
 
@@ -779,6 +780,15 @@ $('start-shared-project-btn').onclick = async () => {
 
 PhotoStorage.init().catch(err => console.warn('PhotoStorage init failed:', err));
 
+async function getPersistedPhoto(evidenceId) {
+  const local = await PhotoStorage.get(evidenceId);
+  if (local || !state.collaboration.projectId) return local || null;
+  const remote = await CollaborationApi.getEvidence(state.collaboration.projectId, evidenceId);
+  if (!remote) return null;
+  await PhotoStorage.put(evidenceId, remote.blob, remote.name);
+  return PhotoStorage.get(evidenceId);
+}
+
 /**
  * Process a File (image) by compressing, persisting to IndexedDB,
  * and dispatching add-evidence to attach it. Optional `attachedTo`
@@ -797,9 +807,37 @@ async function savePhotoAsEvidence(file, attachedTo) {
   evidence.url = `idb://${evidence.id}`;
   evidence.fileName = file.name;
   evidence.byteSize = blob.size;
+  evidence.mimeType = blob.type || 'image/jpeg';
+  evidence.capturedBy = state.collaboration.activeAuthorName || null;
 
   await PhotoStorage.put(evidence.id, blob, file.name);
+  const isSharedConditionPhoto = !!(
+    state.collaboration.projectId
+    && state.collaboration.activeAuthorName
+    && state.collaboration.scope === 'mine'
+    && !state.collaboration.readOnly
+    && attachedTo?.type === 'condition'
+  );
+  if (isSharedConditionPhoto) {
+    setCollaborationStatus('Uploading photo…', 'saving');
+    try {
+      await CollaborationApi.uploadEvidence(
+        state.collaboration.projectId,
+        evidence,
+        blob,
+        state.collaboration.activeAuthorName,
+      );
+      evidence.url = `cloud://${state.collaboration.projectId}/${evidence.id}`;
+    } catch (error) {
+      console.error(error);
+      setCollaborationStatus(`Photo kept locally · ${error.message}`, 'error');
+      log(`Photo cloud upload failed: ${error.message}`);
+    }
+  }
   apply(state, { type: 'add-evidence', payload: { evidence } });
+  if (isSharedConditionPhoto && evidence.url.startsWith('cloud://')) {
+    await saveCurrentConditionLayer();
+  }
   log(`Saved photo ${file.name} (${formatBytes(blob.size)}) → ${evidence.id}`);
   return { evidenceId: evidence.id, blob };
 }
@@ -901,7 +939,7 @@ const detailEditor = createDetailEditor({
   titleEl: $('detail-title'),
   bodyEl: $('detail-grid'),
   getWorkspace: () => state.workspace,
-  getPhotoBlob: id => PhotoStorage.get(id),
+  getPhotoBlob: id => getPersistedPhoto(id),
   dispatch: cmd => apply(state, cmd),
   onAttachPhoto: target => attachPhotoToEntity(target),
   canEditCondition: () => !state.collaboration?.readOnly
@@ -1969,10 +2007,12 @@ function updateCollaborationUi() {
 }
 
 function replaceVisibleConditions(conditions, eventType) {
+  const layer = mergeConditionLayer(state.workspace, conditions);
   collaborationSuppressSync = true;
   state.workspace = {
     ...state.workspace,
-    conditions: conditions || [],
+    conditions: layer.conditions,
+    evidence: layer.evidence,
     collaboration: state.collaboration.projectId
       ? { projectId: state.collaboration.projectId, modelVersion: '1' }
       : state.workspace.collaboration,
@@ -2138,12 +2178,7 @@ async function saveCurrentConditionLayer() {
   clearTimeout(collaborationSaveTimer);
   collaborationSaveTimer = null;
   const authorName = state.collaboration.activeAuthorName;
-  const authorKey = state.collaboration.activeAuthorKey;
-  const conditions = (state.workspace.conditions || []).map(condition => ({
-    ...condition,
-    authorName,
-    authorKey,
-  }));
+  const conditions = conditionLayerSnapshot(state.workspace, authorName);
   try {
     await CollaborationApi.saveConditions(state.collaboration.projectId, authorName, conditions);
     setCollaborationStatus(`${conditions.length} condition${conditions.length === 1 ? '' : 's'} · saved`, 'idle');

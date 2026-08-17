@@ -20,7 +20,7 @@ Built for a workshop deploy on Vercel. Each participant works on a different obj
 
 - Drag-to-connect in the action graph (currently you edit via detail modal)
 - Execution log *viewer* (entries are recorded; chronological view is missing)
-- Vercel Blob for photos — currently photos travel inline as base64 (heavier payloads)
+- Cleanup and deletion controls for shared photos stored in Cloudflare R2
 - Approval workflow on plans
 - Template / instance split
 - The repair-pattern library (RAG)

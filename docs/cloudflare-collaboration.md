@@ -32,10 +32,10 @@ below are only needed when recreating the backend in a different account.
   Repair Workspace persistence continues as a fallback.
 - The link button copies a URL containing the shared `project` identifier.
 
-The current implementation deliberately keeps Vercel for the existing
-frontend and Gemini endpoints. A small Cloudflare Worker owns collaboration,
-D1 owns records, and R2 is ready for shared model files. This staged setup
-avoids changing the Repair Workspace UI or rewriting the AI endpoints.
+The current implementation keeps Vercel for the existing frontend and Gemini
+endpoints. A small Cloudflare Worker owns collaboration, D1 owns records, and
+R2 stores shared condition photos and optional uploaded model files. This
+setup preserves the Repair Workspace UI and existing AI endpoints.
 
 ## Architecture
 
@@ -44,7 +44,7 @@ Repair Workspace on Vercel
   ├─ existing /api/chat, /api/propose, image and plan endpoints
   └─ browser calls Cloudflare collaboration Worker
        ├─ D1: project templates and participant condition layers
-       └─ R2: optional uploaded GLB/GLTF models
+       └─ R2: shared condition photos and optional uploaded GLB/GLTF models
 ```
 
 ## 1. Create the Cloudflare resources
@@ -176,8 +176,24 @@ read-only. Each condition card displays its recorded author. Return to
   password-free workshop.
 - D1 soft-deletes missing conditions when a participant snapshot is saved.
 - Local browser persistence remains available if a network save fails.
-- Shared photographs remain a later step. Current photo blobs continue to
-  live in browser IndexedDB and workspace ZIP exports.
+- Shared condition photos are compressed in the browser, stored in R2, and
+  referenced by evidence metadata in the participant's condition layer.
+- The browser also caches downloaded photos in IndexedDB. Workspace ZIP
+  exports continue to include their locally available photo files.
+
+## Shared condition photo endpoints
+
+The Worker stores each shared condition photo in R2:
+
+```text
+PUT /api/collaboration/projects/:projectId/evidence/:evidenceId
+GET /api/collaboration/projects/:projectId/evidence/:evidenceId
+```
+
+The upload limit is 6 MB after browser compression. Only image content types
+are accepted. Photo metadata is saved with the participant's condition layer
+in D1 so the app can reconnect the R2 file after a refresh or on another
+device.
 
 ## Optional R2 model upload endpoint
 

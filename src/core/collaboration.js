@@ -31,6 +31,33 @@ async function request(path, options = {}) {
   return payload;
 }
 
+function isConditionEvidence(evidence, condition, referencedEvidenceIds = new Set()) {
+  return (
+    (evidence?.attachedTo?.type === 'condition' && evidence.attachedTo.id === condition.id)
+    || referencedEvidenceIds.has(evidence?.id)
+    || evidence?.confirmsConditionRef === condition.id
+    || evidence?.refutesConditionRef === condition.id
+  );
+}
+
+function sharedEvidenceRecord(evidence) {
+  return {
+    id: evidence.id,
+    kind: evidence.kind,
+    attachedTo: evidence.attachedTo || null,
+    capturedAt: evidence.capturedAt || null,
+    capturedBy: evidence.capturedBy || null,
+    url: evidence.url || null,
+    text: evidence.text || null,
+    measurement: evidence.measurement || null,
+    confirmsConditionRef: evidence.confirmsConditionRef || null,
+    refutesConditionRef: evidence.refutesConditionRef || null,
+    fileName: evidence.fileName || null,
+    byteSize: Number(evidence.byteSize || 0),
+    mimeType: evidence.mimeType || null,
+  };
+}
+
 export function normalizeAuthorName(value) {
   return String(value ?? '').trim().replace(/\s+/g, ' ').slice(0, 80);
 }
@@ -67,6 +94,57 @@ export function projectTemplate(workspace, projectId) {
     collaboration: { projectId, modelVersion: '1' },
     conditions: [],
     evidence: baseEvidence,
+  };
+}
+
+export function conditionLayerSnapshot(workspace, authorName) {
+  const normalizedName = normalizeAuthorName(authorName);
+  const authorKey = normalizeAuthorKey(normalizedName);
+  const evidence = workspace.evidence || [];
+  return (workspace.conditions || []).map(condition => {
+    const referencedEvidenceIds = new Set(condition.evidenceRefs || []);
+    const evidenceRecords = evidence
+      .filter(item => isConditionEvidence(item, condition, referencedEvidenceIds))
+      .map(sharedEvidenceRecord);
+    return {
+      ...condition,
+      authorName: normalizedName,
+      authorKey,
+      evidenceRecords,
+    };
+  });
+}
+
+export function mergeConditionLayer(workspace, incomingConditions) {
+  const incoming = incomingConditions || [];
+  const incomingIds = new Set(incoming.map(condition => condition.id));
+  const oldConditionEvidenceIds = new Set(
+    (workspace.conditions || []).flatMap(condition => condition.evidenceRefs || []),
+  );
+  const baseEvidence = (workspace.evidence || []).filter(evidence =>
+    evidence.attachedTo?.type !== 'condition'
+    && !oldConditionEvidenceIds.has(evidence.id)
+    && !evidence.confirmsConditionRef
+    && !evidence.refutesConditionRef,
+  );
+  const retainedLocalEvidence = (workspace.evidence || []).filter(evidence =>
+    evidence.attachedTo?.type === 'condition'
+    && incomingIds.has(evidence.attachedTo.id),
+  );
+  const remoteEvidence = incoming.flatMap(condition =>
+    Array.isArray(condition.evidenceRecords) ? condition.evidenceRecords : [],
+  );
+  const evidenceById = new Map();
+  [...retainedLocalEvidence, ...remoteEvidence].forEach(evidence => {
+    if (evidence?.id) evidenceById.set(evidence.id, evidence);
+  });
+  const conditions = incoming.map(condition => {
+    const { evidenceRecords: _evidenceRecords, ...cleanCondition } = condition;
+    return cleanCondition;
+  });
+  return {
+    conditions,
+    evidence: [...baseEvidence, ...evidenceById.values()],
   };
 }
 
@@ -107,5 +185,36 @@ export const CollaborationApi = {
   async getAuthors(projectId) {
     const payload = await request(`/projects/${encodeURIComponent(projectId)}/authors`);
     return payload.authors || [];
+  },
+
+  async uploadEvidence(projectId, evidence, blob, authorName) {
+    return request(
+      `/projects/${encodeURIComponent(projectId)}/evidence/${encodeURIComponent(evidence.id)}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': blob.type || evidence.mimeType || 'image/jpeg',
+          'X-File-Name': encodeURIComponent(evidence.fileName || evidence.id),
+          'X-Author-Name': encodeURIComponent(normalizeAuthorName(authorName)),
+        },
+        body: blob,
+      },
+    );
+  },
+
+  async getEvidence(projectId, evidenceId) {
+    const response = await fetch(apiUrl(
+      `/projects/${encodeURIComponent(projectId)}/evidence/${encodeURIComponent(evidenceId)}`,
+    ));
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      let payload = null;
+      try { payload = await response.json(); } catch {}
+      throw new Error(payload?.error || `Photo download failed (${response.status})`);
+    }
+    const encodedName = response.headers.get('X-File-Name') || '';
+    let name = evidenceId;
+    try { name = decodeURIComponent(encodedName) || evidenceId; } catch {}
+    return { blob: await response.blob(), name };
   },
 };

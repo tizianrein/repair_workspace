@@ -1,6 +1,7 @@
 const API_PREFIX = '/api/collaboration';
 const MAX_PROJECT_BYTES = 1_800_000;
 const MAX_CONDITIONS = 1_000;
+const MAX_EVIDENCE_BYTES = 6_000_000;
 
 export function normalizeAuthorKey(value) {
   return String(value ?? '')
@@ -15,6 +16,10 @@ export function normalizeAuthorName(value) {
 
 export function isValidProjectId(value) {
   return /^[a-zA-Z0-9:_-]{1,120}$/.test(String(value ?? ''));
+}
+
+export function isValidEvidenceId(value) {
+  return /^[a-zA-Z0-9:_-]{1,160}$/.test(String(value ?? ''));
 }
 
 function corsHeaders(request, env) {
@@ -218,6 +223,38 @@ async function handlePutConditions(request, env, projectId, url) {
       evidenceRefs: Array.isArray(condition.evidenceRefs)
         ? condition.evidenceRefs.map(value => String(value).slice(0, 160)).slice(0, 100)
         : [],
+      evidenceRecords: Array.isArray(condition.evidenceRecords)
+        ? condition.evidenceRecords
+          .filter(evidence => evidence && typeof evidence === 'object' && !Array.isArray(evidence))
+          .slice(0, 100)
+          .map(evidence => ({
+            id: isValidEvidenceId(evidence.id) ? String(evidence.id) : null,
+            kind: String(evidence.kind || 'photo').slice(0, 32),
+            attachedTo: evidence.attachedTo && typeof evidence.attachedTo === 'object'
+              ? {
+                type: String(evidence.attachedTo.type || '').slice(0, 32),
+                id: String(evidence.attachedTo.id || '').slice(0, 160),
+              }
+              : null,
+            capturedAt: typeof evidence.capturedAt === 'string' ? evidence.capturedAt : null,
+            capturedBy: evidence.capturedBy ? String(evidence.capturedBy).slice(0, 80) : null,
+            url: evidence.url ? String(evidence.url).slice(0, 320) : null,
+            text: evidence.text ? String(evidence.text).slice(0, 8_000) : null,
+            measurement: evidence.measurement && typeof evidence.measurement === 'object'
+              ? evidence.measurement
+              : null,
+            confirmsConditionRef: evidence.confirmsConditionRef
+              ? String(evidence.confirmsConditionRef).slice(0, 160)
+              : null,
+            refutesConditionRef: evidence.refutesConditionRef
+              ? String(evidence.refutesConditionRef).slice(0, 160)
+              : null,
+            fileName: evidence.fileName ? String(evidence.fileName).slice(0, 240) : null,
+            byteSize: Math.max(0, Number(evidence.byteSize || 0)),
+            mimeType: evidence.mimeType ? String(evidence.mimeType).slice(0, 120) : null,
+          }))
+          .filter(evidence => evidence.id)
+        : [],
       authorName,
       authorKey,
       createdAt,
@@ -315,6 +352,52 @@ async function handleGetModel(request, env, projectId) {
   return new Response(object.body, { headers });
 }
 
+function evidenceObjectKey(projectId, evidenceId) {
+  return `projects/${projectId}/evidence/${evidenceId}`;
+}
+
+async function handlePutEvidence(request, env, projectId, evidenceId) {
+  if (!env.FILES) throw new HttpError(503, 'R2 binding FILES is unavailable');
+  if (!(await getProject(env, projectId))) throw new HttpError(404, 'Project not found');
+  if (!isValidEvidenceId(evidenceId)) throw new HttpError(400, 'Invalid evidence id');
+  const contentLength = Number(request.headers.get('Content-Length') || 0);
+  if (contentLength > MAX_EVIDENCE_BYTES) throw new HttpError(413, 'Photo is too large');
+  const contentType = request.headers.get('Content-Type') || 'application/octet-stream';
+  if (!contentType.toLowerCase().startsWith('image/')) {
+    throw new HttpError(415, 'Evidence file must be an image');
+  }
+  const body = await request.arrayBuffer();
+  if (!body.byteLength) throw new HttpError(400, 'Photo file is empty');
+  if (body.byteLength > MAX_EVIDENCE_BYTES) throw new HttpError(413, 'Photo is too large');
+
+  let fileName = evidenceId;
+  let authorName = '';
+  try { fileName = decodeURIComponent(request.headers.get('X-File-Name') || '') || evidenceId; } catch {}
+  try { authorName = decodeURIComponent(request.headers.get('X-Author-Name') || ''); } catch {}
+  await env.FILES.put(evidenceObjectKey(projectId, evidenceId), body, {
+    httpMetadata: { contentType },
+    customMetadata: {
+      fileName: fileName.slice(0, 240),
+      authorName: normalizeAuthorName(authorName),
+    },
+  });
+  return json(request, env, { ok: true, evidenceId, byteSize: body.byteLength });
+}
+
+async function handleGetEvidence(request, env, projectId, evidenceId) {
+  if (!env.FILES) throw new HttpError(503, 'R2 binding FILES is unavailable');
+  if (!(await getProject(env, projectId))) throw new HttpError(404, 'Project not found');
+  if (!isValidEvidenceId(evidenceId)) throw new HttpError(400, 'Invalid evidence id');
+  const object = await env.FILES.get(evidenceObjectKey(projectId, evidenceId));
+  if (!object) throw new HttpError(404, 'Photo not found');
+  const headers = new Headers(corsHeaders(request, env) || {});
+  object.writeHttpMetadata(headers);
+  headers.set('Cache-Control', 'private, max-age=3600');
+  headers.set('X-File-Name', encodeURIComponent(object.customMetadata?.fileName || evidenceId));
+  headers.set('Access-Control-Expose-Headers', 'X-File-Name');
+  return new Response(object.body, { headers });
+}
+
 async function route(request, env) {
   if (!env.DB) throw new HttpError(503, 'D1 binding DB is unavailable');
   const url = new URL(request.url);
@@ -349,6 +432,11 @@ async function route(request, env) {
     if (request.method === 'PUT') return handlePutModel(request, env, projectId);
     if (request.method === 'GET') return handleGetModel(request, env, projectId);
   }
+  if (segments.length === 4 && segments[2] === 'evidence') {
+    const evidenceId = segments[3];
+    if (request.method === 'PUT') return handlePutEvidence(request, env, projectId, evidenceId);
+    if (request.method === 'GET') return handleGetEvidence(request, env, projectId, evidenceId);
+  }
   throw new HttpError(405, 'Method not allowed');
 }
 
@@ -359,7 +447,7 @@ export default {
     if (request.method === 'OPTIONS') {
       return empty(request, env, 204, {
         'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, X-File-Name, X-Author-Name',
       });
     }
     try {
