@@ -217,8 +217,13 @@ $('explode-btn').onclick = () => {
 // Hidden unless a mesh is actually loaded into the viewer.
 function syncDisplayModeBtn() {
   const btn = $('display-mode-btn');
+  const pointSizeControl = $('point-size-control');
   if (!btn) return;
-  if (!viewer3D || !viewer3D.hasMesh()) { btn.hidden = true; return; }
+  if (!viewer3D || !viewer3D.hasMesh()) {
+    btn.hidden = true;
+    if (pointSizeControl) pointSizeControl.hidden = true;
+    return;
+  }
   btn.hidden = false;
   const mode = viewer3D.getDisplayMode();
   // Label is "Showing X · click for Y" — explicit because the sidebar
@@ -228,6 +233,7 @@ function syncDisplayModeBtn() {
   if (mode === 'boxes-points') { btn.textContent = '✣ Boxes + point cloud → mesh'; }
   else if (mode === 'mesh')    { btn.textContent = '🧊 Showing mesh → boxes'; }
   else                         { btn.textContent = '📦 Showing boxes → boxes + point cloud'; }
+  if (pointSizeControl) pointSizeControl.hidden = mode !== 'boxes-points';
 }
 $('display-mode-btn').onclick = () => {
   if (!viewer3D || !viewer3D.hasMesh()) return;
@@ -236,6 +242,22 @@ $('display-mode-btn').onclick = () => {
   viewer3D.setDisplayMode(next);
   syncDisplayModeBtn();
 };
+
+const pointSizeSlider = $('point-size-slider');
+const pointSizeValue = $('point-size-value');
+function syncPointSizeValue(size = viewer3D?.getPointSize()) {
+  if (!pointSizeSlider || !pointSizeValue || !Number.isFinite(size)) return;
+  pointSizeSlider.value = String(size);
+  pointSizeValue.value = `${Number(size).toFixed(1)} px`;
+}
+if (pointSizeSlider) {
+  syncPointSizeValue();
+  pointSizeSlider.oninput = () => {
+    const size = Number(pointSizeSlider.value);
+    viewer3D?.setPointSize(size);
+    syncPointSizeValue(size);
+  };
+}
 
 // -------------------------------------------------------------------------
 // Manual "place new condition" mode

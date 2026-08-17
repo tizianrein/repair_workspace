@@ -78,8 +78,12 @@ export function createViewer3D(canvas, infoBox, onSelect) {
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.autoClear = false;
+  // WebGL point size is measured in framebuffer pixels. Starting from the
+  // device pixel ratio keeps the default visually consistent across screens,
+  // while the sidebar slider can override it from 1–12 px.
   renderer.sortObjects = true;
   renderer.setPixelRatio(window.devicePixelRatio);
+  let pointSize = Math.max(1.5, renderer.getPixelRatio() * 1.35);
   renderer.setSize(wrap.clientWidth, wrap.clientHeight);
 
   const controls = new OrbitControls(camera, renderer.domElement);
@@ -549,7 +553,7 @@ export function createViewer3D(canvas, infoBox, onSelect) {
           baseColor: { value: baseColor },
           pointTexture: { value: texture },
           useTexture: { value: !!texture },
-          pointSize: { value: Math.max(1.5, renderer.getPixelRatio() * 1.35) },
+          pointSize: { value: pointSize },
         },
         vertexShader: `
           uniform float pointSize;
@@ -676,6 +680,16 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     applyDisplayMode();
   }
 
+  function setPointSize(size) {
+    const parsed = Number(size);
+    if (!Number.isFinite(parsed)) return;
+    pointSize = THREE.MathUtils.clamp(parsed, 1, 12);
+    pointCloudGroup.traverse(obj => {
+      const uniform = obj.isPoints && obj.material?.uniforms?.pointSize;
+      if (uniform) uniform.value = pointSize;
+    });
+  }
+
   return {
     render(workspace) {
       currentWorkspace = workspace;
@@ -722,6 +736,8 @@ export function createViewer3D(canvas, infoBox, onSelect) {
     clearMesh,
     hasMesh: () => !!loadedMesh,
     setDisplayMode,
-    getDisplayMode: () => displayMode
+    getDisplayMode: () => displayMode,
+    setPointSize,
+    getPointSize: () => pointSize
   };
 }
