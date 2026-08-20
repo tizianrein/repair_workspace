@@ -24,10 +24,12 @@ export const config = { maxDuration: 90 };
 
 // The ceiling on looking at a document's original pages.
 //
-// This is a cost limit, not an API limit: Gemini accepts a 23.6 MB inline
-// request in practice (measured against a 17.7 MB, 129-page PDF), and bills
-// about 258 tokens per page — so a view of that book costs roughly 33k input
-// tokens, and an unbounded document would be an unbounded bill.
+// This is a cost limit, not an API limit. Gemini's documented inline ceiling
+// is 20 MB, but a 30.9 MiB PDF — 41.2 MiB once base64'd into the request — was
+// accepted and read correctly, so the documented figure is conservative. What
+// actually costs money is pages, at about 258 tokens each: viewing the 129-page
+// conservation manual runs ~33k input tokens per call, and an unbounded
+// document would be an unbounded bill.
 //
 // It was 12 MB, which was below the size of the very reference works most
 // worth looking at. A book-length document already yields little body text at
@@ -35,7 +37,7 @@ export const config = { maxDuration: 90 };
 // also cannot be viewed, the drawings inside it are unreachable by any route.
 // Figure descriptions tell the model a drawing exists; this is what lets it go
 // and read the drawing.
-const MAX_VIEWABLE_BYTES = 28_000_000;
+const MAX_VIEWABLE_BYTES = 32_000_000;
 
 async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });

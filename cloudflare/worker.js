@@ -675,7 +675,17 @@ async function handlePutLayer(request, env, projectId, authorKey) {
 // converging on a common evidence base).
 // ============================================================================
 
-const MAX_CORPUS_BYTES = 25_000_000;
+// 30.5 MiB. Chosen against measurement rather than the documented figure:
+// Gemini's published inline-data ceiling is 20 MB, but a 30.9 MiB PDF (41.2 MiB
+// once base64'd into the request) was accepted and read correctly, so the
+// documented number is conservative. This sits inside what has actually been
+// tested — see scripts/verify-live.mjs.
+//
+// It is not the interesting limit anyway. Cost scales with PAGES, at roughly
+// 258 tokens each, so a 4 MB 400-page scan bills more than a 30 MB book of
+// photographs. This bounds what one upload can drag through the pipeline; the
+// spend limits in api/_shared/rate-limit.js bound the bill.
+const MAX_CORPUS_BYTES = 32_000_000;
 const MAX_CORPUS_TEXT_BYTES = 4_000_000;
 const DOC_KINDS = ['structure', 'goal', 'technique', 'reference'];
 

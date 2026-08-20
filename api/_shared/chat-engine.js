@@ -869,7 +869,7 @@ function leanWorkspace(ws, thread = null) {
  * in this turn via create_plan. Subsequent step-mutation tools in the
  * same turn must target that plan, not the stale workspace currentPlanId.
  */
-function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = [], turnContext = {}) {
+export function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = [], turnContext = {}) {
   const activePlanId = turnContext.pendingPlanId || fullWorkspace.currentPlanId || null;
   const currentPlan = activePlanId
     ? (fullWorkspace.plans || []).find(p => p.id === activePlanId) || null
@@ -884,6 +884,31 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
   // receipt for work that didn't happen.
   const isEmptyPatch = (obj) =>
     obj == null || typeof obj !== 'object' || Object.keys(obj).length === 0;
+
+  /**
+   * Refuse a call that names something which does not exist.
+   *
+   * The client's reducers return the workspace unchanged when an id does not
+   * resolve — quietly, by design, so a stale command cannot corrupt state. The
+   * cost is that the tool still reported success, the receipt still counted a
+   * change, and the model told the user it had done something it had not. A
+   * false "done" is worse than an error: an error the model can see and correct
+   * within the same turn, which is what add_edge already does.
+   *
+   * Returning the known ids matters as much as the refusal. It turns a dead end
+   * into a self-correction — the model retries with a real id instead of
+   * apologising or, worse, inventing an explanation for the discrepancy.
+   */
+  const requireExisting = (tool, noun, id, collection, describe = item => item.id) => {
+    const list = Array.isArray(collection) ? collection : [];
+    if (id && list.some(item => item?.id === id)) return null;
+    const known = list.map(describe).join(', ');
+    return {
+      error: `${tool}: no ${noun} with id "${id ?? ''}". `
+           + `Known ${noun}s: ${known || '(none)'}. `
+           + 'Use one of these exactly, or tell the user it does not exist.',
+    };
+  };
 
   switch (name) {
     case 'add_condition': {
@@ -910,6 +935,17 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
       // `coordinates` argument and we honour it.
       let coordinates = null;
       const part = (fullWorkspace.instance?.parts || []).find(p => p.id === args.partRef);
+      // A partRef that matches nothing leaves coordinates null, and the viewer
+      // skips condition spheres with no coordinates (see the note above). The
+      // condition would appear in the list and nowhere in the 3D view — which
+      // is where someone surveying a structure actually looks.
+      if (args.partRef && !part) {
+        const known = (fullWorkspace.instance?.parts || []).map(p => `${p.id} ("${p.name}")`).join(', ');
+        return {
+          error: `add_condition: no part with id "${args.partRef}". Known parts: ${known || '(none)'}. `
+               + 'Use one of these exactly — a condition on an unknown part cannot be placed in the 3D view.',
+        };
+      }
       if (args.coordinates && typeof args.coordinates === 'object') {
         coordinates = {
           x: Number(args.coordinates.x) || 0,
@@ -940,15 +976,26 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
         }
       };
     }
-    case 'remove_condition':
+    case 'remove_condition': {
+      const gone = requireExisting(
+        'remove_condition', 'condition', args.conditionId, fullWorkspace.conditions,
+        c => `${c.id} ("${c.type}${c.partRef ? ' on ' + c.partRef : ''}")`,
+      );
+      if (gone) return gone;
       return {
         ok: true, message: `Removed ${args.conditionId}`,
         command: { type: 'remove-condition', payload: { conditionId: args.conditionId } }
       };
+    }
     case 'update_condition': {
       if (!args.conditionId) {
         return { error: 'update_condition: conditionId is required.' };
       }
+      const missing = requireExisting(
+        'update_condition', 'condition', args.conditionId, fullWorkspace.conditions,
+        c => `${c.id} ("${c.type}${c.partRef ? ' on ' + c.partRef : ''}")`,
+      );
+      if (missing) return missing;
       if (isEmptyPatch(args.patch)) {
         return {
           error: `update_condition called on ${args.conditionId} with an empty patch — ` +
@@ -967,6 +1014,24 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
       if (args.summary !== undefined) intent.summary = args.summary;
       if (Array.isArray(args.axes) && args.axes.length > 0) {
         const existing = (snapshot.intent?.axes || []).slice();
+        // An axis id that matches nothing used to be dropped here in silence,
+        // and the receipt below still counted it as changed — so the model
+        // reported "Reversibility added", the radar did not move, and the user
+        // was told something untrue. Refuse instead, the way add_edge does,
+        // and say what the model CAN do: it may re-weight the axes that exist,
+        // and only the participant may create a new one.
+        const unknown = args.axes.filter(upd => !existing.some(a => a.id === upd.id));
+        if (unknown.length) {
+          const known = existing.map(a => `${a.id} ("${a.label}")`).join(', ');
+          return {
+            error: `set_intent: no axis with id ${unknown.map(u => `"${u.id}"`).join(', ')}. `
+                 + `Known axes: ${known || '(none)'}. `
+                 + 'You can only change the VALUE of an axis that already exists. '
+                 + 'You cannot create one — the participant adds an axis themselves with '
+                 + 'the "+ axis" button in the intent panel, after which you can weight it. '
+                 + 'Tell them that plainly rather than implying you added it.',
+          };
+        }
         for (const upd of args.axes) {
           const idx = existing.findIndex(a => a.id === upd.id);
           if (idx >= 0) existing[idx] = { ...existing[idx], value: upd.value };
@@ -1198,17 +1263,50 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
     case 'remove_edge': {
       const currentPlanId = activePlanId;
       if (!currentPlanId) return { error: 'No active plan' };
-      return { ok: true, command: { type: 'remove-edge', payload: { planId: currentPlanId, edgeId: args.edgeId } } };
+      // This one could never have worked. The tool requires an edgeId, but the
+      // snapshot sends edges as {source, target} with the id stripped (see
+      // leanWorkspace), so there is no id for the model to pass. Every call
+      // reached the reducer, matched nothing, changed nothing, and was still
+      // reported as "1 removed connection". Refuse honestly instead of
+      // pretending; the edges are listed so the model can describe which one it
+      // meant rather than silently failing to remove it.
+      const edges = (currentPlan?.edges || []);
+      const known = edges.map(e => `${e.source} → ${e.target}`).join(', ');
+      const match = edges.some(e => e.id === args.edgeId);
+      if (!match) {
+        return {
+          error: `remove_edge: "${args.edgeId}" is not an edge id in this plan. `
+               + `Edges here are ${known || '(none)'}. `
+               + 'You cannot remove an edge — edge ids are not part of the information you are given. '
+               + 'Say so plainly, and describe which connection you would remove.',
+        };
+      }
+      return { ok: true, message: `Removed edge ${args.edgeId}`, command: { type: 'remove-edge', payload: { planId: currentPlanId, edgeId: args.edgeId } } };
     }
-    case 'set_active_plan':
+    case 'set_active_plan': {
+      // A planId that resolves to nothing is worse than a no-op: the reducer
+      // sets currentPlanId to it regardless, no plan is then current, and
+      // getCurrentIntent falls back to a fresh default — so the radar snaps
+      // back to the six seed axes and the participant's strategy looks erased.
+      const noPlan = requireExisting(
+        'set_active_plan', 'plan', args.planId, fullWorkspace.plans,
+        p => `${p.id} ("${p.label}")`,
+      );
+      if (noPlan) return noPlan;
       // Keep the in-turn context consistent so later tool calls target
       // the same plan the model just switched to.
       turnContext.pendingPlanId = args.planId || null;
-      return { ok: true, command: { type: 'set-current-plan', payload: { planId: args.planId } } };
+      return { ok: true, message: `Switched to plan ${args.planId}`, command: { type: 'set-current-plan', payload: { planId: args.planId } } };
+    }
     case 'update_plan': {
       if (!args.planId) {
         return { error: 'update_plan: planId is required.' };
       }
+      const noPlan = requireExisting(
+        'update_plan', 'plan', args.planId, fullWorkspace.plans,
+        p => `${p.id} ("${p.label}")`,
+      );
+      if (noPlan) return noPlan;
       if (isEmptyPatch(args.patch)) {
         return {
           error: `update_plan on ${args.planId} called with an empty patch — nothing to update. ` +
@@ -1222,11 +1320,17 @@ function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSteps = []
         command: { type: 'update-plan', payload: { planId: args.planId, patch: args.patch } }
       };
     }
-    case 'remove_plan':
+    case 'remove_plan': {
+      const noPlan = requireExisting(
+        'remove_plan', 'plan', args.planId, fullWorkspace.plans,
+        p => `${p.id} ("${p.label}")`,
+      );
+      if (noPlan) return noPlan;
       // If the model removes the plan it was about to mutate, clear the
       // turn-local pointer so later tool calls don't write into the void.
       if (turnContext.pendingPlanId === args.planId) turnContext.pendingPlanId = null;
-      return { ok: true, command: { type: 'remove-plan', payload: { planId: args.planId } } };
+      return { ok: true, message: `Removed plan ${args.planId}`, command: { type: 'remove-plan', payload: { planId: args.planId } } };
+    }
     case 'propose_options': {
       // This tool doesn't produce a workspace command — it captures
       // tappable answer chips into the turn context, to be attached to
