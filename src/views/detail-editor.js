@@ -18,7 +18,7 @@
 import { PART_STATUS, CONDITION_STATUS, STEP_STATUS } from '../core/schema.js';
 import { createMiniViewer3D } from './mini-viewer-3d.js';
 
-export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, getPhotoBlob, dispatch, onAttachPhoto, canEditCondition }) {
+export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, getPhotoBlob, dispatch, onAttachPhoto, canEditCondition, onMarkComplete }) {
 
   // The mini-3D-viewer is created on demand inside the modal body. We
   // destroy and recreate it each time the modal opens to avoid context
@@ -283,9 +283,9 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     // Coordinates editor
     const c = h.coordinates || { x: 0, y: 0, z: 0 };
     const coordRow = el('div', 'detail-form-row');
-    coordRow.appendChild(field('X', numInput(c.x, v => patchCondition(id, { coordinates: { ...c, x: v } }))));
-    coordRow.appendChild(field('Y', numInput(c.y, v => patchCondition(id, { coordinates: { ...c, y: v } }))));
-    coordRow.appendChild(field('Z', numInput(c.z, v => patchCondition(id, { coordinates: { ...c, z: v } }))));
+    coordRow.appendChild(field('X', numInput(c.x, v => patchCondition(id, { coordinates: { ...c, x: v } }), { decimals: 3, step: 0.001 })));
+    coordRow.appendChild(field('Y', numInput(c.y, v => patchCondition(id, { coordinates: { ...c, y: v } }), { decimals: 3, step: 0.001 })));
+    coordRow.appendChild(field('Z', numInput(c.z, v => patchCondition(id, { coordinates: { ...c, z: v } }), { decimals: 3, step: 0.001 })));
     form.appendChild(coordRow);
 
     if (!editable) {
@@ -388,6 +388,22 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     }
 
     bodyEl.appendChild(form);
+
+    // "Mark complete" opens the execution-log form (actual time, deviation,
+    // rationale). It used to hang off a quick-action chip in the chat bar —
+    // but that chip container was hidden with an inline style, so the whole
+    // execution-log feature had no reachable entry point at all despite being
+    // documented in the workshop cheatsheet. The step's own detail modal is
+    // where it belongs: you complete a step, so you complete it from the step.
+    if (onMarkComplete && s.status !== 'completed') {
+      const actions = el('div', 'detail-actions');
+      const done = el('button', 'detail-complete');
+      done.textContent = '✓ Mark complete';
+      done.onclick = () => onMarkComplete(id);
+      actions.appendChild(done);
+      bodyEl.appendChild(actions);
+    }
+
     showModal();
   }
 
@@ -586,14 +602,23 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     return t;
   }
 
-  function numInput(value, onChange) {
+  function numInput(value, onChange, opts = {}) {
     const i = el('input', 'detail-input');
     i.type = 'number';
-    i.step = 'any';
-    i.value = value ?? '';
+    i.step = opts.step ?? 'any';
+    // decimals: round both what is shown and what is stored. A raycast hit in
+    // the 3D viewer produces a full float, which is meaningless precision for
+    // a position on a timber and makes the value unreadable in a 60px field.
+    const fmt = v => (opts.decimals != null && Number.isFinite(v))
+      ? Number(v.toFixed(opts.decimals))
+      : v;
+    i.value = fmt(value) ?? '';
     i.onchange = () => {
       const v = parseFloat(i.value);
-      onChange(Number.isFinite(v) ? v : null);
+      if (!Number.isFinite(v)) { onChange(null); return; }
+      const rounded = fmt(v);
+      i.value = rounded;
+      onChange(rounded);
     };
     return i;
   }

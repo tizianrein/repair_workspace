@@ -137,11 +137,17 @@ export function newCondition(opts = {}) {
 
 export function newEvidence(kind, opts = {}) {
   if (!EVIDENCE_KIND.includes(kind)) throw new Error(`Unknown evidence kind: ${kind}`);
+  const now = new Date().toISOString();
   return {
     id: uid('ev'),
     kind,
     attachedTo: opts.attachedTo || null,
-    capturedAt: opts.capturedAt || new Date().toISOString(),
+    // Both timestamps: capturedAt is when the photo was taken, createdAt is
+    // when the record entered the workspace. Renderings are sorted by
+    // createdAt, which the factory never set — so every comparison was 0 - 0
+    // and the OLDEST rendering displayed as the active one.
+    createdAt: opts.createdAt || now,
+    capturedAt: opts.capturedAt || now,
     capturedBy: opts.capturedBy || null,
     url: opts.url || null,
     text: opts.text || null,
@@ -223,7 +229,11 @@ export function newStep(opts = {}) {
     safetyNotes: opts.safetyNotes || '',
     justification: opts.justification || newJustification(),
     confidence: opts.confidence ?? 0.7,
-    optional: !!opts.optional
+    optional: !!opts.optional,
+    // Optional agent-authored construction joinery record. The geometric
+    // fitter resolves this program in Rhino/Grasshopper and the resulting
+    // proposal can be written back onto the same step through upsert-step.
+    joineryProposal: opts.joineryProposal || null
   };
 }
 
@@ -308,12 +318,39 @@ export function getCurrentConstraints(ws) {
 // HELPERS
 // ============================================================================
 
-let counter = 0;
-function uid(prefix) {
-  counter += 1;
+/**
+ * Globally unique id.
+ *
+ * This used to be `Date.now()` plus a per-page counter starting at zero —
+ * no randomness, no per-participant salt. With 10 participants surveying one
+ * artefact at the same workshop, two people creating their first condition in
+ * the same millisecond produced the *same* `cond_…` id. Because the shared
+ * conditions table keys on (project_id, id) and its upsert reassigns the
+ * author, the second saver silently took over the first participant's row.
+ *
+ * Randomness is therefore load-bearing for correctness, not just tidiness.
+ * 32 CSPRNG bits on top of a millisecond timestamp means a collision needs two
+ * ids minted in the same millisecond AND drawing the same 4 bytes — far beyond
+ * any workshop. Kept deliberately short: these ids are shown in the UI, and a
+ * 24-character random tail wraps onto two lines in the conditions list.
+ */
+export function uid(prefix) {
   const t = Date.now().toString(36);
-  const c = counter.toString(36).padStart(3, '0');
-  return `${prefix}_${t}${c}`;
+  return `${prefix}_${t}${randomToken(4)}`;
+}
+
+function randomToken(bytes) {
+  const g = globalThis.crypto;
+  if (g?.getRandomValues) {
+    const buf = new Uint8Array(bytes);
+    g.getRandomValues(buf);
+    return Array.from(buf, b => b.toString(16).padStart(2, '0')).join('').slice(0, bytes * 2);
+  }
+  // Last-resort fallback for exotic runtimes without WebCrypto. Never hit in
+  // a browser or in Node 19+; present so id generation cannot throw.
+  let out = '';
+  while (out.length < bytes * 2) out += Math.random().toString(16).slice(2);
+  return out.slice(0, bytes * 2);
 }
 
 function humanize(id) {

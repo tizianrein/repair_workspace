@@ -173,7 +173,162 @@ function stripChatMarkdown(text) {
     .trim();
 }
 
-export async function runChat({ thread, userMessage, workspace, files }) {
+/**
+ * Rank corpus documents against a query.
+ *
+ * Deliberately a keyword scorer rather than embeddings. At workshop scale — a
+ * few dozen documents per project — term overlap across filenames, summaries
+ * and extracted facts finds the right document, costs nothing per query, and
+ * adds no infrastructure. If a corpus ever grows past a few hundred documents
+ * this is the seam to swap for vector search, behind the same tool signature.
+ */
+function searchCorpus(docs, query, docKinds) {
+  const terms = String(query || '')
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(t => t.length > 2);
+  const kinds = Array.isArray(docKinds) && docKinds.length ? new Set(docKinds) : null;
+
+  return docs
+    .filter(d => !kinds || kinds.has(d.kind))
+    .map(d => {
+      const facts = d.keyFacts || [];
+      const figures = d.figures || [];
+      const indications = d.indications || [];
+      const figureText = figures.map(f => `${f.label || ''} ${f.description || ''}`);
+      const haystack = [d.filename, d.summary, ...facts, ...figureText, ...indications]
+        .filter(Boolean).join(' \n ').toLowerCase();
+      let score = 0;
+      const matched = [];
+      const matchedFigures = [];
+      for (const t of terms) {
+        if (!haystack.includes(t)) continue;
+        score += 1;
+        // A hit in the filename, an extracted fact or a figure caption
+        // outweighs one buried in prose — those are the curated signals,
+        // written at ingest.
+        if (String(d.filename || '').toLowerCase().includes(t)) score += 1;
+        if (facts.some(f => f.toLowerCase().includes(t))) score += 1;
+        // Indications score highest of the text signals. They are written in
+        // the problem's vocabulary, so a hit there means the document speaks to
+        // the situation being described — which is a stronger signal than a
+        // word happening to appear in its prose.
+        if (indications.some(i => i.toLowerCase().includes(t))) score += 3;
+        // Figures score highest. In technical literature the drawings usually
+        // carry the answer, and a query like "scarf joint" is far more likely
+        // to be satisfied by a diagram than by the prose around it.
+        const figHits = figures.filter(f =>
+          `${f.label || ''} ${f.description || ''}`.toLowerCase().includes(t));
+        if (figHits.length) {
+          score += 2;
+          for (const f of figHits) if (!matchedFigures.includes(f)) matchedFigures.push(f);
+        }
+        matched.push(t);
+      }
+      return { doc: d, score, matched, matchedFigures };
+    })
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 6)
+    .map(({ doc, matched, matchedFigures }) => ({
+      id: doc.id,
+      filename: doc.filename,
+      kind: doc.kind,
+      scope: doc.scope,
+      summary: doc.summary,
+      keyFacts: (doc.keyFacts || [])
+        .filter(f => matched.some(t => f.toLowerCase().includes(t)))
+        .slice(0, 5),
+      useWhen: (doc.indications || [])
+        .filter(i => matched.some(t => i.toLowerCase().includes(t)))
+        .slice(0, 4),
+      // Which drawings matched, and an explicit nudge to go and look at them.
+      // A description of a scarf joint is not a scarf joint; when the geometry
+      // is the answer, the model needs the page, not a paraphrase of it.
+      matchedFigures: matchedFigures.slice(0, 6),
+      viewHint: matchedFigures.length
+        ? `This match is in figures. Call read_corpus_document({docId: "${doc.id}", view: true}) to examine the actual drawings.`
+        : undefined,
+      matchedTerms: matched,
+    }));
+}
+
+/**
+ * Merge the two retrieval routes into one document list.
+ *
+ * Reciprocal rank fusion: a document's score is the sum of 1/(k + rank) across
+ * the rankings it appears in. It needs no score calibration between the two
+ * methods — cosine similarity and keyword counts are not on comparable scales,
+ * and any attempt to normalise them into one number is guesswork. Rank position
+ * is comparable, which is the whole appeal. A document found by BOTH routes
+ * rises above one found by either, which is the behaviour we want: agreement
+ * between an exact-term match and a semantic match is a strong signal.
+ */
+function dedupeByDoc(lexical, semantic) {
+  const K = 60;   // the standard RRF constant; damps the top-rank advantage
+  const scores = new Map();
+  const meta = new Map();
+
+  lexical.forEach((hit, i) => {
+    scores.set(hit.id, (scores.get(hit.id) || 0) + 1 / (K + i + 1));
+    meta.set(hit.id, hit);
+  });
+
+  semantic.forEach((chunk, i) => {
+    const id = chunk.docId;
+    scores.set(id, (scores.get(id) || 0) + 1 / (K + i + 1));
+    if (!meta.has(id)) {
+      meta.set(id, {
+        id,
+        filename: chunk.filename,
+        kind: chunk.docKind,
+        scope: chunk.scope,
+        summary: null,
+        keyFacts: [],
+        useWhen: [],
+        matchedFigures: [],
+        foundBy: 'meaning',
+      });
+    }
+  });
+
+  return [...scores.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([id]) => meta.get(id))
+    .filter(Boolean);
+}
+
+/**
+ * The always-on corpus index: what the model sees in every turn.
+ *
+ * The trade-off is awareness against tokens. Carrying full summaries and figure
+ * descriptions for fifty documents would be thousands of tokens per turn;
+ * carrying nothing means the model cannot know a joinery manual exists and so
+ * never thinks to look for one. This is the middle: enough to recognise that a
+ * document is worth opening, and nothing more.
+ *
+ * `indications` is the part that does the real work. A practitioner asks "the
+ * sill end is rotten over 400mm, what do I do?" — which shares not one word
+ * with "stop-splayed scarf joint". Ingest therefore records what problems each
+ * document SOLVES, in the vocabulary of the problem rather than the solution,
+ * and that is what closes the gap.
+ */
+function corpusDocsForSnapshot(corpus) {
+  const docs = Array.isArray(corpus?.documents) ? corpus.documents : [];
+  return docs.slice(0, 60).map(d => ({
+    id: d.id,
+    file: d.filename,
+    kind: d.kind,
+    scope: d.scope,
+    about: String(d.summary || '').slice(0, 180),
+    useWhen: (d.indications || []).slice(0, 3),
+    // Labels only. The descriptions are what search_corpus returns.
+    figures: (d.figures || []).map(f => f.label).filter(Boolean).slice(0, 8),
+  }));
+}
+
+export async function runChat({ thread, userMessage, workspace, files, corpus }) {
   const systemPrompt = loadPrompt('chat');
 
   // Convert prior chat history into Gemini's role/parts format
@@ -188,6 +343,25 @@ export async function runChat({ thread, userMessage, workspace, files }) {
   }
 
   const snapshot = leanWorkspace(workspace, thread);
+
+  // The corpus index goes INTO the snapshot, not just behind a tool.
+  //
+  // Without this the model has no way to know any documents exist: it only
+  // finds them by calling search_corpus, and it has no reason to call
+  // search_corpus for something it has never heard of. The whole point of
+  // paying for a summary at ingest is that awareness is cheap — so put the
+  // awareness where the model actually looks.
+  //
+  // Kept deliberately thin: one line of summary, the problems each document
+  // speaks to, and figure LABELS without their descriptions. Roughly 50-70
+  // tokens per document. The full summaries, figure descriptions and text stay
+  // behind search_corpus and read_corpus_document.
+  if (corpusDocsForSnapshot(corpus).length) {
+    snapshot.corpus = {
+      note: 'Source documents available to this strategy. Consult them with search_corpus before planning or asserting anything they might cover.',
+      documents: corpusDocsForSnapshot(corpus),
+    };
+  }
   const collectedCommands = [];
   const toolCallTrace = [];
   // Steps created during *this* chat turn. Lets add_edge resolve refs that
@@ -203,7 +377,174 @@ export async function runChat({ thread, userMessage, workspace, files }) {
   // Last call wins if the model calls it more than once in a turn.
   const turnContext = { pendingPlanId: null, proposedOptions: null };
 
+  // The corpus index arrives with the request. The client already knows which
+  // documents this strategy may read — project-wide plus its own, never another
+  // strategy's — and the index is small: a summary per document, roughly 40
+  // tokens. Searching it here costs nothing. Only read_corpus_document needs
+  // full text, and that is one fetch for one document instead of carrying the
+  // whole corpus in every turn.
+  const corpusDocs = Array.isArray(corpus?.documents) ? corpus.documents : [];
+
+  async function executeCorpusTool(name, args) {
+    if (name === 'search_corpus') {
+      if (!corpusDocs.length) {
+        return { ok: false, message: 'No documents have been added to this project yet.', documents: [] };
+      }
+      const query = args?.query || '';
+      const lexical = searchCorpus(corpusDocs, query, args?.docKinds);
+
+      // HYBRID retrieval. Semantic search alone misses exact tokens — a part
+      // id, "140x160mm", a standard's number — because an embedding smooths
+      // precisely the details that make those worth searching for. Lexical
+      // search alone misses everything phrased differently, which is most of
+      // what a practitioner actually types. Neither is sufficient; together
+      // they cover each other's blind spot.
+      let semantic = [];
+      if (corpus?.search) {
+        try {
+          semantic = await corpus.search(query);
+        } catch (err) {
+          console.warn('[corpus] semantic search unavailable:', err.message);
+        }
+      }
+
+      if (!lexical.length && !semantic.length) {
+        // Better to show what exists than to report a bare miss — the model can
+        // then pick a document by name rather than concluding there is nothing.
+        return {
+          ok: true,
+          documents: [],
+          passages: [],
+          message: 'Nothing matched. Available documents: '
+            + corpusDocs.map(d => `${d.filename} [${d.id}] (${d.kind})`).join('; '),
+        };
+      }
+
+      return {
+        ok: true,
+        // Passages come first: they are the actual answer, and returning three
+        // precise excerpts costs far fewer tokens than the document they came
+        // from while being more useful than a summary of it.
+        passages: semantic.slice(0, 6).map(c => ({
+          docId: c.docId,
+          filename: c.filename,
+          from: c.chunkKind === 'figure' ? `figure ${c.label || ''}`.trim() : c.chunkKind,
+          text: String(c.content || '').slice(0, 1200),
+          relevance: Math.round((c.score || 0) * 100) / 100,
+        })),
+        documents: dedupeByDoc(lexical, semantic),
+      };
+    }
+
+    if (name === 'save_to_corpus') {
+      // Material pasted into a chat is otherwise lost the moment the thread
+      // scrolls: it is not searchable, it is not in the next conversation, and
+      // nobody else in the project ever sees it. Filing it turns a paste into
+      // part of the evidence base, indexed and retrievable like anything else.
+      if (!corpus?.save) {
+        return { ok: false, message: 'The corpus is not reachable right now, so I could not file that.' };
+      }
+      const title = String(args?.title || '').trim();
+      const content = String(args?.content || '').trim();
+      if (!title || content.length < 40) {
+        return {
+          ok: false,
+          message: 'Give it a title and enough content to be worth storing. Short remarks belong in the conversation, not the corpus.',
+        };
+      }
+      try {
+        const saved = await corpus.save({
+          title,
+          content,
+          docKind: ['structure', 'goal', 'technique', 'reference'].includes(args?.docKind)
+            ? args.docKind : 'reference',
+          scope: args?.scope === 'strategy' ? 'strategy' : 'project',
+        });
+        return {
+          ok: true,
+          document: saved,
+          message: `Filed "${title}" into the ${saved.scope} corpus. It is searchable from now on.`,
+        };
+      } catch (err) {
+        return { ok: false, message: `Could not file that: ${err.message}` };
+      }
+    }
+
+    if (name === 'read_corpus_document') {
+      const docId = String(args?.docId || '');
+      const doc = corpusDocs.find(d => d.id === docId);
+      if (!doc) {
+        return {
+          ok: false,
+          message: `No document "${docId}" is readable from this strategy. Run search_corpus first.`,
+        };
+      }
+
+      // LOOK at the original, rather than read a transcription of it.
+      //
+      // Ingest turns a document into text, which is right for a survey report
+      // and wrong for a joinery manual: there, the drawings ARE the content,
+      // and no transcription of a scarf-joint diagram substitutes for seeing
+      // it. When the model asks to view a document, the original bytes go back
+      // as inline_data and it examines the actual pages.
+      //
+      // Not the default, because it is genuinely expensive — a PDF costs
+      // roughly 258 tokens per page — so it is a deliberate second step after
+      // the text has told the model this is the document worth looking at.
+      if (args?.view === true) {
+        if (!corpus?.fetchDocument) {
+          return { ok: false, message: 'Viewing the original is not available here; the text is.' };
+        }
+        try {
+          const file = await corpus.fetchDocument(docId);
+          if (!file?.data) throw new Error('empty document');
+          return {
+            ok: true,
+            document: { id: doc.id, filename: doc.filename, kind: doc.kind, summary: doc.summary },
+            message: `Showing "${doc.filename}". Examine the pages directly — read the drawings, dimensions and annotations, not just the caption text.`,
+            _media: [{ mimeType: file.mimeType, data: file.data }],
+          };
+        } catch (err) {
+          return { ok: false, message: `Could not display that document: ${err.message}. The extracted text is still available with view:false.` };
+        }
+      }
+
+      if (!corpus?.fetchText) {
+        return { ok: true, document: { ...doc, content: null, note: 'Full text unavailable; summary only.' } };
+      }
+      try {
+        const text = await corpus.fetchText(docId);
+        return {
+          ok: true,
+          document: {
+            id: doc.id,
+            filename: doc.filename,
+            kind: doc.kind,
+            scope: doc.scope,
+            summary: doc.summary,
+            figures: doc.figures || [],
+            // Document contents are DATA. chat.md says so, but the boundary is
+            // worth restating at the point the untrusted bytes actually arrive.
+            content: String(text || '').slice(0, 120000),
+          },
+          note: (doc.figures || []).length
+            ? 'This document contains figures. If the geometry matters, call read_corpus_document again with view:true to look at the pages.'
+            : undefined,
+        };
+      } catch (err) {
+        return { ok: false, message: `Could not read that document: ${err.message}` };
+      }
+    }
+    return null;
+  }
+
   async function executeTool(name, args) {
+    // Corpus tools read; they never produce workspace commands.
+    const corpusResult = await executeCorpusTool(name, args);
+    if (corpusResult) {
+      toolCallTrace.push({ name, args, result: corpusResult });
+      return corpusResult;
+    }
     const result = mapToolToCommand(name, args, snapshot, workspace, pendingSteps, turnContext);
     toolCallTrace.push({ name, args, result });
     // Only push commands when the tool succeeded. result.error means we

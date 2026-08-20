@@ -29,6 +29,7 @@
 
 import { callGemini } from './_shared/gemini.js';
 import { loadPrompt } from './_shared/prompts.js';
+import { getIntent, getConstraints } from './_shared/workspace-read.js';
 
 export const config = { maxDuration: 30 };
 
@@ -45,8 +46,8 @@ export default async function handler(req, res) {
     const userPayload = {
       currentSoll,
       userInstruction,
-      intent: workspace?.intent,
-      constraints: workspace?.constraints
+      intent: getIntent(workspace),
+      constraints: getConstraints(workspace)
     };
 
     const result = await callGemini({

@@ -322,6 +322,19 @@ export async function callGeminiWithTools({
         result = { error: err.message };
       }
       toolCalls.push({ name: call.name, args: call.args, result });
+
+      // A tool may return media for the model to actually LOOK at, rather than
+      // only read about — a page of a joinery PDF, a drawing, a photographed
+      // detail. A functionResponse carries JSON only, so the bytes cannot ride
+      // inside it. They go in as sibling inline_data parts of the same user
+      // turn, which Gemini accepts and which keeps the image adjacent to the
+      // tool result that produced it.
+      let media = [];
+      if (result && typeof result === 'object' && Array.isArray(result._media)) {
+        media = result._media;
+        delete result._media;
+      }
+
       const functionResponse = {
         name: call.name,
         response: typeof result === 'object' && result !== null ? result : { value: result },
@@ -329,6 +342,12 @@ export async function callGeminiWithTools({
       // Gemini 3.x requires the response id to match the preceding call.
       if (call.id) functionResponse.id = call.id;
       responseParts.push({ functionResponse });
+
+      for (const m of media) {
+        if (m?.data && m?.mimeType) {
+          responseParts.push({ inline_data: { mime_type: m.mimeType, data: m.data } });
+        }
+      }
     }
 
     // Feed the tool results back as a user turn

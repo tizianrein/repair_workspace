@@ -5,27 +5,18 @@
  * history) and most of it isn't relevant to a given call. This module returns
  * a slimmed-down view tailored to the call's scope or purpose.
  *
- * Two top-level helpers:
- *   - payloadForPropose({ workspace, scope }) → for /api/propose
+ * One top-level helper:
  *   - payloadForChat({ workspace, thread, maxMessages }) → for /api/chat
  *
- * Both strip image data from evidence (we send only metadata; the AI gets
- * the image via the message attachments parameter instead) and avoid
+ * It strips image data from evidence (we send only metadata; the AI gets
+ * the image via the message attachments parameter instead) and avoids
  * including conversations from threads other than the active one.
+ *
+ * There used to be a second helper, payloadForPropose, with a per-scope
+ * table of which workspace slices to include. It went away with the
+ * propose endpoint: chat tool-calling can touch anything in the workspace,
+ * so narrowing the payload by scope would only hide state the model needs.
  */
-
-const SCOPE_NEEDS = {
-  // Each scope: which workspace slices the AI needs to reason.
-  assembly:      { parts: true, conditions: true,  intent: true, constraints: true, plans: false, executionLog: false },
-  conditions:    { parts: true, conditions: true,  intent: true, constraints: true, plans: false, executionLog: false },
-  interventions: { parts: true, conditions: true,  intent: true, constraints: true, plans: 'current', executionLog: true },
-  all:           { parts: true, conditions: true,  intent: true, constraints: true, plans: 'current', executionLog: true }
-};
-
-export function payloadForPropose({ workspace, scope = 'all' }) {
-  const needs = SCOPE_NEEDS[scope] || SCOPE_NEEDS.all;
-  return slim(workspace, needs);
-}
 
 export function payloadForChat({ workspace, scope = 'all', ref = null, maxMessages = 8 }) {
   // Chat always needs the broadest context except old plan versions

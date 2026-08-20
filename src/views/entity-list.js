@@ -4,6 +4,9 @@
  * Renders into the right drawer. Filter dropdown swaps between all / parts /
  * conditions / specific statuses. Search is substring across id, type,
  * material, description. Tap a card → onDetail callback.
+ *
+ * Conditions are listed above parts: they are the findings, they are what the
+ * header count refers to, and there are far fewer of them than parts.
  */
 
 export function createEntityList(container, searchInput, filterSelect, countEl, footerEl, { onDetail }) {
@@ -50,6 +53,16 @@ export function createEntityList(container, searchInput, filterSelect, countEl, 
         hypsByPart.get(h.partRef).push(h);
       });
 
+      // Conditions render before parts. Parts are the fixed inventory of the
+      // artefact and barely change; conditions are what this participant has
+      // actually found, they are what the count in the header refers to, and
+      // they are the thing you come to this list to check. With 23 parts and
+      // 4 conditions, ordering by parts first buries the findings below the
+      // fold.
+      renderConditions();
+      renderParts();
+
+      function renderParts() {
       matchedParts.forEach(p => {
         const card = document.createElement('div');
         card.className = 'entity-card' + (p.id === selection.partId ? ' selected' : '');
@@ -67,7 +80,9 @@ export function createEntityList(container, searchInput, filterSelect, countEl, 
         card.onclick = () => onDetail?.({ type: 'part', id: p.id });
         container.appendChild(card);
       });
+      }
 
+      function renderConditions() {
       matchedHyps.forEach(h => {
         const card = document.createElement('div');
         card.className = 'entity-card dmg' + (h.id === selection.conditionId ? ' selected' : '');
@@ -85,6 +100,7 @@ export function createEntityList(container, searchInput, filterSelect, countEl, 
         card.onclick = () => onDetail?.({ type: 'condition', id: h.id });
         container.appendChild(card);
       });
+      }
     }
 
     const totalParts = parts.length;

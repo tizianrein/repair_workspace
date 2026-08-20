@@ -191,7 +191,12 @@
 .mini-btn:hover { border-color: var(--ink); }
 .mini-btn.x { flex: 0 0 22px; padding: 2px 4px; font-size: 14px; line-height: 1; }
 
-.axis-list { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow: auto; }
+/* No max-height, no inner scroll. Once axes are added and removed freely —
+   and once the AI proposes new ones from the corpus — the axis list IS the
+   intent. Hiding half of it behind a 200px scroll box means you cannot see
+   the trade-off you are actually making. The left drawer scrolls as a whole;
+   this list grows with it. */
+.axis-list { display: flex; flex-direction: column; gap: 6px; }
 .axis-row {
   display: grid;
   grid-template-columns: 1fr 36px 22px;
@@ -910,32 +915,6 @@
 .chat-camera-btn:hover { background: var(--bg-panel); border-color: var(--ink); }
 
 /* =========================================================
-   Quick action chips
-   ========================================================= */
-.quick-actions {
-  padding: 0 12px 10px;
-  display: flex;
-  gap: 5px;
-  overflow-x: auto;
-  flex-shrink: 0;
-  scrollbar-width: thin;
-}
-.qa-btn {
-  background: var(--bg-panel);
-  border: 1px solid var(--line);
-  color: var(--ink);
-  padding: 5px 10px;
-  border-radius: 999px;
-  font-size: 11px;
-  white-space: nowrap;
-  cursor: pointer;
-  font-family: inherit;
-}
-.qa-btn:hover { background: var(--bg-soft); }
-.qa-btn.primary { background: var(--ink); color: #fff; }
-.qa-btn.accent { background: var(--accent); color: #fff; border-color: var(--accent-deep); }
-
-/* =========================================================
    Propose review modal
    ========================================================= */
 .propose-review-modal .modal-card.wide { max-width: 720px; }
@@ -1039,169 +1018,6 @@
   display: flex;
   gap: 8px;
   align-items: center;
-}
-
-/* =========================================================
-   Justification panel
-   ========================================================= */
-.justification-panel {
-  position: absolute;
-  top: 0; bottom: 0; right: 0;
-  width: min(320px, 50%);
-  background: var(--bg-panel);
-  border-left: 1px solid var(--line);
-  z-index: 10;
-  transform: translateX(105%);
-  transition: transform .25s cubic-bezier(.2,.7,.2,1);
-  display: flex;
-  flex-direction: column;
-  box-shadow: -8px 0 20px rgba(26,26,26,0.08);
-}
-.justification-panel.on { transform: translateX(0); }
-.jp-head {
-  display: flex;
-  align-items: center;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--line);
-  background: var(--ink);
-  color: #fff;
-  flex-shrink: 0;
-}
-.jp-label {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  flex: 1;
-}
-.jp-close {
-  background: transparent;
-  border: 1px solid #fff;
-  color: #fff;
-  width: 26px; height: 26px;
-  border-radius: var(--radius);
-  cursor: pointer;
-  font-size: 12px;
-}
-.jp-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.jp-step-title {
-  font-family: var(--display);
-  font-size: 16px;
-  line-height: 1.3;
-  color: var(--ink);
-}
-.jp-conf {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 10px;
-  border-radius: 4px;
-  font-family: var(--mono);
-  font-size: 11px;
-}
-.jp-conf-high { background: rgba(39, 80, 10, 0.1); color: #27500a; }
-.jp-conf-med { background: rgba(184, 122, 0, 0.1); color: var(--warn); }
-.jp-conf-low { background: var(--accent-soft); color: var(--accent-deep); }
-.jp-conf strong { font-size: 13px; }
-.jp-rationale {
-  font-family: var(--display);
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ink);
-  padding: 10px 12px;
-  background: var(--bg-soft);
-  border-radius: 4px;
-}
-.jp-empty {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--ink-mute);
-  text-align: center;
-  padding: 12px;
-}
-.jp-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.jp-section-label {
-  font-family: var(--mono);
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ink-mute);
-}
-.jp-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.jp-list li {
-  padding: 6px 8px;
-  background: var(--bg-soft);
-  border-radius: 4px;
-  font-size: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.jp-clickable { cursor: pointer; transition: background .12s; }
-.jp-clickable:hover { background: var(--info-soft); }
-.jp-hyp-type {
-  font-family: var(--mono);
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--ink);
-}
-.jp-hyp-status {
-  font-family: var(--mono);
-  font-size: 9px;
-  text-transform: uppercase;
-  padding: 1px 5px;
-  border-radius: 2px;
-}
-.jp-hyp-status.suspected { background: #fff3c4; color: var(--warn); }
-.jp-hyp-status.confirmed { background: var(--accent-soft); color: var(--accent-deep); }
-.jp-hyp-status.refuted { background: var(--bg-panel); color: var(--ink-mute); text-decoration: line-through; }
-.jp-hyp-part {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--ink-soft);
-}
-.jp-axis-label {
-  flex: 1;
-  font-size: 11px;
-}
-.jp-axis-bar {
-  flex: 0 0 60px;
-  height: 6px;
-  background: var(--line-soft);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.jp-axis-bar > span {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  border-radius: 3px;
-}
-.jp-axis-value {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--ink-soft);
-  min-width: 32px;
-  text-align: right;
 }
 
 /* =========================================================
@@ -1328,6 +1144,24 @@ select.detail-input { cursor: pointer; }
 }
 .detail-delete:hover {
   background: var(--accent);
+  color: white;
+}
+
+/* Completing a step is the positive counterpart to .detail-delete, so it
+   shares that button's geometry and differs only in colour. */
+.detail-complete {
+  background: transparent;
+  border: 1px solid var(--ok, #3f6b3f);
+  color: var(--ok, #3f6b3f);
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.detail-complete:hover {
+  background: var(--ok, #3f6b3f);
   color: white;
 }
 
@@ -2070,3 +1904,175 @@ select.detail-input { cursor: pointer; }
 .hint-swatch-red  { background: #ff4d4d; border: 1px solid #7a1418; }
 .hint-swatch-blue { background: #2266aa; border: 1px solid #113a66; }
 .hint-dim { opacity: 0.7; margin-left: auto; font-style: italic; }
+
+/* Strategy picker — shown before an export so the file is one strategy, named
+   for it, rather than an undifferentiated workspace dump. */
+.strategy-picker-card { max-width: 460px; width: 100%; }
+.sp-copy {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 0 0 12px;
+}
+.sp-list { display: flex; flex-direction: column; gap: 6px; }
+.sp-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+.sp-row:hover, .sp-row:focus-visible {
+  background: var(--bg-panel);
+  border-color: var(--ink);
+  outline: none;
+}
+.sp-row.current { border-color: var(--ink); }
+.sp-swatch {
+  width: 4px;
+  align-self: stretch;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.sp-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.sp-label {
+  font-size: 13px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sp-meta { font-family: var(--mono); font-size: 10px; color: var(--ink-mute); }
+.sp-current {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  flex-shrink: 0;
+}
+
+
+/* Roster in the name prompt. A name is the whole identity here, so seeing who
+   already holds one is the only thing standing between two participants with
+   the same first name and one shared, mutually-overwritten layer. */
+.collab-roster { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.roster-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-mute);
+  margin-bottom: 2px;
+}
+.roster-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  background: transparent;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.roster-row:hover, .roster-row:focus-visible {
+  border-color: var(--ink);
+  background: var(--bg-panel);
+  outline: none;
+}
+.roster-name { font-size: 12px; color: var(--ink); }
+.roster-meta { font-family: var(--mono); font-size: 10px; color: var(--ink-mute); }
+
+/* Corpus. Two tiers, visually separated because the distinction is a design
+   decision and not a filing detail: project documents are shared so divergence
+   comes from what people do with the material, strategy documents are private
+   to one strategy so strategies reason from different evidence. */
+.corpus-tier { margin-bottom: 12px; }
+.corpus-tier-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.corpus-tier-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-mute);
+}
+.corpus-list { display: flex; flex-direction: column; gap: 6px; }
+.corpus-doc {
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 7px 8px;
+}
+.corpus-doc-head { display: flex; align-items: center; gap: 6px; }
+.corpus-kind {
+  font-family: var(--mono);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 4px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--ink-mute);
+  flex-shrink: 0;
+}
+.corpus-name {
+  font-size: 12px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.corpus-flag {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink-mute);
+  flex-shrink: 0;
+}
+.corpus-flag.err { color: var(--accent); }
+.corpus-meta { font-family: var(--mono); font-size: 9px; color: var(--ink-mute); margin-top: 3px; }
+.corpus-summary {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  margin-top: 5px;
+}
+.corpus-status { font-family: var(--mono); font-size: 10px; color: var(--ink-mute); min-height: 12px; }
+
+.corpus-kind-card { max-width: 440px; width: 100%; }
+.corpus-kind-copy { font-size: 12px; line-height: 1.5; color: var(--ink-soft); margin: 0 0 12px; }
+.corpus-kind-list { display: flex; flex-direction: column; gap: 6px; }
+.corpus-kind-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  text-align: left;
+  width: 100%;
+  padding: 9px 12px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font: inherit;
+}
+.corpus-kind-btn:hover, .corpus-kind-btn:focus-visible {
+  border-color: var(--ink);
+  background: var(--bg-panel);
+  outline: none;
+}
+.corpus-kind-btn strong { font-size: 13px; font-weight: 500; }
+.corpus-kind-btn span { font-family: var(--mono); font-size: 10px; color: var(--ink-mute); }

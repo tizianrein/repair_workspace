@@ -16,7 +16,7 @@
  * Body:
  *   {
  *     workspace: <full workspace state>,
- *     plan: <the plan skeleton from generate-plan>
+ *     plan: <a plan skeleton — in practice the plan a chat turn just created>
  *   }
  *
  * Returns:
@@ -33,6 +33,7 @@
 
 import { callGemini } from './_shared/gemini.js';
 import { loadPrompt } from './_shared/prompts.js';
+import { getIntent, getConstraints } from './_shared/workspace-read.js';
 
 export const config = { maxDuration: 60 };
 
@@ -114,7 +115,7 @@ function leanWorkspace(ws) {
     conditions: (ws.conditions || []).map(h => ({
       id: h.id, type: h.type, partRef: h.partRef, status: h.status
     })),
-    intent: ws.intent,
-    constraints: ws.constraints
+    intent: getIntent(ws),
+    constraints: getConstraints(ws)
   };
 }

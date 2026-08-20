@@ -8,6 +8,14 @@
  *
  * Pure-ish: emits changes via onChange(newIntent), doesn't mutate state.
  * The state layer routes the change onto the current plan.
+ *
+ * COMMIT ON RELEASE. onChange used to fire on every pointermove and every
+ * slider `input` event, and main.js wires it straight to apply(set-intent).
+ * One drag across the canvas therefore pushed hundreds of entries onto the
+ * undo stack, cleared the redo stack hundreds of times, re-stringified the
+ * whole workspace to localStorage on each one, and queued that many
+ * collaboration saves. Live feedback now only repaints the canvas; the
+ * command is emitted once, when the interaction ends.
  */
 
 import { getCurrentIntent } from '../core/schema.js';
@@ -16,6 +24,14 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
   let intent = null;
   let dragging = false;
   let interacting = false;   // true while user is mid-drag / mid-type
+  let dirty = false;         // uncommitted edits since the last onChange
+
+  // Emit exactly one change for the whole interaction.
+  function commit() {
+    if (!dirty) return;
+    dirty = false;
+    onChange?.(intent);
+  }
 
   function render(workspace) {
     intent = JSON.parse(JSON.stringify(getCurrentIntent(workspace)));
@@ -131,13 +147,13 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
         // pointerdown and ends on pointerup (caught either on the slider
         // or via the window-level failsafe).
         n.addEventListener('pointerdown', () => { interacting = true; });
-        n.addEventListener('pointerup',   () => { interacting = false; renderList(); });
+        n.addEventListener('pointerup',   () => { interacting = false; commit(); renderList(); });
       } else {
         // Text inputs: interaction starts on focus and ends on blur.
         // Don't use pointerdown/up — releasing the mouse inside a text
         // field doesn't mean typing is finished.
         n.addEventListener('focus', () => { interacting = true; });
-        n.addEventListener('blur',  () => { interacting = false; renderList(); });
+        n.addEventListener('blur',  () => { interacting = false; commit(); renderList(); });
       }
     });
     listContainer.querySelectorAll('button').forEach(n => {
@@ -159,8 +175,8 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
       const valueEl = listContainer.querySelector(`.axis-value[data-idx="${idx}"]`);
       if (valueEl) valueEl.textContent = `${Math.round(v * 100)}%`;
     }
+    dirty = true;
     renderCanvas();
-    onChange?.(intent);
   }
 
   function onListInputCommit(e) {
@@ -170,9 +186,10 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
     if (kind === 'label') intent.axes[idx].label = e.target.value;
     if (kind === 'value') intent.axes[idx].value = Number(e.target.value);
     if (kind === 'remove' && intent.axes.length > 3) intent.axes.splice(idx, 1);
+    dirty = true;
     renderCanvas();
     renderList();
-    onChange?.(intent);
+    commit();
   }
 
   function hit(event) {
@@ -192,11 +209,11 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
   canvas.addEventListener('pointerdown', e => {
     e.preventDefault();
     dragging = true;
+    dirty = true;
     const h = hit(e);
     intent.axes[h.idx].value = h.value;
     renderCanvas();
     renderList();
-    onChange?.(intent);
   });
   canvas.addEventListener('pointermove', e => {
     if (!dragging) return;
@@ -205,22 +222,29 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
     intent.axes[h.idx].value = h.value;
     renderCanvas();
     renderList();
-    onChange?.(intent);
   });
-  window.addEventListener('pointerup', () => { dragging = false; });
+  window.addEventListener('pointerup', () => {
+    if (!dragging) return;
+    dragging = false;
+    commit();
+  });
 
   summaryTextarea.addEventListener('focus', () => { interacting = true; });
-  summaryTextarea.addEventListener('blur',  () => { interacting = false; });
+  summaryTextarea.addEventListener('blur',  () => { interacting = false; commit(); });
   summaryTextarea.addEventListener('input', () => {
     intent.summary = summaryTextarea.value;
-    onChange?.(intent);
+    dirty = true;   // committed on blur, not per keystroke
   });
 
   function addAxis() {
-    intent.axes.push({ id: `axis_${Date.now()}`, label: 'New axis', value: 0.5 });
+    // Random id: `axis_${Date.now()}` collided whenever two axes were created
+    // in the same millisecond, which is exactly what happens when the AI
+    // proposes several at once.
+    intent.axes.push({ id: newAxisId(), label: 'New axis', value: 0.5 });
+    dirty = true;
     renderCanvas();
     renderList();
-    onChange?.(intent);
+    commit();
   }
 
   // Failsafe (bound once per radar instance): if the pointer is released
@@ -232,10 +256,17 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
     if (active && active.tagName === 'INPUT' && active.type === 'text') return;
     if (active && active.tagName === 'TEXTAREA') return;
     interacting = false;
+    commit();
     renderList();
   });
 
   return { render, addAxis };
+}
+
+function newAxisId() {
+  const g = globalThis.crypto;
+  if (g?.randomUUID) return `axis_${g.randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  return `axis_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function wrap(ctx, text, x, y, maxWidth, lineHeight) {

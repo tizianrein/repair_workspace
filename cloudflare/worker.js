@@ -119,7 +119,38 @@ async function handlePutProject(request, env, projectId) {
     throw new HttpError(413, 'The project workspace exceeds the D1 row limit');
   }
 
+  // CREATE-IF-NOT-EXISTS, not upsert.
+  //
+  // A workshop puts ~10 participants on one shared artefact, and every one of
+  // them reaches this route on load — the client calls ensureProject() when
+  // opening an example or a JSON file. As a blind upsert, the tenth arrival
+  // overwrote the shared template with their own freshly-loaded copy, silently
+  // discarding any artefact edits made since the project was created. Example
+  // projects were worst hit: their ids are derivable ("example:<slug>"), so
+  // every participant loading the same example clobbered the same row.
+  //
+  // The artefact is project-level state with many readers, so replacing it is
+  // a deliberate act, not a side effect of opening the page. Callers that
+  // really mean to replace it pass ?replace=true.
+  const url = new URL(request.url);
+  const replace = url.searchParams.get('replace') === 'true';
+  const existing = await getProject(env, projectId);
+
   const now = new Date().toISOString();
+
+  if (existing && !replace) {
+    // Idempotent no-op: hand back what is already stored so concurrent
+    // joiners all converge on the same artefact instead of racing to define
+    // it. Only the mutable label is refreshed.
+    if (title && title !== existing.title) {
+      await env.DB.prepare(
+        'UPDATE rw_projects SET title = ?, updated_at = ? WHERE id = ?',
+      ).bind(title, now, projectId).run();
+    }
+    const project = await getProject(env, projectId);
+    return json(request, env, { project: serializeProject(project), created: false }, 200);
+  }
+
   await env.DB.prepare(`
     INSERT INTO rw_projects (
       id, title, base_workspace, model_version, source_type, source_ref,
@@ -137,7 +168,7 @@ async function handlePutProject(request, env, projectId) {
   ).run();
 
   const project = await getProject(env, projectId);
-  return json(request, env, { project: serializeProject(project) }, 200);
+  return json(request, env, { project: serializeProject(project), created: !existing }, 200);
 }
 
 function serializeProject(row) {
@@ -293,11 +324,22 @@ async function handlePutConditions(request, env, projectId, url) {
     WHERE json_type(value) = 'object'
       AND json_extract(value, '$.id') IS NOT NULL
     ON CONFLICT(project_id, id) DO UPDATE SET
-      author_key = excluded.author_key,
-      author_name = excluded.author_name,
       condition_data = excluded.condition_data,
       updated_at = excluded.updated_at,
       deleted_at = NULL
+    -- Ownership is NOT reassigned on conflict.
+    --
+    -- The primary key is (project_id, id) without author_key, so an id
+    -- collision between two participants lands on one row. This clause used
+    -- to copy excluded.author_key/author_name over, which meant the second
+    -- saver silently took ownership of the first participant's condition and
+    -- resurrected it out of soft-delete. With ~10 people surveying one
+    -- artefact simultaneously that is a live hazard, not a theoretical one.
+    --
+    -- Randomised ids (src/core/schema.js uid()) make collisions vanishingly
+    -- unlikely; this WHERE clause makes them harmless if one ever happens.
+    -- Phase 1 replaces this table with rw_layers keyed by author.
+    WHERE rw_conditions.author_key = excluded.author_key
   `).bind(projectId, authorKey, authorName, now, now, serialized);
 
   await env.DB.batch([markDeleted, upsertSnapshot]);
@@ -398,6 +440,579 @@ async function handleGetEvidence(request, env, projectId, evidenceId) {
   return new Response(object.body, { headers });
 }
 
+// ============================================================================
+// PARTICIPANT LAYERS
+//
+// A layer is one participant's whole workspace within a project: their parts
+// model, conditions, strategies, evidence records, conversations and execution
+// log. The body lives in R2 (D1 rows cap out around 1.8 MB, which a few chat
+// threads exceed); D1 keeps the metadata needed to list participants and detect
+// write conflicts without fetching anything.
+// ============================================================================
+
+const MAX_LAYER_BYTES = 24 * 1024 * 1024;
+
+function layerKey(projectId, authorKey) {
+  return `projects/${projectId}/layers/${authorKey}.json`;
+}
+
+function serializeLayerMeta(row) {
+  if (!row) return null;
+  return {
+    authorKey: row.author_key,
+    authorName: row.author_name,
+    rev: Number(row.rev || 0),
+    counts: {
+      parts: Number(row.part_ct || 0),
+      conditions: Number(row.condition_ct || 0),
+      plans: Number(row.plan_ct || 0),
+      renderings: Number(row.rendering_ct || 0),
+    },
+    byteSize: Number(row.byte_size || 0),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * Who is in this project, and how much have they done.
+ *
+ * This is what the name prompt shows before someone types. With ten people on
+ * one artefact, two participants picking the same name silently share and
+ * overwrite one layer; seeing "Anna M. — 12 conditions, 2 strategies" already
+ * listed is what stops the second Anna from walking into it.
+ */
+async function handleGetLayerRoster(request, env, projectId) {
+  const result = await env.DB.prepare(
+    `SELECT author_key, author_name, rev, part_ct, condition_ct, plan_ct, rendering_ct,
+            byte_size, created_at, updated_at
+       FROM rw_layers WHERE project_id = ? ORDER BY updated_at DESC`,
+  ).bind(projectId).all();
+
+  const layers = (result.results || []).map(serializeLayerMeta);
+  const known = new Set(layers.map(l => l.authorKey));
+
+  // Participants who only ever wrote conditions under the old schema still
+  // belong in the roster, or they would look like free names to claim.
+  const legacy = await env.DB.prepare(
+    `SELECT author_key, author_name, COUNT(*) AS n, MAX(updated_at) AS updated_at
+       FROM rw_conditions
+      WHERE project_id = ? AND deleted_at IS NULL
+      GROUP BY author_key, author_name`,
+  ).bind(projectId).all();
+
+  for (const row of legacy.results || []) {
+    if (known.has(row.author_key)) continue;
+    layers.push({
+      authorKey: row.author_key,
+      authorName: row.author_name,
+      rev: 0,
+      counts: { parts: 0, conditions: Number(row.n || 0), plans: 0, renderings: 0 },
+      byteSize: 0,
+      createdAt: row.updated_at,
+      updatedAt: row.updated_at,
+      legacy: true,
+    });
+  }
+
+  return json(request, env, { layers });
+}
+
+async function handleGetLayer(request, env, projectId, authorKey) {
+  const row = await env.DB.prepare(
+    'SELECT * FROM rw_layers WHERE project_id = ? AND author_key = ?',
+  ).bind(projectId, authorKey).first();
+
+  if (row) {
+    if (!env.FILES) throw new HttpError(503, 'R2 binding FILES is unavailable');
+    const object = await env.FILES.get(row.layer_key);
+    if (!object) {
+      // Metadata without a body: the row is real but the object is gone.
+      // Report an empty layer at the recorded rev rather than a 404, so the
+      // client rejoins cleanly instead of treating it as a new participant.
+      return json(request, env, { layer: null, meta: serializeLayerMeta(row) });
+    }
+    const layer = JSON.parse(await object.text());
+    return json(request, env, { layer, meta: serializeLayerMeta(row) });
+  }
+
+  // No layer yet. Fall back to this author's conditions under the old schema so
+  // work recorded before layers existed is not stranded; their first save
+  // writes a real layer and this path stops being taken.
+  const legacy = await env.DB.prepare(
+    `SELECT condition_data FROM rw_conditions
+      WHERE project_id = ? AND author_key = ? AND deleted_at IS NULL
+      ORDER BY updated_at DESC`,
+  ).bind(projectId, authorKey).all();
+
+  const conditions = [];
+  for (const r of legacy.results || []) {
+    try { conditions.push(JSON.parse(r.condition_data)); } catch {}
+  }
+  if (!conditions.length) return json(request, env, { layer: null, meta: null });
+
+  return json(request, env, {
+    layer: { conditions, migratedFromConditions: true },
+    meta: null,
+  });
+}
+
+/**
+ * Replace a participant's layer.
+ *
+ * Snapshot replacement, guarded by a revision. The client sends the rev it last
+ * read; a mismatch means someone else (another tab, another device) wrote in
+ * between, and we refuse with 409 rather than silently discarding their work —
+ * the failure mode the old condition sync had.
+ */
+async function handlePutLayer(request, env, projectId, authorKey) {
+  if (!env.FILES) throw new HttpError(503, 'R2 binding FILES is unavailable');
+  const project = await getProject(env, projectId);
+  if (!project) throw new HttpError(404, 'Project not found');
+
+  const body = await readJson(request);
+  const authorName = normalizeAuthorName(body.authorName);
+  if (!authorName) throw new HttpError(400, 'authorName is required');
+  if (normalizeAuthorKey(authorName) !== authorKey) {
+    throw new HttpError(400, 'authorName does not match the author in the path');
+  }
+  const layer = body.layer;
+  if (!layer || typeof layer !== 'object' || Array.isArray(layer)) {
+    throw new HttpError(400, 'layer must be an object');
+  }
+
+  const serialized = JSON.stringify(layer);
+  const byteSize = new TextEncoder().encode(serialized).byteLength;
+  if (byteSize > MAX_LAYER_BYTES) throw new HttpError(413, 'Layer is too large');
+
+  const existing = await env.DB.prepare(
+    'SELECT rev FROM rw_layers WHERE project_id = ? AND author_key = ?',
+  ).bind(projectId, authorKey).first();
+
+  const currentRev = Number(existing?.rev || 0);
+  const baseRev = Number.isFinite(Number(body.baseRev)) ? Number(body.baseRev) : null;
+  // baseRev omitted means "I know I am overwriting" — used on first write and
+  // when the client has deliberately resolved a conflict.
+  if (baseRev !== null && currentRev !== baseRev) {
+    throw new HttpError(409, `Layer changed elsewhere (server rev ${currentRev}, you have ${baseRev})`);
+  }
+
+  const nextRev = currentRev + 1;
+  const key = layerKey(projectId, authorKey);
+  const now = new Date().toISOString();
+
+  await env.FILES.put(key, serialized, {
+    httpMetadata: { contentType: 'application/json' },
+    customMetadata: { authorName, rev: String(nextRev) },
+  });
+
+  const counts = {
+    parts: Array.isArray(layer.instance?.parts) ? layer.instance.parts.length : 0,
+    conditions: Array.isArray(layer.conditions) ? layer.conditions.length : 0,
+    plans: Array.isArray(layer.plans) ? layer.plans.length : 0,
+    renderings: Array.isArray(layer.evidence)
+      ? layer.evidence.filter(e => e?.kind === 'rendering').length : 0,
+  };
+
+  await env.DB.prepare(
+    `INSERT INTO rw_layers (
+       project_id, author_key, author_name, layer_key, rev,
+       part_ct, condition_ct, plan_ct, rendering_ct, byte_size, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(project_id, author_key) DO UPDATE SET
+       author_name = excluded.author_name,
+       layer_key = excluded.layer_key,
+       rev = excluded.rev,
+       part_ct = excluded.part_ct,
+       condition_ct = excluded.condition_ct,
+       plan_ct = excluded.plan_ct,
+       rendering_ct = excluded.rendering_ct,
+       byte_size = excluded.byte_size,
+       updated_at = excluded.updated_at`,
+  ).bind(
+    projectId, authorKey, authorName, key, nextRev,
+    counts.parts, counts.conditions, counts.plans, counts.renderings, byteSize, now, now,
+  ).run();
+
+  return json(request, env, { ok: true, rev: nextRev, counts, updatedAt: now });
+}
+
+// ============================================================================
+// CORPUS
+//
+// Source material the AI reads. Two scopes: 'project' documents are shared by
+// everyone (so divergence comes from what people do with the material, not
+// from having different material), and 'strategy' documents belong to one plan
+// and are visible only to it (so strategies genuinely diverge rather than
+// converging on a common evidence base).
+// ============================================================================
+
+const MAX_CORPUS_BYTES = 25_000_000;
+const MAX_CORPUS_TEXT_BYTES = 4_000_000;
+const DOC_KINDS = ['structure', 'goal', 'technique', 'reference'];
+
+function corpusKey(projectId, docId) { return `projects/${projectId}/corpus/${docId}`; }
+function corpusTextKey(projectId, docId) { return `projects/${projectId}/corpus/${docId}.txt`; }
+
+function serializeCorpusDoc(row) {
+  if (!row) return null;
+  // key_facts holds either a bare array (the original shape) or
+  // { facts, figures } once figure descriptions were added. Both shapes are
+  // read, so documents ingested before figures existed keep working and no
+  // migration is needed.
+  let keyFacts = null;
+  let figures = null;
+  let indications = null;
+  try {
+    const parsed = row.key_facts ? JSON.parse(row.key_facts) : null;
+    if (Array.isArray(parsed)) {
+      keyFacts = parsed;
+    } else if (parsed && typeof parsed === 'object') {
+      keyFacts = Array.isArray(parsed.facts) ? parsed.facts : null;
+      figures = Array.isArray(parsed.figures) ? parsed.figures : null;
+      indications = Array.isArray(parsed.indications) ? parsed.indications : null;
+    }
+  } catch {}
+  return {
+    id: row.id,
+    scope: row.scope,
+    planId: row.plan_id || null,
+    authorKey: row.author_key || null,
+    authorName: row.author_name || null,
+    filename: row.filename,
+    mimeType: row.mime_type,
+    byteSize: Number(row.byte_size || 0),
+    docKind: row.doc_kind,
+    summary: row.summary || null,
+    keyFacts,
+    figures,
+    indications,
+    status: row.status,
+    error: row.error || null,
+    hasText: !!row.text_key,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * List what is readable from one vantage point.
+ *
+ * With ?planId= (and ?author=) this returns project documents PLUS that plan's
+ * own — which is exactly the set a chat in that strategy may see. Without them
+ * it returns project documents only. There is deliberately no way to ask for
+ * another strategy's documents.
+ */
+async function handleListCorpus(request, env, projectId, url) {
+  const planId = url.searchParams.get('planId');
+  const authorKey = normalizeAuthorKey(url.searchParams.get('author'));
+
+  let result;
+  if (planId && authorKey) {
+    result = await env.DB.prepare(
+      `SELECT * FROM rw_corpus_docs
+        WHERE project_id = ?
+          AND (scope = 'project' OR (scope = 'strategy' AND author_key = ? AND plan_id = ?))
+        ORDER BY scope DESC, created_at DESC`,
+    ).bind(projectId, authorKey, planId).all();
+  } else {
+    result = await env.DB.prepare(
+      `SELECT * FROM rw_corpus_docs
+        WHERE project_id = ? AND scope = 'project'
+        ORDER BY created_at DESC`,
+    ).bind(projectId).all();
+  }
+  return json(request, env, { documents: (result.results || []).map(serializeCorpusDoc) });
+}
+
+/**
+ * Upload a document. Raw body; metadata rides in the query string and headers
+ * so the blob does not have to be base64-wrapped in JSON.
+ */
+async function handlePutCorpusDoc(request, env, projectId, docId, url) {
+  if (!env.FILES) throw new HttpError(503, 'R2 binding FILES is unavailable');
+  const project = await getProject(env, projectId);
+  if (!project) throw new HttpError(404, 'Project not found');
+
+  const scope = url.searchParams.get('scope') === 'strategy' ? 'strategy' : 'project';
+  const planId = url.searchParams.get('planId') || null;
+  const authorKey = normalizeAuthorKey(url.searchParams.get('author')) || null;
+  const authorName = normalizeAuthorName(decodeURIComponent(request.headers.get('X-Author-Name') || '')) || null;
+  const filename = decodeURIComponent(request.headers.get('X-File-Name') || docId).slice(0, 200);
+  const rawKind = url.searchParams.get('kind') || 'reference';
+  const docKind = DOC_KINDS.includes(rawKind) ? rawKind : 'reference';
+  const mimeType = request.headers.get('Content-Type') || 'application/octet-stream';
+
+  // A strategy document without a plan would be invisible to every scope,
+  // including its own — refuse rather than silently orphan it.
+  if (scope === 'strategy' && (!planId || !authorKey)) {
+    throw new HttpError(400, 'A strategy document requires planId and author');
+  }
+
+  const declared = Number(request.headers.get('Content-Length') || 0);
+  if (declared > MAX_CORPUS_BYTES) throw new HttpError(413, 'Document is too large');
+  const body = await request.arrayBuffer();
+  if (body.byteLength > MAX_CORPUS_BYTES) throw new HttpError(413, 'Document is too large');
+  if (!body.byteLength) throw new HttpError(400, 'Document is empty');
+
+  const key = corpusKey(projectId, docId);
+  await env.FILES.put(key, body, {
+    httpMetadata: { contentType: mimeType },
+    customMetadata: { filename, authorName: authorName || '', scope },
+  });
+
+  const now = new Date().toISOString();
+  await env.DB.prepare(
+    `INSERT INTO rw_corpus_docs (
+       project_id, id, scope, author_key, author_name, plan_id,
+       filename, mime_type, byte_size, doc_kind, r2_key, status, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'uploaded', ?, ?)
+     ON CONFLICT(project_id, id) DO UPDATE SET
+       scope = excluded.scope,
+       author_key = excluded.author_key,
+       author_name = excluded.author_name,
+       plan_id = excluded.plan_id,
+       filename = excluded.filename,
+       mime_type = excluded.mime_type,
+       byte_size = excluded.byte_size,
+       doc_kind = excluded.doc_kind,
+       r2_key = excluded.r2_key,
+       status = 'uploaded',
+       error = NULL,
+       updated_at = excluded.updated_at`,
+  ).bind(
+    projectId, docId, scope, authorKey, authorName, planId,
+    filename, mimeType, body.byteLength, docKind, key, now, now,
+  ).run();
+
+  const row = await env.DB.prepare(
+    'SELECT * FROM rw_corpus_docs WHERE project_id = ? AND id = ?',
+  ).bind(projectId, docId).first();
+  return json(request, env, { document: serializeCorpusDoc(row) });
+}
+
+async function handleGetCorpusDoc(request, env, projectId, docId) {
+  if (!env.FILES) throw new HttpError(503, 'R2 binding FILES is unavailable');
+  const row = await env.DB.prepare(
+    'SELECT * FROM rw_corpus_docs WHERE project_id = ? AND id = ?',
+  ).bind(projectId, docId).first();
+  if (!row) throw new HttpError(404, 'Document not found');
+  const object = await env.FILES.get(row.r2_key);
+  if (!object) throw new HttpError(404, 'Document body not found');
+  return new Response(object.body, {
+    status: 200,
+    headers: {
+      ...(corsHeaders(request, env) || {}),
+      'Content-Type': row.mime_type || 'application/octet-stream',
+      'Cache-Control': 'private, max-age=3600',
+      'X-File-Name': encodeURIComponent(row.filename || docId),
+    },
+  });
+}
+
+/** Extracted plaintext plus the ingest summary — what the model actually reads. */
+async function handleGetCorpusText(request, env, projectId, docId) {
+  const row = await env.DB.prepare(
+    'SELECT * FROM rw_corpus_docs WHERE project_id = ? AND id = ?',
+  ).bind(projectId, docId).first();
+  if (!row) throw new HttpError(404, 'Document not found');
+  let text = null;
+  if (row.text_key && env.FILES) {
+    const object = await env.FILES.get(row.text_key);
+    if (object) text = await object.text();
+  }
+  return json(request, env, { document: serializeCorpusDoc(row), text });
+}
+
+/** Store the ingest result: extracted text, summary and key facts. */
+async function handlePutCorpusText(request, env, projectId, docId) {
+  if (!env.FILES) throw new HttpError(503, 'R2 binding FILES is unavailable');
+  const row = await env.DB.prepare(
+    'SELECT * FROM rw_corpus_docs WHERE project_id = ? AND id = ?',
+  ).bind(projectId, docId).first();
+  if (!row) throw new HttpError(404, 'Document not found');
+
+  const body = await readJson(request);
+  const status = String(body.status || 'ready');
+  const now = new Date().toISOString();
+
+  if (status === 'failed') {
+    await env.DB.prepare(
+      'UPDATE rw_corpus_docs SET status = ?, error = ?, updated_at = ? WHERE project_id = ? AND id = ?',
+    ).bind('failed', String(body.error || 'Ingest failed').slice(0, 500), now, projectId, docId).run();
+  } else {
+    const text = String(body.text || '');
+    if (new TextEncoder().encode(text).byteLength > MAX_CORPUS_TEXT_BYTES) {
+      throw new HttpError(413, 'Extracted text is too large');
+    }
+    const textKey = corpusTextKey(projectId, docId);
+    await env.FILES.put(textKey, text, { httpMetadata: { contentType: 'text/plain; charset=utf-8' } });
+
+    // Replace this document's chunks wholesale. Re-ingesting must not leave
+    // vectors from the previous pass behind — stale chunks would keep matching
+    // and quietly return text the document no longer contains.
+    if (Array.isArray(body.chunks) && body.chunks.length) {
+      await env.DB.prepare(
+        'DELETE FROM rw_corpus_chunks WHERE project_id = ? AND doc_id = ?',
+      ).bind(projectId, docId).run();
+
+      const statements = body.chunks.slice(0, 400).map((c, ix) =>
+        env.DB.prepare(
+          `INSERT INTO rw_corpus_chunks (
+             project_id, doc_id, chunk_ix, scope, author_key, plan_id,
+             kind, label, content, vector, dims, created_at
+           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).bind(
+          projectId, docId, ix, row.scope, row.author_key, row.plan_id,
+          String(c.kind || 'text'),
+          c.label ? String(c.label).slice(0, 200) : null,
+          String(c.content || '').slice(0, 4000),
+          String(c.vector || ''),
+          Number(c.dims || 0),
+          now,
+        ));
+      // D1 batches cap out; 50 at a time keeps well inside the statement limit.
+      for (let i = 0; i < statements.length; i += 50) {
+        await env.DB.batch(statements.slice(i, i + 50));
+      }
+    }
+    await env.DB.prepare(
+      `UPDATE rw_corpus_docs
+          SET text_key = ?, summary = ?, key_facts = ?, status = 'ready', error = NULL, updated_at = ?
+        WHERE project_id = ? AND id = ?`,
+    ).bind(
+      textKey,
+      String(body.summary || '').slice(0, 2000),
+      (body.keyFacts || body.figures || body.indications)
+        ? JSON.stringify({
+            facts: body.keyFacts || [],
+            figures: body.figures || [],
+            indications: body.indications || [],
+          }).slice(0, 20000)
+        : null,
+      now, projectId, docId,
+    ).run();
+  }
+
+  const updated = await env.DB.prepare(
+    'SELECT * FROM rw_corpus_docs WHERE project_id = ? AND id = ?',
+  ).bind(projectId, docId).first();
+  return json(request, env, { document: serializeCorpusDoc(updated) });
+}
+
+// ---------------------------------------------------------------------------
+// Semantic search
+//
+// The caller embeds the query (the Gemini key lives on the API side, not here)
+// and posts the vector. We load the candidate chunks for this scope and rank by
+// cosine similarity.
+//
+// No ANN index: scope already narrows things hard — a strategy sees project
+// documents plus its own, which at workshop scale is a few hundred chunks. A
+// brute-force pass over that is sub-millisecond, and needs no extra service to
+// operate, back up or keep in sync. Vectorize slots in behind this same route
+// if a corpus ever reaches tens of thousands of chunks.
+// ---------------------------------------------------------------------------
+
+function decodeVector(b64) {
+  const binary = atob(b64);
+  const out = new Int8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    const byte = binary.charCodeAt(i);
+    out[i] = byte > 127 ? byte - 256 : byte;
+  }
+  return out;
+}
+
+/**
+ * Both vectors are stored normalised, so cosine similarity is a plain dot
+ * product — no square roots in the inner loop.
+ */
+function dot(a, b) {
+  const n = Math.min(a.length, b.length);
+  let sum = 0;
+  for (let i = 0; i < n; i++) sum += a[i] * b[i];
+  return sum;
+}
+
+async function handleSearchCorpus(request, env, projectId) {
+  const body = await readJson(request);
+  const query = Array.isArray(body.vector) ? body.vector : null;
+  if (!query || !query.length) throw new HttpError(400, 'vector is required');
+
+  const planId = body.planId || null;
+  const authorKey = normalizeAuthorKey(body.authorKey) || null;
+  const topK = Math.min(Math.max(Number(body.topK) || 8, 1), 25);
+
+  // Same scoping rule as every other corpus read: project documents plus this
+  // one strategy's. There is no parameter that widens it.
+  let rows;
+  if (planId && authorKey) {
+    rows = await env.DB.prepare(
+      `SELECT c.doc_id, c.chunk_ix, c.kind, c.label, c.content, c.vector,
+              d.filename, d.doc_kind, d.scope
+         FROM rw_corpus_chunks c
+         JOIN rw_corpus_docs d ON d.project_id = c.project_id AND d.id = c.doc_id
+        WHERE c.project_id = ?
+          AND (c.scope = 'project' OR (c.scope = 'strategy' AND c.author_key = ? AND c.plan_id = ?))`,
+    ).bind(projectId, authorKey, planId).all();
+  } else {
+    rows = await env.DB.prepare(
+      `SELECT c.doc_id, c.chunk_ix, c.kind, c.label, c.content, c.vector,
+              d.filename, d.doc_kind, d.scope
+         FROM rw_corpus_chunks c
+         JOIN rw_corpus_docs d ON d.project_id = c.project_id AND d.id = c.doc_id
+        WHERE c.project_id = ? AND c.scope = 'project'`,
+    ).bind(projectId).all();
+  }
+
+  const q = Int8Array.from(query);
+  const scored = [];
+  for (const row of (rows.results || [])) {
+    let vector;
+    try { vector = decodeVector(row.vector); } catch { continue; }
+    let score = dot(q, vector) / (127 * 127);
+    // A figure caption or an indication is a curated, deliberately short
+    // signal. Without a nudge, long prose chunks with diffuse similarity
+    // outrank them — which is backwards, since those two are exactly the
+    // handles someone reaches for.
+    if (row.kind === 'figure') score *= 1.15;
+    if (row.kind === 'indication') score *= 1.2;
+    scored.push({
+      docId: row.doc_id,
+      filename: row.filename,
+      docKind: row.doc_kind,
+      scope: row.scope,
+      chunkKind: row.kind,
+      label: row.label,
+      content: row.content,
+      score,
+    });
+  }
+
+  scored.sort((a, b) => b.score - a.score);
+  return json(request, env, {
+    chunks: scored.slice(0, topK),
+    searched: scored.length,
+  });
+}
+
+async function handleDeleteCorpusDoc(request, env, projectId, docId) {
+  const row = await env.DB.prepare(
+    'SELECT * FROM rw_corpus_docs WHERE project_id = ? AND id = ?',
+  ).bind(projectId, docId).first();
+  if (!row) throw new HttpError(404, 'Document not found');
+  if (env.FILES) {
+    try { await env.FILES.delete(row.r2_key); } catch {}
+    if (row.text_key) { try { await env.FILES.delete(row.text_key); } catch {} }
+  }
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM rw_corpus_chunks WHERE project_id = ? AND doc_id = ?').bind(projectId, docId),
+    env.DB.prepare('DELETE FROM rw_corpus_docs WHERE project_id = ? AND id = ?').bind(projectId, docId),
+  ]);
+  return json(request, env, { ok: true, deleted: docId });
+}
+
 async function route(request, env) {
   if (!env.DB) throw new HttpError(503, 'D1 binding DB is unavailable');
   const url = new URL(request.url);
@@ -428,6 +1043,34 @@ async function route(request, env) {
   if (segments.length === 3 && segments[2] === 'authors' && request.method === 'GET') {
     return handleGetAuthors(request, env, projectId);
   }
+  if (segments.length === 3 && segments[2] === 'layers' && request.method === 'GET') {
+    return handleGetLayerRoster(request, env, projectId);
+  }
+  if (segments.length === 3 && segments[2] === 'corpus') {
+    if (request.method === 'GET') return handleListCorpus(request, env, projectId, url);
+  }
+  if (segments.length === 4 && segments[2] === 'corpus' && segments[3] === 'search') {
+    if (request.method === 'POST') return handleSearchCorpus(request, env, projectId);
+  }
+  if (segments.length === 4 && segments[2] === 'corpus') {
+    const docId = segments[3];
+    if (!isValidEvidenceId(docId)) throw new HttpError(400, 'Invalid document id');
+    if (request.method === 'PUT') return handlePutCorpusDoc(request, env, projectId, docId, url);
+    if (request.method === 'GET') return handleGetCorpusDoc(request, env, projectId, docId);
+    if (request.method === 'DELETE') return handleDeleteCorpusDoc(request, env, projectId, docId);
+  }
+  if (segments.length === 5 && segments[2] === 'corpus' && segments[4] === 'text') {
+    const docId = segments[3];
+    if (!isValidEvidenceId(docId)) throw new HttpError(400, 'Invalid document id');
+    if (request.method === 'GET') return handleGetCorpusText(request, env, projectId, docId);
+    if (request.method === 'PUT') return handlePutCorpusText(request, env, projectId, docId);
+  }
+  if (segments.length === 4 && segments[2] === 'layers') {
+    const authorKey = normalizeAuthorKey(segments[3]);
+    if (!authorKey) throw new HttpError(400, 'Invalid author');
+    if (request.method === 'GET') return handleGetLayer(request, env, projectId, authorKey);
+    if (request.method === 'PUT') return handlePutLayer(request, env, projectId, authorKey);
+  }
   if (segments.length === 3 && segments[2] === 'model') {
     if (request.method === 'PUT') return handlePutModel(request, env, projectId);
     if (request.method === 'GET') return handleGetModel(request, env, projectId);
@@ -446,7 +1089,7 @@ export default {
     if (!cors) return json(request, { ...env, ALLOWED_ORIGINS: '*' }, { error: 'Origin not allowed' }, 403);
     if (request.method === 'OPTIONS') {
       return empty(request, env, 204, {
-        'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, X-File-Name, X-Author-Name',
       });
     }

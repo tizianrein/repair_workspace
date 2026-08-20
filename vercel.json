@@ -1,4 +1,9 @@
 {
   "buildCommand": "vite build",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "functions": {
+    "api/**/*.js": {
+      "includeFiles": "src/ai/prompts/**"
+    }
+  }
 }

@@ -5,19 +5,27 @@
   "private": true,
   "scripts": {
     "dev": "vite",
+    "dev:all": "node scripts/dev-all.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "verify": "node verify-setup.mjs",
+    "test": "npm run test:workspace-read && npm run test:state && npm run test:bundle && npm run test:layer-sync && npm run test:corpus && npm run test:migrate && npm run test:commands && npm run test:collaboration && npm run test:gemini && npm run test:joinery",
     "test:migrate": "node tests/test-migration.mjs",
     "test:commands": "node tests/test-commands.mjs",
     "test:step-resolution": "node tests/test-step-resolution.mjs",
     "test:collaboration": "node tests/test-collaboration.mjs",
     "test:gemini": "node tests/test-gemini-config.mjs",
+    "test:joinery": "node tests/test-design-joinery.mjs",
     "test:cloudflare-api": "node tests/test-cloudflare-api.mjs",
     "cloudflare:dev": "wrangler dev --config cloudflare/wrangler.jsonc --port 8787",
     "cloudflare:migrate:local": "wrangler d1 migrations apply repair-workspace-db --local --config cloudflare/wrangler.jsonc",
     "cloudflare:migrate:remote": "wrangler d1 migrations apply repair-workspace-db --remote --config cloudflare/wrangler.jsonc",
-    "cloudflare:deploy": "wrangler deploy --config cloudflare/wrangler.jsonc"
+    "cloudflare:deploy": "wrangler deploy --config cloudflare/wrangler.jsonc",
+    "test:workspace-read": "node tests/test-workspace-read.mjs",
+    "test:state": "node tests/test-state.mjs",
+    "test:bundle": "node tests/test-bundle.mjs",
+    "test:layer-sync": "node tests/test-layer-sync.mjs",
+    "test:corpus": "node tests/test-corpus.mjs"
   },
   "dependencies": {
     "cytoscape": "^3.28.1",

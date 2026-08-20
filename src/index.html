@@ -43,14 +43,14 @@
       <div class="section">
         <div class="section-label">Data</div>
         <div class="data-grid">
-          <button class="data-btn" id="load-workspace-btn"><span>📂</span> Load JSON</button>
-          <button class="data-btn" id="download-state-btn"><span>💾</span> Save JSON</button>
+          <button class="data-btn" id="load-workspace-btn"><span>📂</span> Load (.zip)</button>
+          <button class="data-btn" id="download-state-btn"><span>💾</span> Save (.zip)</button>
           <select class="data-btn data-select" id="load-example-select">
             <option value="">🪑 Load example…</option>
           </select>
           <button class="data-btn" id="reset-btn"><span>↺</span> Reset</button>
         </div>
-        <button class="data-btn data-btn-full" id="start-shared-project-btn"><span>👥</span> Start shared project</button>
+        <button class="data-btn data-btn-full" id="start-shared-project-btn"><span>🔗</span> Copy project link</button>
         <!-- 3D-scan view toggle. Only appears when the loaded example has a
              mesh.glb. Cycles Boxes / Boxes + point cloud / Mesh. -->
         <button class="data-btn data-btn-full" id="display-mode-btn" hidden></button>
@@ -77,6 +77,32 @@
             <button class="mini-btn" id="reset-intent-btn">↺ reset</button>
           </div>
           <div class="axis-list" id="axis-list"></div>
+        </div>
+      </div>
+
+      <div class="section collapsed" id="corpus-section">
+        <div class="section-label" data-toggle="corpus-section">Corpus <span class="chev">▾</span></div>
+        <div class="section-content">
+          <!-- Two tiers, and the split is the point. Project documents are
+               shared by everyone so divergence comes from what people do with
+               the material; strategy documents belong to one strategy alone so
+               strategies genuinely diverge instead of converging on a common
+               evidence base. -->
+          <div class="corpus-tier">
+            <div class="corpus-tier-head">
+              <span class="corpus-tier-label">Project — everyone reads this</span>
+              <button class="mini-btn" id="corpus-add-project" title="Add a document everyone in this project can read">+ add</button>
+            </div>
+            <div class="corpus-list" id="corpus-project-list"></div>
+          </div>
+          <div class="corpus-tier">
+            <div class="corpus-tier-head">
+              <span class="corpus-tier-label">This strategy only</span>
+              <button class="mini-btn" id="corpus-add-strategy" title="Add a document only the current strategy can read">+ add</button>
+            </div>
+            <div class="corpus-list" id="corpus-strategy-list"></div>
+          </div>
+          <div class="corpus-status" id="corpus-status"></div>
         </div>
       </div>
 
@@ -176,7 +202,7 @@
               </div>
               <div class="viewer-empty-hints">
                 <span class="viewer-empty-hint">← Load example</span>
-                <span class="viewer-empty-hint">← Load JSON</span>
+                <span class="viewer-empty-hint">← Load (.zip)</span>
                 <span class="viewer-empty-hint">↘ Chat: "extract assembly"</span>
               </div>
             </div>
@@ -196,7 +222,7 @@
     <div class="collab-controls" id="collab-controls" hidden>
       <div class="collab-project-row">
         <div>
-          <div class="collab-kicker">Shared project</div>
+          <div class="collab-kicker">Project</div>
           <div class="collab-project-title" id="collab-project-title">—</div>
         </div>
         <button class="mini-btn" id="collab-copy-link" title="Copy project link">🔗</button>
@@ -272,7 +298,6 @@
     <input id="chat-input" type="text" placeholder="Ask, instruct, or describe what you see…" />
     <button class="chat-send" id="chat-send">↑</button>
   </div>
-  <div class="quick-actions" id="quick-actions" style="display: none"></div>
 </div>
 
 <div class="modal" id="detail-modal">
@@ -289,6 +314,24 @@
 </div>
 
 <!-- Participant name is requested only after a shared project is loaded. -->
+<div class="modal" id="corpus-kind-modal">
+  <div class="modal-card corpus-kind-card">
+    <div class="modal-head">
+      <h3>What is this document?</h3>
+      <button class="icon-btn" id="corpus-kind-close" title="Cancel">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="corpus-kind-copy" id="corpus-kind-copy">Telling the assistant what role a document plays makes its answers much more specific.</p>
+      <div class="corpus-kind-list">
+        <button class="corpus-kind-btn" data-kind="structure"><strong>Describes the structure</strong><span>Survey, drawings, construction record, condition report</span></button>
+        <button class="corpus-kind-btn" data-kind="goal"><strong>States the repair goal</strong><span>Brief, requirements, conservation policy, client intent</span></button>
+        <button class="corpus-kind-btn" data-kind="technique"><strong>Technique or precedent</strong><span>How a repair is done; a comparable case</span></button>
+        <button class="corpus-kind-btn" data-kind="reference"><strong>Other reference</strong><span>Anything else worth having on hand</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="collab-name-modal">
   <div class="modal-card collab-name-card">
     <div class="modal-head">
@@ -297,11 +340,12 @@
     </div>
     <form id="collab-name-form">
       <div class="modal-body">
-        <p class="collab-name-copy">Type your name. An existing name loads its mapped conditions; a new name starts an empty layer for this project.</p>
+        <p class="collab-name-copy">Your name selects your layer in this project — your conditions and your strategies. Pick an existing name to reopen that work, or a new one to start your own.</p>
         <label class="detail-field">
           <span class="detail-field-label">Your name</span>
           <input class="detail-input" id="collab-name-input" type="text" maxlength="80" autocomplete="name" placeholder="e.g. Tizian" required>
         </label>
+        <div class="collab-roster" id="collab-roster" hidden></div>
         <div class="collab-name-error" id="collab-name-error"></div>
       </div>
       <div class="modal-foot">
@@ -358,6 +402,7 @@
 <div class="console" id="console-output">Repair Workspace ready.</div>
 
 <input type="file" id="workspace-file" accept=".json,.zip,application/json,application/zip" hidden>
+<input type="file" id="corpus-file" accept=".pdf,.txt,.md,.csv,.json,.html,.jpg,.jpeg,.png,.webp,.doc,.docx" multiple hidden>
 <input type="file" id="chat-photo-file" accept="image/*" multiple hidden>
 
 <script type="module" src="./main.js"></script>

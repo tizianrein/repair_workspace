@@ -23,6 +23,7 @@
  */
 
 import { callGemini } from './_shared/gemini.js';
+import { getIntent, getConstraints } from './_shared/workspace-read.js';
 
 export const config = { maxDuration: 45 };
 
@@ -125,10 +126,10 @@ export default async function handler(req, res) {
       ist,
       workspace: {
         instanceName: workspace.instance?.name,
-        intent: workspace.intent,
+        intent: getIntent(workspace),
         conditions: workspace.conditions || [],
         plan: planSummary,
-        constraints: workspace.constraints
+        constraints: getConstraints(workspace)
       }
     };
 

@@ -5,15 +5,16 @@
  * threads scoped to global / part / condition / step. Renders message
  * bubbles. Handles attached photos as multimodal input.
  *
- * The chat endpoint never mutates — it returns a reply, optional suggested
- * action, and an uncertainty list. The user takes the suggested action by
- * tapping the corresponding quick-action chip below, which calls propose.
+ * The chat endpoint both answers and acts: alongside the reply it can
+ * return tool calls, which arrive as a list of commands and are handed to
+ * onApplyCommands to be applied as one undoable batch. The bubble renders
+ * an audit record of what was applied so the change is never silent.
  */
 
 import { newMessage } from '../core/schema.js';
 import { payloadForChat } from '../ai/ai-payload.js';
 
-export function createChatSheet(elements, { onScopeChange, getWorkspace, onProposeIntent, onEnsureThread, onAppendMessage, onApplyCommands }) {
+export function createChatSheet(elements, { onScopeChange, getWorkspace, onEnsureThread, onAppendMessage, onApplyCommands, getCorpusIndex }) {
   const {
     history, input, sendBtn, scopePill, titleEl, closeBtn, handle, sheet
   } = elements;
@@ -225,20 +226,11 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
         card.appendChild(log);
         div.appendChild(card);
       }
-      // Legacy suggested-action path — only show when there are no tool
-      // calls (i.e. the response came from the old propose flow, not the
-      // new direct conversational flow).
-      else if (msg.suggestedAction && typeof msg.suggestedAction === 'string') {
-        const sa = document.createElement('div');
-        sa.className = 'chat-suggested';
-        sa.innerHTML = `<span class="csa-label">Suggested action:</span> ${escapeHtml(msg.suggestedAction)}`;
-        const btn = document.createElement('button');
-        btn.className = 'csa-btn';
-        btn.textContent = 'Propose this →';
-        btn.onclick = () => onProposeIntent?.({ userMessage: msg.suggestedAction, scope: inferScopeFromAction(msg.suggestedAction) });
-        sa.appendChild(btn);
-        div.appendChild(sa);
-      }
+      // Historic messages may still carry a `suggestedAction` string from
+      // the removed propose flow. Nothing renders it any more — the model
+      // now acts through tool calls instead of suggesting an action for
+      // the user to hand to a second endpoint.
+      //
       // Follow-up answer chips — populated by the model's propose_options
       // tool. Render as tappable buttons that send the option label as
       // the user's next message. Chips remain visible after use but the
@@ -328,7 +320,12 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     // Client-side timeout. The chat endpoint uses Gemini function calling
     // which can do several multi-turn rounds — give it 60s.
     const controller = new AbortController();
-    const TIMEOUT_MS = 60_000;
+    // Must exceed the server's budget (api/chat.js sets maxDuration: 90).
+    // At 60s the client aborted turns the function was still working on — the
+    // Gemini calls were paid for and the answer thrown away. A 12-turn tool
+    // loop routinely passes 60s, and will do so more often with 10 people
+    // sharing the rate limit.
+    const TIMEOUT_MS = 95_000;
     const timeoutHandle = setTimeout(() => controller.abort('client-timeout'), TIMEOUT_MS);
 
     try {
@@ -339,7 +336,12 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
           thread,
           userMessage: text,
           workspace: payloadForChat({ workspace: getWorkspace(), scope: currentScope, ref: currentRef, maxMessages: 8 }),
-          files: pendingPhotos
+          files: pendingPhotos,
+          // The corpus INDEX only — a summary per document, roughly 40 tokens
+          // each. The model asks for a document's full text by id when it
+          // actually needs it, so a fifty-document corpus costs ~2k tokens per
+          // turn rather than ~500k.
+          corpus: await getCorpusIndex?.()
         }),
         signal: controller.signal
       });
@@ -417,24 +419,6 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onPropo
     div.className = 'chat-bubble chat-llm chat-error';
     div.textContent = `Error: ${msg}`;
     history.appendChild(div);
-  }
-
-  function inferScopeFromAction(action) {
-    const lower = action.toLowerCase();
-    // Count how many distinct concept domains the action mentions. If it
-    // mixes two or more, we must use 'all' scope — otherwise the AI will
-    // only have access to one domain's commands and silently fail to do
-    // the rest (e.g. "remove part X and update plan Y" picked 'interventions'
-    // when 'plan' matched first, then the AI had no remove-part available).
-    const mentionsPlan = /\bplan\b|\bstep\b|\bintervention\b/.test(lower);
-    const mentionsCondition = /\bcondition\w*\b|\bdamag\w*\b|\bcrack\b|\bcondition\b/.test(lower);
-    const mentionsAssembly = /\bpart\b|\bassembly\b|\bcomponent\b|\bartefact\b/.test(lower);
-    const domainCount = [mentionsPlan, mentionsCondition, mentionsAssembly].filter(Boolean).length;
-    if (domainCount >= 2) return 'all';
-    if (mentionsPlan) return 'interventions';
-    if (mentionsCondition) return 'conditions';
-    if (mentionsAssembly) return 'assembly';
-    return 'all';
   }
 
   function attachPhoto(photo) {

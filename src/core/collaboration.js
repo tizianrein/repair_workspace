@@ -19,14 +19,21 @@ async function request(path, options = {}) {
   const response = await fetch(apiUrl(path), {
     ...options,
     headers: {
-      ...(options.body instanceof Blob ? {} : { 'Content-Type': 'application/json' }),
+      ...(options.body instanceof Blob || options.body instanceof ArrayBuffer
+        ? {}
+        : { 'Content-Type': 'application/json' }),
       ...(options.headers || {}),
     },
   });
   let payload = null;
   try { payload = await response.json(); } catch {}
   if (!response.ok) {
-    throw new Error(payload?.error || `Collaboration request failed (${response.status})`);
+    // Attach the status: the sync layer must tell a 409 (someone else wrote
+    // this layer) apart from a network failure, because one is a conflict to
+    // surface and the other is a retry.
+    const error = new Error(payload?.error || `Collaboration request failed (${response.status})`);
+    error.status = response.status;
+    throw error;
   }
   return payload;
 }
@@ -149,6 +156,84 @@ export function mergeConditionLayer(workspace, incomingConditions) {
 }
 
 export const CollaborationApi = {
+  // ---- corpus -------------------------------------------------------------
+  // Scoped reads only: passing planId returns project documents plus that one
+  // plan's. There is no call that returns another strategy's documents, which
+  // is what keeps strategies from converging on a shared evidence base.
+  async listCorpus(projectId, { planId = null, authorKey = null } = {}) {
+    const q = new URLSearchParams();
+    if (planId) q.set('planId', planId);
+    if (authorKey) q.set('author', authorKey);
+    const suffix = q.toString() ? `?${q}` : '';
+    const payload = await request(`/projects/${encodeURIComponent(projectId)}/corpus${suffix}`);
+    return payload.documents || [];
+  },
+
+  async putCorpusDoc(projectId, docId, body, { scope, planId, authorKey, authorName, filename, mimeType, docKind }) {
+    const q = new URLSearchParams({ scope: scope || 'project', kind: docKind || 'reference' });
+    if (planId) q.set('planId', planId);
+    if (authorKey) q.set('author', authorKey);
+    return request(
+      `/projects/${encodeURIComponent(projectId)}/corpus/${encodeURIComponent(docId)}?${q}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': mimeType || 'application/octet-stream',
+          'X-File-Name': encodeURIComponent(filename || docId),
+          'X-Author-Name': encodeURIComponent(authorName || ''),
+        },
+        body,
+      },
+    );
+  },
+
+  async putCorpusText(projectId, docId, payload) {
+    return request(
+      `/projects/${encodeURIComponent(projectId)}/corpus/${encodeURIComponent(docId)}/text`,
+      { method: 'PUT', body: JSON.stringify(payload) },
+    );
+  },
+
+  async searchCorpus(projectId, { vector, planId, authorKey, topK }) {
+    const payload = await request(
+      `/projects/${encodeURIComponent(projectId)}/corpus/search`,
+      { method: 'POST', body: JSON.stringify({ vector, planId, authorKey, topK }) },
+    );
+    return payload.chunks || [];
+  },
+
+  async getCorpusText(projectId, docId) {
+    return request(`/projects/${encodeURIComponent(projectId)}/corpus/${encodeURIComponent(docId)}/text`);
+  },
+
+  async deleteCorpusDoc(projectId, docId) {
+    return request(
+      `/projects/${encodeURIComponent(projectId)}/corpus/${encodeURIComponent(docId)}`,
+      { method: 'DELETE' },
+    );
+  },
+
+  /** Roster of participants in a project, with counts. Powers the name prompt. */
+  async getLayerRoster(projectId) {
+    const payload = await request(`/projects/${encodeURIComponent(projectId)}/layers`);
+    return payload.layers || [];
+  },
+
+  /** One participant's layer. Returns { layer, meta } — both may be null. */
+  async getLayer(projectId, authorKey) {
+    return request(
+      `/projects/${encodeURIComponent(projectId)}/layers/${encodeURIComponent(authorKey)}`,
+    );
+  },
+
+  /** Replace a layer. `baseRev` is the revision this write is based on. */
+  async putLayer(projectId, authorKey, { authorName, layer, baseRev }) {
+    return request(
+      `/projects/${encodeURIComponent(projectId)}/layers/${encodeURIComponent(authorKey)}`,
+      { method: 'PUT', body: JSON.stringify({ authorName, layer, baseRev }) },
+    );
+  },
+
   async ensureProject({ projectId, title, baseWorkspace, sourceType = 'custom', sourceRef = null }) {
     const payload = await request(`/projects/${encodeURIComponent(projectId)}`, {
       method: 'PUT',

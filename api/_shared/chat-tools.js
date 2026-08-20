@@ -67,6 +67,58 @@ export const CHAT_TOOLS = [
     }
   },
   {
+    name: 'search_corpus',
+    description: "Search the project's source documents. Use this BEFORE making claims about the structure, its history, the repair goal, or a technique — the corpus is the evidence base, and grounded answers beat plausible ones. Returns matching documents with their summaries and the passages that matched. You see project-wide documents plus the ones attached to the current strategy; other strategies' documents are deliberately not visible.",
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'What you are looking for. Plain language; matched against document text, summaries and extracted facts.' },
+        docKinds: {
+          type: 'array',
+          description: "Optionally narrow by role: 'structure' (describes the object), 'goal' (states the repair intent), 'technique' (method or precedent), 'reference'.",
+          items: { type: 'string' },
+        },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'read_corpus_document',
+    description: "Read one corpus document, by id. Use after search_corpus has told you which document matters, or when the user names one. Quote what the document actually says rather than guessing. Set view:true to LOOK at the original pages instead of the extracted text — necessary when the content is drawings rather than prose (joint geometry, sections, dimensioned details, a photographed page). Read the text first; escalate to view:true when the geometry is what matters.",
+    parameters: {
+      type: 'object',
+      properties: {
+        docId: { type: 'string', description: 'The document id from search_corpus or the corpus index.' },
+        view: {
+          type: 'boolean',
+          description: 'Return the original document as an image/PDF for you to examine visually, instead of its extracted text. Use when drawings, dimensions or spatial detail matter. Costs more, so read the text first.',
+        },
+      },
+      required: ['docId'],
+    },
+  },
+  {
+    name: 'save_to_corpus',
+    description: "File something into the project's source documents so it is retrievable later. Use when the user PASTES reference material into the chat — a specification, a standard, a supplier's data, a quotation from a source, measurements from a report, a technique description. It is then indexed and searchable in every future conversation, by you and by the user. Do NOT file conversation: questions, decisions, your own suggestions, or anything already in the workspace as a condition or a step. File the source material, not the discussion of it. Always tell the user you have filed it.",
+    parameters: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Short descriptive filename, e.g. "DIN 68800-2 excerpt — timber preservation".' },
+        content: { type: 'string', description: 'The material itself, verbatim. Do not summarise or rewrite it — this becomes the stored source.' },
+        docKind: {
+          type: 'string',
+          description: "'structure' (describes the object), 'goal' (states the repair intent), 'technique' (a method or precedent), 'reference' (anything else).",
+        },
+        scope: {
+          type: 'string',
+          description: "'project' if it concerns the artefact and everyone should have it; 'strategy' if it only bears on the current strategy's approach. When unsure, prefer 'project' for facts about the object and 'strategy' for material about one particular method.",
+        },
+        why: { type: 'string', description: 'One sentence: why this is worth keeping. Shown to the user.' },
+      },
+      required: ['title', 'content', 'docKind'],
+    },
+  },
+  {
     name: 'set_intent',
     description: 'Update the repair intent (summary text and/or axis values). Use this when the conversation reveals new priorities the user has — e.g. they mention sustainability matters more than they originally said. Pass only the fields that change.',
     parameters: {
