@@ -328,7 +328,15 @@ defineCommand('duplicate-plan', (ws, { sourcePlanId, label }) => {
   // delegating, forcing a fresh id from the uid() counter.
   const idMap = new Map();
   const newSteps = (source.steps || []).map(s => {
-    const { id: _drop, ...rest } = s;
+    // Deep-clone first. newStep() passes opts through by reference for every
+    // non-scalar field — justification, affectedPartRefs, toolsRequired,
+    // joineryProposal — so a fork shared those objects with the strategy it
+    // came from, and editing one edited the other. Forking is the divergence
+    // mechanism and justification is where divergence is recorded, so two
+    // strategies that are supposed to differ were quietly writing to the same
+    // rationale. Verified: after a fork, pushing to the copy's
+    // justification.drivingIntentAxes appeared in the source's step.
+    const { id: _drop, ...rest } = structuredClone(s);
     const fresh = newStep(rest);
     idMap.set(s.id, fresh.id);
     return fresh;
