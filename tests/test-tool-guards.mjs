@@ -35,6 +35,11 @@ const WORKSPACE = {
   conditions: [
     { id: 'cond_rot', type: 'rot', partRef: 'sill_n', status: 'suspected' },
   ],
+  // An imagined result already exists for plan_1, so revise_rendering has
+  // something to revise. Tests that need the empty case override this.
+  evidence: [
+    { id: 'ev_render_1', kind: 'rendering', planRef: 'plan_1' },
+  ],
   plans: [
     {
       id: 'plan_1',
@@ -255,4 +260,43 @@ console.log('\n✓ No tool reports success for a change it did not make\n');
     'without an active strategy the revision is refused',
   );
   console.log('  ✓ revise_rendering refuses an empty instruction and a strategy-less workspace');
+}
+
+// --- revising something that does not exist -------------------------------
+//
+// Observed live: with no source photo and no imagined result, the model called
+// revise_rendering, the tool said ok, and the assistant told the participant
+// "I have queued the rendering... it will appear in the chat as soon as
+// processing completes." Nothing was coming. The client found nothing to
+// revise and gave up into a log line nobody reads.
+{
+  const noRendering = { ...WORKSPACE, evidence: [] };
+  const r = mapToolToCommand('revise_rendering', { instruction: 'Make the splice a scarf joint.' },
+    SNAPSHOT, noRendering, [], {});
+  assert.ok(r.error, 'revising a strategy with no imagined result must be refused');
+  assert.match(r.error, /source photo/, 'and must say what is actually missing');
+  assert.match(r.error, /Do not say you have queued anything/,
+    'and must stop the model announcing a render that cannot happen');
+  console.log('  ✓ revise_rendering refuses when there is nothing to revise');
+
+  // With a rendering on THIS strategy it proceeds as before.
+  const withRendering = {
+    ...WORKSPACE,
+    evidence: [{ id: 'ev_r1', kind: 'rendering', planRef: 'plan_1' }],
+  };
+  const ok = mapToolToCommand('revise_rendering', { instruction: 'Make the splice a scarf joint.' },
+    SNAPSHOT, withRendering, [], {});
+  assert.equal(ok.ok, true, JSON.stringify(ok));
+  console.log('  ✓ revise_rendering still works when an imagined result exists');
+
+  // A rendering belonging to a DIFFERENT strategy is not this one's to revise.
+  const otherStrategy = {
+    ...WORKSPACE,
+    evidence: [{ id: 'ev_r1', kind: 'rendering', planRef: 'plan_other' }],
+  };
+  assert.ok(
+    mapToolToCommand('revise_rendering', { instruction: 'x' }, SNAPSHOT, otherStrategy, [], {}).error,
+    "another strategy's rendering must not count as this one's",
+  );
+  console.log('  ✓ a sibling strategy\'s image does not count as this strategy\'s');
 }

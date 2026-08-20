@@ -2027,12 +2027,24 @@ async function runRenderRequest(instruction, planId) {
 
   const latest = renderings[0];
   if (!latest) {
-    // Nothing to revise. Say so in the thread rather than failing silently —
-    // the assistant has just told the participant an image is coming.
-    log('No imagined result yet for this strategy — generate one first, then it can be revised.');
+    // The server guard should have refused before it got here, so reaching
+    // this point means the two halves disagree. Say so IN THE THREAD: the
+    // assistant has just told the participant an image is coming, and a log
+    // line they never look at is indistinguishable from the image being slow.
+    postSystemNoteToChat(
+      targetPlan,
+      !state.workspace.instance?.sourcePhotoEvidenceId
+        ? 'No image was generated: this strategy has no source photo yet. Upload one under IMAGINED RESULT, then use "Imagine repaired state".'
+        : 'No image was generated: there is no imagined result to revise yet. Use "Imagine repaired state" under IMAGINED RESULT first.',
+    );
     return;
   }
-  await runRefineImage(latest, instruction);
+  try {
+    await runRefineImage(latest, instruction);
+  } catch (err) {
+    postSystemNoteToChat(targetPlan, `The image could not be generated: ${err.message}`);
+    throw err;
+  }
 }
 
 /**
@@ -2048,6 +2060,29 @@ async function runRenderRequest(instruction, planId) {
  * sheet's current scope, so generating an image never changes which
  * conversation the participant is reading.
  */
+/**
+ * Tell the participant, in the thread, that something they were promised is
+ * not coming. A failure announced anywhere other than where the promise was
+ * made is a failure they will not find.
+ */
+function postSystemNoteToChat(planId, text) {
+  const target = planId || state.workspace.currentPlanId;
+  if (!target) { log(text); return; }
+
+  const findThread = () => (state.workspace.conversations || [])
+    .find(t => t.scope === 'plan' && (t.ref ?? null) === target);
+  if (!findThread()) {
+    apply(state, { type: 'start-conversation', payload: { scope: 'plan', ref: target } }, { skipHistory: true });
+  }
+  const thread = findThread();
+  if (!thread) { log(text); return; }
+
+  const msg = newMessage('system', text);
+  apply(state, { type: 'append-message', payload: { threadId: thread.id, message: msg } }, { skipHistory: true });
+  chatSheet?.refresh?.();
+  log(text);
+}
+
 function postRenderingToChat(rendering, text) {
   const planId = rendering.planRef || state.workspace.currentPlanId || null;
   if (!planId) return;

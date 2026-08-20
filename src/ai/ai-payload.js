@@ -98,7 +98,11 @@ function slim(ws, needs) {
     measurement: e.measurement || null,
     confirmsConditionRef: e.confirmsConditionRef || null,
     refutesConditionRef: e.refutesConditionRef || null,
-    hasImage: !!e.url
+    hasImage: !!e.url,
+    // Which strategy a rendering belongs to. Without it the server cannot tell
+    // whether THIS strategy has an imagined result, and the model was left
+    // guessing about something it can be told.
+    planRef: e.planRef || null
   }));
 
   // Conversations: filtered by caller

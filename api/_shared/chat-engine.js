@@ -867,6 +867,20 @@ function leanWorkspace(ws, thread = null) {
       ? { ...ws.intent, axes: (ws.intent.axes || []).filter(a => typeof a?.value === 'number' && Number.isFinite(a.value)) }
       : ws.intent,
     constraints: ws.constraints,
+    // What exists to imagine WITH and to revise. Without this the model cannot
+    // tell whether this strategy has an imagined result or even a source
+    // photo, so it announces renders that cannot happen — which is a confident
+    // lie, not a mistake it can recover from.
+    imagined: (() => {
+      const evidence = ws.evidence || [];
+      const mine = evidence.filter(e => e.kind === 'rendering' && e.planRef === ws.currentPlanId);
+      return {
+        hasSourcePhoto: !!ws.instance?.sourcePhotoEvidenceId
+          || evidence.some(e => e.kind === 'photo' && e.hasImage),
+        renderingCount: mine.length,
+        canRevise: mine.length > 0,
+      };
+    })(),
     currentPlanId: ws.currentPlanId,
     currentPlan: plan ? {
       id: plan.id, label: plan.label, status: plan.status,
@@ -1096,6 +1110,25 @@ export function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSte
       }
       if (!activePlanId) {
         return { error: 'revise_rendering: there is no active strategy to imagine a result for.' };
+      }
+      // This tool REVISES an existing image; it cannot make the first one.
+      // Without this guard it accepted the call, the client found nothing to
+      // revise and gave up quietly, and the participant was told an image was
+      // on its way that was never coming.
+      const renderings = (fullWorkspace.evidence || [])
+        .filter(e => e.kind === 'rendering' && e.planRef === activePlanId);
+      if (!renderings.length) {
+        const hasSource = !!fullWorkspace.instance?.sourcePhotoEvidenceId;
+        return {
+          error: 'revise_rendering: this strategy has no imagined result yet, and this tool can '
+               + 'only revise one that exists. '
+               + (hasSource
+                 ? 'The participant makes the first image with "Imagine repaired state" in the '
+                 + 'IMAGINED RESULT panel. Tell them that, and offer to revise it once it is there.'
+                 : 'There is also no source photo set, which the first image is generated from. '
+                 + 'Tell them to upload one under IMAGINED RESULT → "Upload source photo", then '
+                 + 'use "Imagine repaired state". Do not say you have queued anything.'),
+        };
       }
       // One render per turn. Without this the model can queue several against
       // the same starting image, each ignoring the others' changes, and the
