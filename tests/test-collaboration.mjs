@@ -12,6 +12,7 @@ import {
   isValidProjectId,
   normalizeAuthorKey as normalizeWorkerAuthorKey,
   normalizeAuthorName,
+  isOriginAllowed,
 } from '../cloudflare/worker.js';
 
 console.log('=== COLLABORATION HELPERS ===');
@@ -73,3 +74,39 @@ assert.equal(merged.conditions[0].evidenceRecords, undefined);
 assert.deepEqual(merged.evidence.map(item => item.id), ['ev_base', 'ev_photo']);
 
 console.log('✓ Collaboration helpers work');
+
+// --- CORS origin matching ---------------------------------------------------
+//
+// A rejected origin is not a visible error: the browser blocks the response,
+// the client falls back to offline mode, and ten participants quietly stop
+// collaborating. Worth pinning down exactly.
+
+const ALLOWED = [
+  'http://localhost:5173',
+  'https://repair-workspace.vercel.app',
+  'https://repair-workspace-*-tizian-reins-projects.vercel.app',
+];
+
+assert.equal(isOriginAllowed('https://repair-workspace.vercel.app', ALLOWED), true, 'production');
+assert.equal(isOriginAllowed('http://localhost:5173', ALLOWED), true, 'local dev');
+assert.equal(
+  isOriginAllowed('https://repair-workspace-9f3ka2x-tizian-reins-projects.vercel.app', ALLOWED),
+  true,
+  'a preview deployment',
+);
+assert.equal(isOriginAllowed('https://evil.example.com', ALLOWED), false, 'unrelated origin');
+// The wildcard must not cross a dot, or any host under any domain could
+// suffix-match its way in.
+assert.equal(
+  isOriginAllowed('https://repair-workspace-x.evil.com-tizian-reins-projects.vercel.app', ALLOWED),
+  false,
+  'wildcard must not span dots',
+);
+assert.equal(
+  isOriginAllowed('http://localhost:5174', ALLOWED),
+  false,
+  'a different port is a different origin',
+);
+assert.equal(isOriginAllowed('https://anything.at.all', ['*']), true, 'explicit allow-all still works');
+
+console.log('✓ CORS origin matching holds');

@@ -2076,3 +2076,12 @@ select.detail-input { cursor: pointer; }
 }
 .corpus-kind-btn strong { font-size: 13px; font-weight: 500; }
 .corpus-kind-btn span { font-family: var(--mono); font-size: 10px; color: var(--ink-mute); }
+
+/* A conflict is the one sync state that needs a decision from the participant,
+   so it has to look like something you can press. */
+.collab-status.actionable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.collab-status.actionable:hover { color: var(--ink); }

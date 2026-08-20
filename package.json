@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "verify": "node verify-setup.mjs",
-    "test": "npm run test:workspace-read && npm run test:state && npm run test:bundle && npm run test:layer-sync && npm run test:corpus && npm run test:migrate && npm run test:commands && npm run test:collaboration && npm run test:gemini && npm run test:joinery",
+    "test": "npm run test:workspace-read && npm run test:state && npm run test:bundle && npm run test:layer-sync && npm run test:corpus && npm run test:vector-search && npm run test:migrate && npm run test:commands && npm run test:collaboration && npm run test:gemini && npm run test:joinery",
     "test:migrate": "node tests/test-migration.mjs",
     "test:commands": "node tests/test-commands.mjs",
     "test:step-resolution": "node tests/test-step-resolution.mjs",
@@ -25,7 +25,10 @@
     "test:state": "node tests/test-state.mjs",
     "test:bundle": "node tests/test-bundle.mjs",
     "test:layer-sync": "node tests/test-layer-sync.mjs",
-    "test:corpus": "node tests/test-corpus.mjs"
+    "test:corpus": "node tests/test-corpus.mjs",
+    "test:vector-search": "node tests/test-vector-search.mjs",
+    "verify:live": "node --env-file=.env.local scripts/verify-live.mjs",
+    "verify:worker": "node --env-file=.env.local scripts/verify-worker-e2e.mjs"
   },
   "dependencies": {
     "cytoscape": "^3.28.1",

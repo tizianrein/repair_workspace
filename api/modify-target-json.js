@@ -27,13 +27,14 @@
  * iterative loop stays responsive.
  */
 
+import { withRateLimit } from './_shared/rate-limit.js';
 import { callGemini } from './_shared/gemini.js';
 import { loadPrompt } from './_shared/prompts.js';
 import { getIntent, getConstraints } from './_shared/workspace-read.js';
 
 export const config = { maxDuration: 30 };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
@@ -73,3 +74,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+
+// Bounded before it can spend anything. See _shared/rate-limit.js.
+export default withRateLimit('modify-target-json', handler);

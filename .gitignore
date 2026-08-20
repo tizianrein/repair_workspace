@@ -7,3 +7,6 @@ dist
 .DS_Store
 *.log
 tests/fixtures/v2-migrated-workspace.json
+
+# Mesh backups. Recoverable from history; they were shipping ~62 MB per deploy.
+*.glbbak

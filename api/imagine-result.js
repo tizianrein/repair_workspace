@@ -25,11 +25,12 @@
  * (modified) Soll-JSON.
  */
 
+import { withRateLimit } from './_shared/rate-limit.js';
 import { callGeminiImage } from './_shared/gemini.js';
 
 export const config = { maxDuration: 60 };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
@@ -129,3 +130,6 @@ PHOTOGRAPHIC SETTING (match the source image):
 
 Render a single photograph. No captions, no diagrams, no before/after split, no labels.`;
 }
+
+// Bounded before it can spend anything. See _shared/rate-limit.js.
+export default withRateLimit('imagine-result', handler);

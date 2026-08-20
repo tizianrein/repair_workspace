@@ -130,10 +130,17 @@ export function createLayerSync({ api, getWorkspace, getContext, onState, log = 
     timer = setTimeout(() => { flush().catch(() => {}); }, DEBOUNCE_MS);
   }
 
-  async function flush({ force = false } = {}) {
+  /**
+   * `overwrite: true` is the deliberate resolution of a conflict — the write
+   * goes up with no baseRev at all, which the Worker reads as "replace whatever
+   * is there". It is never triggered by an edit or a timer; only by someone
+   * choosing it, because picking a winner automatically is how the previous
+   * sync destroyed work.
+   */
+  async function flush({ force = false, overwrite = false } = {}) {
     clearTimeout(timer);
     if (!ready()) return { ok: false, reason: 'not-ready' };
-    if (!dirty && !force) return { ok: true, reason: 'clean' };
+    if (!dirty && !force && !overwrite) return { ok: true, reason: 'clean' };
     if (inFlight) return inFlight;
 
     inFlight = (async () => {
@@ -146,7 +153,11 @@ export function createLayerSync({ api, getWorkspace, getContext, onState, log = 
         const result = await api.putLayer(ctx.projectId, ctx.authorKey, {
           authorName: ctx.authorName,
           layer: payload,
-          baseRev: rev,
+          // Omitted, not null. The Worker reads a missing baseRev as a
+          // knowing replacement, but `Number(null)` is 0 — so sending null
+          // would assert "this layer does not exist yet" and conflict against
+          // any layer that does.
+          baseRev: overwrite ? undefined : rev,
         });
         rev = Number(result.rev || rev + 1);
         attempt = 0;
@@ -157,9 +168,15 @@ export function createLayerSync({ api, getWorkspace, getContext, onState, log = 
           // Someone else wrote this layer — another tab, or the same person on
           // another device. We do not resolve it silently in either direction:
           // picking a winner automatically is how the old sync destroyed work.
+          //
+          // The work stays dirty and stays local. Recovery is deliberate:
+          // either reload to take the other version, or choose to overwrite,
+          // which is what overwriteRemote() does. Retrying the same write is
+          // not recovery — baseRev is still stale, so it would conflict again,
+          // and again, for the rest of the session.
           dirty = true;
           setState(SYNC_STATE.CONFLICT, error);
-          log('This layer was changed elsewhere. Reload to pick up the other version, or keep working and save again to overwrite it.');
+          log('This layer was changed elsewhere. Reload to pick up the other version, or choose to overwrite it with what is on this screen.');
           return { ok: false, conflict: true };
         }
 
@@ -202,6 +219,8 @@ export function createLayerSync({ api, getWorkspace, getContext, onState, log = 
   return {
     queue,
     flush,
+    /** Resolve a conflict by replacing the server's version with this one. */
+    overwriteRemote: () => flush({ force: true, overwrite: true }),
     suspend,
     resume,
     setRevision,

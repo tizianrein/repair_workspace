@@ -18,6 +18,7 @@
  * next step (synthesize-target-json) modifies to produce the Soll-JSON.
  */
 
+import { withRateLimit } from './_shared/rate-limit.js';
 import { callGemini } from './_shared/gemini.js';
 
 export const config = { maxDuration: 45 };
@@ -60,7 +61,7 @@ CRITICAL rules:
 - Use the same level of detail as a conservator would in a condition report — descriptive, factual, no judgement.
 - Do not add fields not listed above. Do not add commentary outside the JSON.`;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
@@ -92,3 +93,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+
+// Bounded before it can spend anything. See _shared/rate-limit.js.
+export default withRateLimit('describe-photo', handler);

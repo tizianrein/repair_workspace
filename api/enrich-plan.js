@@ -31,13 +31,14 @@
  * via upsert-step commands (one per enrichment, batched).
  */
 
+import { withRateLimit } from './_shared/rate-limit.js';
 import { callGemini } from './_shared/gemini.js';
 import { loadPrompt } from './_shared/prompts.js';
 import { getIntent, getConstraints } from './_shared/workspace-read.js';
 
 export const config = { maxDuration: 60 };
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
@@ -119,3 +120,6 @@ function leanWorkspace(ws) {
     constraints: getConstraints(ws)
   };
 }
+
+// Bounded before it can spend anything. See _shared/rate-limit.js.
+export default withRateLimit('enrich-plan', handler);

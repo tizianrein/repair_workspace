@@ -113,6 +113,44 @@ function harness({ putLayer }) {
   console.log('  ✓ a concurrent write conflicts loudly and keeps the local work');
 }
 
+// --- a conflict can actually be recovered from -----------------------------
+//
+// The UI offers "overwrite" after a conflict. It has to be reachable: an
+// ordinary save carries the same stale baseRev, so retrying conflicts again
+// and the participant would spend the rest of the session unable to reach the
+// server without knowing it.
+{
+  const seen = [];
+  let failNext = true;
+  const { sync, states } = harness({
+    putLayer: async (_p, _a, body) => {
+      // Inspect the serialised form, because that is what the Worker parses:
+      // JSON.stringify drops an undefined value, and a dropped key is exactly
+      // the difference between "replace whatever is there" and "I expect
+      // revision 0".
+      const wire = JSON.parse(JSON.stringify(body));
+      seen.push('baseRev' in wire ? wire.baseRev : '(omitted)');
+      if (failNext) { failNext = false; const e = new Error('changed'); e.status = 409; throw e; }
+      return { rev: 9 };
+    },
+  });
+  sync.setRevision(4);
+
+  const conflicted = await sync.flush({ force: true });
+  assert.strictEqual(conflicted.conflict, true);
+
+  // Retrying the ordinary way must NOT be what resolves it — that would make
+  // overwriting an accident of the debounce timer rather than a decision.
+  const overwritten = await sync.overwriteRemote();
+  assert.strictEqual(overwritten.ok, true, 'a deliberate overwrite succeeds');
+  assert.deepStrictEqual(seen, [4, '(omitted)'],
+    'the overwrite omits baseRev entirely; null would be read as revision 0');
+  assert.strictEqual(sync.getRevision(), 9, 'the revision resyncs to the server');
+  assert.strictEqual(sync.isDirty(), false, 'the work is no longer pending');
+  assert.strictEqual(states.at(-1), SYNC_STATE.IDLE, 'the UI leaves the conflict state');
+  console.log('  ✓ a conflict is recoverable by a deliberate overwrite');
+}
+
 // --- a network failure retries and stays dirty ----------------------------
 {
   let calls = 0;

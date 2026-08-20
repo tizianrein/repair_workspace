@@ -83,7 +83,7 @@ export async function embedQuery(text, { dims = EMBEDDING_DIMS } = {}) {
  * Normalising first means cosine similarity reduces to a dot product, so the
  * search loop has no square roots in it.
  */
-export function quantize(vector) {
+export function toUnitInt8(vector) {
   const v = Float32Array.from(vector || []);
   let norm = 0;
   for (let i = 0; i < v.length; i++) norm += v[i] * v[i];
@@ -93,7 +93,27 @@ export function quantize(vector) {
   for (let i = 0; i < v.length; i++) {
     q[i] = Math.max(-127, Math.min(127, Math.round((v[i] / norm) * 127)));
   }
-  return Buffer.from(q.buffer).toString('base64');
+  return q;
+}
+
+export function quantize(vector) {
+  return Buffer.from(toUnitInt8(vector).buffer).toString('base64');
+}
+
+/**
+ * The same quantisation, as a plain array for JSON transport.
+ *
+ * The query side has to be quantised identically to the document side or the
+ * dot product is not a cosine of anything. Posting raw floats is the specific
+ * mistake this exists to prevent: the worker reads the query with
+ * `Int8Array.from(...)`, which truncates every value in a unit-length float
+ * vector to zero, so every chunk scores exactly zero, the ranking sort becomes
+ * a no-op, and search returns whatever order the database happened to produce
+ * — silently, with no error anywhere. It looks like working retrieval right up
+ * until you check whether the results are the right ones.
+ */
+export function quantizeVector(vector) {
+  return Array.from(toUnitInt8(vector));
 }
 
 /**

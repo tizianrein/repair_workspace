@@ -105,13 +105,21 @@ export function createCorpus({ api, getProjectId, getScope, log = () => {} }) {
     invalidate();
 
     // Ingest is best-effort. The document is already safe.
+    //
+    // We send the document's ADDRESS, not its bytes. It was just stored in R2
+    // above, so the server can fetch it from there — and must, because a
+    // Vercel function body may be 4.5 MB and base64 inflates by 4/3, which
+    // capped the corpus at roughly 3.3 MB per document. Anything larger was
+    // rejected by the platform before the function ran, and surfaced here as a
+    // bare "Ingest failed (413)". Architectural PDFs are routinely bigger than
+    // that, so the cap excluded most of what this corpus is for.
     try {
-      const base64 = await bufferToBase64(buffer);
       const res = await fetch('/api/ingest-document', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          file: { name: file.name, mimeType: file.type || 'application/octet-stream', data: base64 },
+          projectId,
+          docId,
           docKind,
           artefactName,
         }),
@@ -170,14 +178,4 @@ export function createCorpus({ api, getProjectId, getScope, log = () => {} }) {
   }
 
   return { list, add, remove, invalidate, contextIndex };
-}
-
-async function bufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  const CHUNK = 0x8000;   // avoid blowing the argument limit on large files
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
-  }
-  return btoa(binary);
 }

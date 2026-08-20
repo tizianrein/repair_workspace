@@ -20,6 +20,7 @@
  *   }
  */
 
+import { withRateLimit } from './_shared/rate-limit.js';
 import { callGemini } from './_shared/gemini.js';
 import { loadPrompt } from './_shared/prompts.js';
 
@@ -28,7 +29,7 @@ export const config = { maxDuration: 90 };
 const PROGRAM_SCHEMA = 'joinery-program@1';
 const TOPOLOGIES = new Set(['lap', 'scarf', 'lapped_bowtie']);
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
@@ -303,3 +304,5 @@ function clampNumber(value, min, max, fallback) {
   return Math.max(min, Math.min(max, number));
 }
 
+// Bounded before it can spend anything. See _shared/rate-limit.js.
+export default withRateLimit('design-joinery', handler);

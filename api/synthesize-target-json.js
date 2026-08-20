@@ -22,6 +22,7 @@
  * to the image generator.
  */
 
+import { withRateLimit } from './_shared/rate-limit.js';
 import { callGemini } from './_shared/gemini.js';
 import { getIntent, getConstraints } from './_shared/workspace-read.js';
 
@@ -91,7 +92,7 @@ OUTPUT FORMAT — STRICT JSON:
 
 Do not include any text outside the JSON.`;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
@@ -153,3 +154,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+
+// Bounded before it can spend anything. See _shared/rate-limit.js.
+export default withRateLimit('synthesize-target-json', handler);

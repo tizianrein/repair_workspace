@@ -22,6 +22,34 @@ export function isValidEvidenceId(value) {
   return /^[a-zA-Z0-9:_-]{1,160}$/.test(String(value ?? ''));
 }
 
+/**
+ * Is this origin permitted?
+ *
+ * Exact matches, plus entries containing `*` as a single-label wildcard. The
+ * wildcard exists for one specific problem: Vercel gives every preview
+ * deployment a unique hostname, so a preview build can never be listed in
+ * advance, and the failure is a CORS rejection that looks — from inside the
+ * app — like the collaboration backend being down. Every participant silently
+ * drops to offline mode.
+ *
+ * `*` expands to one hostname label and cannot cross a dot. That matters:
+ * `https://*-tizian-reins-projects.vercel.app` then admits this team's preview
+ * deployments and nothing else, where a `.*` would also admit
+ * `https://anything.evil.com-tizian-reins-projects.vercel.app`.
+ */
+export function isOriginAllowed(origin, configured) {
+  if (configured.includes('*')) return true;
+  if (configured.includes(origin)) return true;
+  return configured.some(entry => {
+    if (!entry.includes('*')) return false;
+    const pattern = entry
+      .split('*')
+      .map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('[A-Za-z0-9-]*');
+    return new RegExp(`^${pattern}$`).test(origin);
+  });
+}
+
 function corsHeaders(request, env) {
   const origin = request.headers.get('Origin');
   const configured = String(env.ALLOWED_ORIGINS || '*')
@@ -32,7 +60,7 @@ function corsHeaders(request, env) {
   if (!origin || configured.includes('*')) {
     return { 'Access-Control-Allow-Origin': origin || '*' };
   }
-  if (configured.includes(origin)) {
+  if (isOriginAllowed(origin, configured)) {
     return { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' };
   }
   return null;
@@ -926,7 +954,7 @@ async function handlePutCorpusText(request, env, projectId, docId) {
 // if a corpus ever reaches tens of thousands of chunks.
 // ---------------------------------------------------------------------------
 
-function decodeVector(b64) {
+export function decodeVector(b64) {
   const binary = atob(b64);
   const out = new Int8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
@@ -937,10 +965,45 @@ function decodeVector(b64) {
 }
 
 /**
+ * Bring an incoming query vector into the same units as the stored ones.
+ *
+ * The API side quantises before posting. This does not trust that. `Int8Array
+ * .from()` on a raw float vector truncates every component to zero, which does
+ * not throw, does not warn, and produces a uniform score of zero for every
+ * chunk — so the ranking sort does nothing and search returns rows in whatever
+ * order D1 supplied. Silent, plausible-looking nonsense.
+ *
+ * The Worker and the Vercel functions deploy independently, so one can be a
+ * version behind the other at any time. Detecting the float form here and
+ * normalising it costs one pass over 768 numbers and makes that skew harmless
+ * in both directions.
+ */
+export function toQueryVector(query) {
+  let maxAbs = 0;
+  let fractional = false;
+  for (const x of query) {
+    const a = Math.abs(x);
+    if (a > maxAbs) maxAbs = a;
+    if (!Number.isInteger(x)) fractional = true;
+  }
+  // Already int8-shaped: integers spanning more than the unit interval.
+  if (!fractional && maxAbs > 1) return Int8Array.from(query);
+
+  let norm = 0;
+  for (const x of query) norm += x * x;
+  norm = Math.sqrt(norm) || 1;
+  const out = new Int8Array(query.length);
+  for (let i = 0; i < query.length; i++) {
+    out[i] = Math.max(-127, Math.min(127, Math.round((query[i] / norm) * 127)));
+  }
+  return out;
+}
+
+/**
  * Both vectors are stored normalised, so cosine similarity is a plain dot
  * product — no square roots in the inner loop.
  */
-function dot(a, b) {
+export function dot(a, b) {
   const n = Math.min(a.length, b.length);
   let sum = 0;
   for (let i = 0; i < n; i++) sum += a[i] * b[i];
@@ -986,7 +1049,7 @@ async function handleSearchCorpus(request, env, projectId) {
     return json(request, env, { chunks: [], searched: 0, unavailable: true });
   }
 
-  const q = Int8Array.from(query);
+  const q = toQueryVector(query);
   const scored = [];
   for (const row of (rows.results || [])) {
     let vector;
@@ -1017,6 +1080,91 @@ async function handleSearchCorpus(request, env, projectId) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Spend limiting
+//
+// The AI endpoints on Vercel call this before doing anything expensive. It is
+// not authentication — it establishes nothing about who is calling — it just
+// bounds what an anonymous caller can cost on a pay-as-you-go key.
+//
+// Two buckets are checked per request: one for the caller, and one global
+// ceiling across all callers. The per-caller limit stops one script; the
+// global limit is what actually bounds the bill, because a leaked URL does not
+// arrive from a single address.
+// ---------------------------------------------------------------------------
+
+const RATE_LIMIT_MAX_WINDOW = 86_400;   // a day, the longest window accepted
+const RATE_LIMIT_MAX_COST = 100;
+
+async function bumpBucket(env, bucket, windowSeconds, limit, cost, nowSec) {
+  const windowStart = Math.floor(nowSec / windowSeconds) * windowSeconds;
+  const now = new Date(nowSec * 1000).toISOString();
+
+  // One statement: insert the window or add to it, and return what the count
+  // became. Two clients arriving together therefore serialise on the row
+  // rather than both reading the same stale value.
+  const row = await env.DB.prepare(
+    `INSERT INTO rw_rate_limits (bucket, window_start, count, updated_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(bucket, window_start) DO UPDATE SET
+       count = count + excluded.count,
+       updated_at = excluded.updated_at
+     RETURNING count`,
+  ).bind(bucket, windowStart, cost, now).first();
+
+  const count = Number(row?.count || 0);
+  return {
+    ok: count <= limit,
+    count,
+    limit,
+    // When the window rolls over and it is worth trying again.
+    retryAfter: Math.max(1, windowStart + windowSeconds - Math.floor(nowSec)),
+  };
+}
+
+async function handleRateLimit(request, env) {
+  const body = await readJson(request);
+
+  const name = String(body.name || '').slice(0, 40).replace(/[^a-zA-Z0-9_-]/g, '');
+  if (!name) throw new HttpError(400, 'name is required');
+
+  const caller = String(body.caller || 'unknown').slice(0, 100);
+  const limit = Math.max(1, Math.min(Number(body.limit) || 60, 100_000));
+  // Bounded on its own terms, NOT floored at `limit`. A global ceiling tighter
+  // than the per-caller one is a legitimate way to say "whatever any one caller
+  // may do, the deployment as a whole stops here", and quietly raising it to
+  // meet `limit` would disable exactly the limit that bounds the bill.
+  const globalLimit = Math.max(1, Math.min(Number(body.globalLimit) || limit * 20, 1_000_000));
+  const windowSeconds = Math.max(1, Math.min(Number(body.windowSeconds) || 300, RATE_LIMIT_MAX_WINDOW));
+  const cost = Math.max(1, Math.min(Number(body.cost) || 1, RATE_LIMIT_MAX_COST));
+  const nowSec = Math.floor(Date.now() / 1000);
+
+  // The global ceiling is checked first: if the whole deployment is over
+  // budget, whose request it is does not matter.
+  const global = await bumpBucket(env, `${name}:@global`, windowSeconds, globalLimit, cost, nowSec);
+  if (!global.ok) {
+    return json(request, env, {
+      ok: false, scope: 'global', count: global.count, limit: global.limit, retryAfter: global.retryAfter,
+    }, 200);
+  }
+
+  const per = await bumpBucket(env, `${name}:${caller}`, windowSeconds, limit, cost, nowSec);
+
+  // Opportunistic sweep of windows nobody can read any more. Cheap, and it
+  // keeps the table from growing without bound over a term of workshops.
+  if (Math.floor(nowSec / 60) % 30 === 0) {
+    try {
+      await env.DB.prepare('DELETE FROM rw_rate_limits WHERE window_start < ?')
+        .bind(nowSec - RATE_LIMIT_MAX_WINDOW * 2).run();
+    } catch {}
+  }
+
+  return json(request, env, {
+    ok: per.ok, scope: per.ok ? null : 'caller',
+    count: per.count, limit: per.limit, retryAfter: per.retryAfter,
+  }, 200);
+}
+
 async function handleDeleteCorpusDoc(request, env, projectId, docId) {
   const row = await env.DB.prepare(
     'SELECT * FROM rw_corpus_docs WHERE project_id = ? AND id = ?',
@@ -1042,6 +1190,11 @@ async function route(request, env) {
   if (segments.length === 1 && segments[0] === 'health' && request.method === 'GET') {
     const db = await env.DB.prepare('SELECT 1 AS ok').first();
     return json(request, env, { ok: db?.ok === 1 });
+  }
+  // Not under /projects: the spend limit is a property of the deployment, not
+  // of any one project.
+  if (segments.length === 1 && segments[0] === 'limit' && request.method === 'POST') {
+    return handleRateLimit(request, env);
   }
   if (segments[0] !== 'projects' || !segments[1]) throw new HttpError(404, 'Not found');
 

@@ -2142,11 +2142,16 @@ $('corpus-file').addEventListener('change', async e => {
 // Shared condition layers (Cloudflare Worker + D1)
 // -------------------------------------------------------------------------
 
-function setCollaborationStatus(message, status = 'idle') {
+function setCollaborationStatus(message, status = 'idle', onClick = null) {
   const el = $('collab-status');
   if (!el) return;
   el.textContent = message;
   el.dataset.state = status;
+  // Assignment rather than addEventListener: this runs on every state change,
+  // and listeners would stack up one per save.
+  el.onclick = onClick;
+  el.classList.toggle('actionable', !!onClick);
+  el.title = onClick ? 'Click to resolve' : '';
   state.collaboration.syncState = status;
 }
 
@@ -2505,6 +2510,30 @@ function ensureLayerSync() {
   return layerSync;
 }
 
+/**
+ * Resolve a layer conflict, by choice rather than by rule.
+ *
+ * Cancel does nothing on purpose: dismissing a dialog with Escape must never
+ * be the path that discards someone's work. Taking the other version means
+ * reloading, which the participant does themselves once they have decided.
+ */
+async function resolveLayerConflict() {
+  if (!layerSync) return;
+  const ok = confirm(
+    'This layer was changed somewhere else — another tab, or another device.\n\n'
+    + 'Overwrite it with the version on this screen?\n\n'
+    + 'Cancel leaves both as they are. Either way your work stays in this browser, '
+    + 'and you can save a ZIP from the Save button at any time.\n\n'
+    + 'To take the other version instead, cancel and reload the page.',
+  );
+  if (!ok) return;
+  setCollaborationStatus('Overwriting…', 'saving');
+  const result = await layerSync.overwriteRemote();
+  if (!result?.ok) {
+    setCollaborationStatus('Could not overwrite — still changed elsewhere', 'error', resolveLayerConflict);
+  }
+}
+
 function renderSyncState(syncState, detail) {
   const counts = state.workspace;
   const n = (counts.conditions || []).length;
@@ -2518,7 +2547,12 @@ function renderSyncState(syncState, detail) {
       setCollaborationStatus(`${summary} · saving…`, 'saving');
       break;
     case SYNC_STATE.CONFLICT:
-      setCollaborationStatus('Changed on another device — save again to overwrite', 'error');
+      // The old wording promised something the code could not do: after a
+      // conflict every ordinary save carries the same stale revision and
+      // conflicts again, so "save again" left the participant permanently
+      // unable to reach the server. Overwriting has to be a decision someone
+      // makes, and it has to be reachable.
+      setCollaborationStatus('Changed elsewhere — click to resolve', 'error', resolveLayerConflict);
       break;
     case SYNC_STATE.OFFLINE:
       setCollaborationStatus(`${summary} · offline, kept on this device`, 'error');

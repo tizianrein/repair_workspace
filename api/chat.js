@@ -16,16 +16,28 @@
  * that will reuse the same chat-engine module — see _shared/chat-engine.js.
  */
 
+import { withRateLimit } from './_shared/rate-limit.js';
 import { runChat } from './_shared/chat-engine.js';
-import { embedQuery, buildChunks, embedTexts, quantize, EMBEDDING_DIMS } from './_shared/embeddings.js';
+import { embedQuery, buildChunks, embedTexts, quantize, quantizeVector, EMBEDDING_DIMS } from './_shared/embeddings.js';
 
 export const config = { maxDuration: 90 };
 
-// Roughly 30 pages of PDF at Gemini's ~258 tokens/page. Beyond this the model
-// is told the document is too large to view and falls back to the text.
-const MAX_VIEWABLE_BYTES = 12_000_000;
+// The ceiling on looking at a document's original pages.
+//
+// This is a cost limit, not an API limit: Gemini accepts a 23.6 MB inline
+// request in practice (measured against a 17.7 MB, 129-page PDF), and bills
+// about 258 tokens per page — so a view of that book costs roughly 33k input
+// tokens, and an unbounded document would be an unbounded bill.
+//
+// It was 12 MB, which was below the size of the very reference works most
+// worth looking at. A book-length document already yields little body text at
+// ingest — the model summarises rather than transcribes 129 pages — so if it
+// also cannot be viewed, the drawings inside it are unreachable by any route.
+// Figure descriptions tell the model a drawing exists; this is what lets it go
+// and read the drawing.
+const MAX_VIEWABLE_BYTES = 28_000_000;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
@@ -87,7 +99,10 @@ export default async function handler(req, res) {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                      vector,
+                      // Quantised, not raw. The stored vectors are unit-length
+                      // int8; the query has to be in the same units or the dot
+                      // product means nothing. See quantizeVector.
+                      vector: quantizeVector(vector),
                       planId: corpus?.planId || null,
                       authorKey: corpus?.authorKey || null,
                       topK: 8,
@@ -182,3 +197,6 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message });
   }
 }
+
+// Bounded before it can spend anything. See _shared/rate-limit.js.
+export default withRateLimit('chat', handler);

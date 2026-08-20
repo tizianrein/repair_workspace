@@ -71,14 +71,42 @@ list. Include local Vite and every deployed Repair Workspace origin:
 
 Do not include paths or trailing slashes.
 
+An entry may contain `*`, which matches within a single hostname label and
+never across a dot:
+
+```json
+"https://repair-workspace-*-tizian-reins-projects.vercel.app"
+```
+
+That exists for Vercel preview deployments, whose hostnames are generated per
+build and so can never be listed in advance. Without it a preview build fails
+CORS, and the failure is invisible from inside the app — every participant
+silently drops to offline mode. Keep the wildcard tight enough that only your
+own deployments match it.
+
 ## 3. Apply the production migration
 
 ```powershell
 npm run cloudflare:migrate:remote
 ```
 
-This creates `rw_projects`, `rw_conditions`, and their indexes. Migration SQL
-is versioned in `cloudflare/migrations/`.
+Migration SQL is versioned in `cloudflare/migrations/`, and every migration is
+additive — none drops a table, so applying them to a database with participant
+data in it is safe.
+
+| Migration | Adds |
+|---|---|
+| 0001 | `rw_projects`, `rw_conditions` |
+| 0002 | `rw_layers` — a participant's whole workspace, body in R2 |
+| 0003 | `rw_corpus_docs` — the two-tier corpus |
+| 0004 | `rw_corpus_chunks` — embedded chunks for semantic retrieval |
+| 0005 | `rw_rate_limits` — spend limits for the AI endpoints |
+
+If 0004 is missing, corpus ingest still stores documents and keyword search
+still works; only semantic search goes quiet. If 0005 is missing, the spend
+limiter fails open. Both degrade rather than break, which is deliberate — but
+both mean a feature is silently absent, so check the table above after any
+deploy.
 
 ## 4. Deploy the collaboration Worker
 
@@ -99,6 +127,27 @@ https://repair-workspace-collaboration.<account>.workers.dev/api/collaboration/h
 ```
 
 The response should be `{"ok":true}`.
+
+
+## 4a. The spend-limit route
+
+`POST /api/collaboration/limit` is the one route that is not scoped to a
+project, because a spend limit is a property of the deployment rather than of
+any one project. The Vercel AI endpoints call it before doing anything
+expensive:
+
+```json
+{ "name": "chat", "caller": "<ip>", "limit": 40, "globalLimit": 400,
+  "windowSeconds": 300, "cost": 1 }
+```
+
+It answers `{ ok, scope, count, limit, retryAfter }`. Two buckets are checked:
+the caller's, and a global ceiling across all callers — the second is the one
+that bounds the bill, since a leaked URL does not arrive from a single address.
+
+It establishes nothing about *who* is calling. There is no authentication on
+`/api/*` and this does not add any; it bounds cost, which is the actual risk on
+a pay-as-you-go key.
 
 ## 5. Connect the deployed Repair Workspace
 
