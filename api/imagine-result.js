@@ -35,14 +35,18 @@ async function handler(req, res) {
 
   try {
     const { file, soll, previousRendering } = req.body || {};
-    if (!file?.data || !file?.mimeType) {
-      return res.status(400).json({ error: 'file with data and mimeType is required' });
+    const isRefinement = !!(previousRendering?.data && previousRendering?.mimeType);
+
+    // The source photo is only needed for a first render. A refinement anchors
+    // on the previous rendering alone (see below), so requiring the source
+    // there meant the client base64'd a 200-500 KB photo, uploaded it, and had
+    // it discarded — on every refine, over whatever wifi the workshop is on.
+    if (!isRefinement && (!file?.data || !file?.mimeType)) {
+      return res.status(400).json({ error: 'file with data and mimeType is required for a first render' });
     }
     if (!soll?.subject || !soll?.scene) {
       return res.status(400).json({ error: 'soll must include subject and scene' });
     }
-
-    const isRefinement = !!(previousRendering?.data && previousRendering?.mimeType);
 
     // Build the prompt
     const prompt = buildPrompt(soll, isRefinement);

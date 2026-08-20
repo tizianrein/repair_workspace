@@ -1477,8 +1477,12 @@ async function runRefineImage(previousRendering, userInstruction) {
   if (!sourceEv) { alert('Original source photo missing.'); return; }
   if (!previousRendering.sollJson) { alert('Previous rendering has no Soll-JSON.'); return; }
 
-  const sourcePhoto = await PhotoStorage.get(sourceId);
-  if (!sourcePhoto) { alert('Source photo file not on this device.'); return; }
+  // The source photo's BYTES are not needed to refine — only its id, to stamp
+  // the new rendering's provenance below. Loading it used to be a hard
+  // precondition, which meant refining failed on any device that had not
+  // captured the photo itself: evidence records travel in the participant's
+  // layer, but the blobs live in this browser's IndexedDB. Same person, second
+  // device, no refinement.
   const prevImage = await PhotoStorage.get(previousRendering.id);
   if (!prevImage) { alert('Previous rendering file not on this device.'); return; }
 
@@ -1506,21 +1510,19 @@ async function runRefineImage(previousRendering, userInstruction) {
     const { soll: newSoll, rationale } = await modResp.json();
     log(`Soll-JSON updated: ${rationale || '(no rationale)'}`);
 
-    // Stage 2: generate new image, passing the previous rendering as the
-    // second reference image to preserve visual stability
+    // Stage 2: generate the new image from the previous rendering.
+    //
+    // A refinement anchors on the previous rendering ALONE — the endpoint
+    // discards the source photo on this path, because sending both made the
+    // model interpolate between them. So we no longer upload the source at
+    // all: it was 200-500 KB base64'd and thrown away on every refine.
     btn.textContent = '⏳ Generating image…';
-    const sourceBase64 = await blobToBase64(sourcePhoto.blob);
     const prevBase64 = await blobToBase64(prevImage.blob);
 
     const genResp = await fetch('/api/imagine-result', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        file: {
-          name: sourceEv.fileName || 'source.jpg',
-          mimeType: sourcePhoto.blob.type || 'image/jpeg',
-          data: sourceBase64
-        },
         soll: newSoll,
         previousRendering: {
           mimeType: prevImage.blob.type || 'image/png',
