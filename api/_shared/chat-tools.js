@@ -141,6 +141,32 @@ export const CHAT_TOOLS = [
     }
   },
   {
+    name: 'propose_intent_axis',
+    description:
+      'Propose a NEW evaluation criterion for this strategy — a dimension the participant '
+      + 'has not yet named, which the material or the conversation suggests matters. It is '
+      + 'added to the radar UNWEIGHTED: it carries no importance until the participant drags '
+      + 'its handle, and until they do it influences nothing you generate. '
+      + 'You cannot set its weight, and there is no tool that can — only they decide how much '
+      + 'a criterion matters. Say plainly that you have put it on the radar for them to weigh. '
+      + 'Use this sparingly, when a document or their own words reveal a criterion the current '
+      + 'axes cannot express — not to restate one that already exists in different words.',
+    parameters: {
+      type: 'object',
+      properties: {
+        label: { type: 'string', description: 'Short criterion name, 1-3 words, as it will read on the radar' },
+        description: { type: 'string', description: 'One sentence: what weighing this axis high would commit the repair to' },
+        rationale: { type: 'string', description: 'Why you are proposing it now — what in the material or the conversation prompted it' },
+        sourceRefs: {
+          type: 'array',
+          description: 'Corpus document ids that motivated it, if any. Omit if it came from the conversation rather than a document.',
+          items: { type: 'string' }
+        }
+      },
+      required: ['label', 'rationale']
+    }
+  },
+  {
     name: 'set_constraints',
     description: 'Update the practical constraints (tools available, materials, time budget, skill level, etc.).',
     parameters: {

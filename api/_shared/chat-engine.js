@@ -738,11 +738,25 @@ function computeGaps(ws) {
   }
   // Axes default to 0.5 in the schema. If all of them are still at 0.5,
   // the user hasn't expressed any priorities yet.
-  const axes = Array.isArray(intent.axes) ? intent.axes : [];
-  if (axes.length && axes.every(a => Math.abs((a.value ?? 0.5) - 0.5) < 0.01)) {
+  //
+  // Unweighed axes (value null — a proposal nobody has taken up) are skipped
+  // rather than counted as 0.5. Counting them would let a proposal the
+  // participant ignored make the intent look more considered than it is.
+  const axes = (Array.isArray(intent.axes) ? intent.axes : [])
+    .filter(a => typeof a?.value === 'number' && Number.isFinite(a.value));
+  if (axes.length && axes.every(a => Math.abs(a.value - 0.5) < 0.01)) {
     gaps.push({
       key: 'intent.axes_all_default',
       hint: 'all intent axes are at the 0.5 default — no priorities expressed (sustainability vs cost, authenticity vs intervention, etc.)'
+    });
+  }
+  const unweighed = (Array.isArray(intent.axes) ? intent.axes : [])
+    .filter(a => a && (a.value === null || a.value === undefined));
+  if (unweighed.length) {
+    gaps.push({
+      key: 'intent.axes_unweighed',
+      hint: `${unweighed.length} proposed criteri${unweighed.length === 1 ? 'on has' : 'a have'} not been weighted yet `
+          + `(${unweighed.map(a => a.label).join(', ')}) — they carry no importance and do not influence anything until the participant sets one`
     });
   }
 
@@ -838,7 +852,13 @@ function leanWorkspace(ws, thread = null) {
       id: h.id, type: h.type, description: h.description,
       partRef: h.partRef, status: h.status, confidence: h.confidence
     })),
-    intent: ws.intent,
+    // Weighed axes only. A proposal the participant has not taken up must not
+    // appear in the model's own snapshot — it would read the criterion back as
+    // established and reason from something nobody accepted, and it would
+    // re-propose what is already pending. See workspace-read.weighedAxes.
+    intent: ws.intent
+      ? { ...ws.intent, axes: (ws.intent.axes || []).filter(a => typeof a?.value === 'number' && Number.isFinite(a.value)) }
+      : ws.intent,
     constraints: ws.constraints,
     currentPlanId: ws.currentPlanId,
     currentPlan: plan ? {
@@ -1026,10 +1046,10 @@ export function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSte
           return {
             error: `set_intent: no axis with id ${unknown.map(u => `"${u.id}"`).join(', ')}. `
                  + `Known axes: ${known || '(none)'}. `
-                 + 'You can only change the VALUE of an axis that already exists. '
-                 + 'You cannot create one — the participant adds an axis themselves with '
-                 + 'the "+ axis" button in the intent panel, after which you can weight it. '
-                 + 'Tell them that plainly rather than implying you added it.',
+                 + 'set_intent only changes the value of an axis that already exists. '
+                 + 'To introduce a NEW criterion, call propose_intent_axis — it puts the axis '
+                 + 'on the radar unweighted for the participant to weigh. Do not imply you '
+                 + 'have set its importance; you cannot.',
           };
         }
         for (const upd of args.axes) {
@@ -1060,6 +1080,51 @@ export function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSte
         // — without this, set-intent would patch the (still-current on
         // the client) OLD plan, leaving the new plan with default intent.
         command: { type: 'set-intent', payload: { intent, planId: activePlanId || null } }
+      };
+    }
+    case 'propose_intent_axis': {
+      const label = String(args.label || '').trim();
+      if (!label) return { error: 'propose_intent_axis: label is required.' };
+      if (!String(args.rationale || '').trim()) {
+        return {
+          error: 'propose_intent_axis: rationale is required — say what in the material or the '
+               + 'conversation prompted this criterion. A criterion with no stated reason is '
+               + 'not something the participant can judge.',
+        };
+      }
+      // Refuse a near-duplicate. Two axes meaning the same thing split the
+      // participant's attention and make the radar unreadable, and the model
+      // cannot see which axes it has already proposed in earlier turns —
+      // history is replayed as text, without tool calls.
+      const existingAxes = snapshot.intent?.axes || [];
+      const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '');
+      const clash = existingAxes.find(a => norm(a.label) === norm(label));
+      if (clash) {
+        return {
+          error: `propose_intent_axis: "${clash.label}" is already an axis on this strategy `
+               + `(${clash.id}). Re-weight it with set_intent, or propose a criterion it cannot express.`,
+        };
+      }
+      return {
+        ok: true,
+        message: `Proposed "${label}" — unweighted, for the participant to weigh`,
+        command: {
+          type: 'add-intent-axis',
+          payload: {
+            planId: activePlanId || null,
+            axis: {
+              label: label.slice(0, 60),
+              description: String(args.description || '').slice(0, 300),
+              // Unweighted. There is no tool that sets a weight; the only way
+              // a criterion gains force is a human dragging its handle.
+              value: null,
+              origin: 'assistant',
+              sourceRefs: Array.isArray(args.sourceRefs)
+                ? args.sourceRefs.filter(r => typeof r === 'string').slice(0, 8)
+                : [],
+            },
+          },
+        },
       };
     }
     case 'set_constraints': {

@@ -22,11 +22,27 @@ export function getCurrentPlan(ws) {
   return plans.find(p => p.id === ws.currentPlanId) || plans[0] || null;
 }
 
+/**
+ * The axes that carry a weight.
+ *
+ * An axis with `value: null` is a criterion someone has put on the radar and
+ * nobody has yet weighed — in practice, one the assistant proposed. It must
+ * not reach the model: `null` coerces to 0 in any arithmetic, so an unweighed
+ * axis would read as "scored zero, does not matter", which is the opposite of
+ * "not yet considered". Worse, a model that can see its own pending proposal
+ * treats it as established and reasons from a criterion the participant never
+ * accepted — which is exactly the imposition the proposal mechanism exists to
+ * avoid. Unweighed axes are invisible until a human drags the handle.
+ */
+export function weighedAxes(intent) {
+  return (intent?.axes || []).filter(a => typeof a?.value === 'number' && Number.isFinite(a.value));
+}
+
 export function getIntent(ws) {
   const fromPlan = getCurrentPlan(ws)?.intent;
-  if (fromPlan) return fromPlan;
-  if (ws?.intent) return ws.intent;
-  return { axes: [], summary: '' };
+  const intent = fromPlan || ws?.intent || null;
+  if (!intent) return { axes: [], summary: '' };
+  return { ...intent, axes: weighedAxes(intent) };
 }
 
 export function getConstraints(ws) {
@@ -45,9 +61,11 @@ export function getConstraints(ws) {
  * the model to elicit priorities rather than invent them.
  */
 export function isIntentNeutral(intent) {
-  const axes = intent?.axes || [];
+  // Unweighed axes are not evidence of commitment — they are evidence of the
+  // opposite. A strategy carrying nothing but proposals is maximally neutral.
+  const axes = weighedAxes(intent);
   if (!axes.length) return true;
   const summary = String(intent?.summary || '').trim();
   if (summary) return false;
-  return axes.every(a => Math.abs(Number(a?.value ?? 0.5) - 0.5) < 0.02);
+  return axes.every(a => Math.abs(Number(a.value) - 0.5) < 0.02);
 }

@@ -19,7 +19,7 @@
 import {
   newCondition, newEvidence, newPlan, newStep, newEdge, newMutexGroup,
   newExecutionEntry, newConversation, newMessage,
-  newIntent, newConstraints, pickStrategyColor
+  newIntent, newConstraints, pickStrategyColor, newAxis
 } from './schema.js';
 
 const registry = new Map();
@@ -227,6 +227,79 @@ defineCommand('set-intent', (ws, { intent, planId }) => {
         : p)
     },
     inverse: { type: 'set-intent', payload: { intent: prev, planId: targetId } }
+  };
+});
+
+// Axis-level intent commands.
+//
+// set-intent shallow-merges, so passing an `axes` array replaces the whole
+// array — fine for a full rewrite, wrong for adding one criterion, and the
+// reason the model was never allowed to send a partial one. These act on a
+// single axis and leave the rest untouched.
+
+function withPlanIntent(ws, planId, mutate) {
+  const targetId = planId || ws.currentPlanId;
+  const idx = (ws.plans || []).findIndex(p => p.id === targetId);
+  if (idx < 0) return null;
+  const plan = ws.plans[idx];
+  const intent = plan.intent || newIntent();
+  const nextAxes = mutate((intent.axes || []).slice());
+  if (!nextAxes) return null;
+  return {
+    targetId,
+    workspace: {
+      ...ws,
+      plans: ws.plans.map((p, i) => i === idx
+        ? { ...p, intent: { ...intent, axes: nextAxes }, updatedAt: new Date().toISOString() }
+        : p),
+    },
+  };
+}
+
+defineCommand('add-intent-axis', (ws, { axis, planId }) => {
+  const built = newAxis(axis || {});
+  const res = withPlanIntent(ws, planId, axes => {
+    // An id collision would silently shadow an existing criterion.
+    if (axes.some(a => a.id === built.id)) return null;
+    axes.push(built);
+    return axes;
+  });
+  if (!res) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
+  return {
+    workspace: res.workspace,
+    inverse: { type: 'remove-intent-axis', payload: { axisId: built.id, planId: res.targetId } },
+  };
+});
+
+defineCommand('remove-intent-axis', (ws, { axisId, planId }) => {
+  let removed = null;
+  let position = -1;
+  const res = withPlanIntent(ws, planId, axes => {
+    position = axes.findIndex(a => a.id === axisId);
+    if (position < 0) return null;
+    removed = axes[position];
+    axes.splice(position, 1);
+    return axes;
+  });
+  if (!res) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
+  return {
+    workspace: res.workspace,
+    // Restore at the original position: axis order is the order of the spokes
+    // on the radar, so undo that appended to the end would rotate the shape.
+    inverse: { type: 'restore-intent-axis', payload: { axis: removed, at: position, planId: res.targetId } },
+  };
+});
+
+defineCommand('restore-intent-axis', (ws, { axis, at, planId }) => {
+  const res = withPlanIntent(ws, planId, axes => {
+    const pos = Number.isInteger(at) && at >= 0 && at <= axes.length ? at : axes.length;
+    axes.splice(pos, 0, axis);
+    return axes;
+  });
+  if (!res) return { workspace: ws, inverse: { type: 'noop', payload: {} } };
+  return {
+    workspace: res.workspace,
+    inverse: { type: 'remove-intent-axis', payload: { axisId: axis.id, planId: res.targetId } },
   };
 });
 

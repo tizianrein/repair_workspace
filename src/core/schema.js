@@ -157,6 +157,58 @@ export function newEvidence(kind, opts = {}) {
   };
 }
 
+export function newAxisId() {
+  const g = globalThis.crypto;
+  // `axis_${Date.now()}` collided whenever two axes were created in the same
+  // millisecond — exactly what happens when several are proposed at once.
+  if (g?.randomUUID) return `axis_${g.randomUUID().replace(/-/g, '').slice(0, 12)}`;
+  return `axis_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * An intent axis.
+ *
+ * `value: null` means UNWEIGHED, and it is the load-bearing distinction here.
+ * A criterion nobody has weighed commits to nothing: it draws no vertex on the
+ * radar, and it is filtered out of every payload the model ever sees. That is
+ * what lets the assistant propose a criterion without imposing one — the
+ * proposal is inert until a human drags its handle, and the cheapest possible
+ * response to a proposal is to ignore it, which costs it all of its influence.
+ *
+ * `0` is a weight, and means "this does not matter here". `null` is the
+ * absence of one. They must never be conflated, and null must never be coerced
+ * into arithmetic — see weighedAxes.
+ *
+ * `origin` records who authored the criterion, never who set the weight. Only
+ * a human ever sets a weight; there is no tool that does.
+ */
+export function newAxis(opts = {}) {
+  return {
+    id: opts.id || newAxisId(),
+    label: opts.label || 'New axis',
+    description: opts.description || '',
+    value: opts.value === null || opts.value === undefined
+      ? null
+      : Math.max(0, Math.min(1, Number(opts.value))),
+    origin: opts.origin || 'participant',   // 'seed' | 'participant' | 'assistant'
+    sourceRefs: Array.isArray(opts.sourceRefs) ? opts.sourceRefs : [],
+    addedAt: opts.addedAt || new Date().toISOString(),
+  };
+}
+
+/**
+ * The axes that carry a weight.
+ *
+ * Everything that reasons about intent — the polygon, the prompts, the gap
+ * check — must go through this. An unweighed axis reaching an arithmetic path
+ * produces NaN, and NaN in canvas geometry fails silently; an unweighed axis
+ * reaching a prompt reads as "scored zero, does not matter", which is the
+ * opposite of "not yet considered".
+ */
+export function weighedAxes(intent) {
+  return (intent?.axes || []).filter(a => typeof a?.value === 'number' && Number.isFinite(a.value));
+}
+
 export function newIntent() {
   return {
     axes: [

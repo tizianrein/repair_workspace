@@ -86,3 +86,54 @@ console.log('\n✓ Command pattern works');
   assert.deepEqual(src.affectedPartRefs, ['sill_n'], 'editing the fork must not touch the original');
   console.log('✓ forking a strategy isolates its steps from the original');
 }
+
+// --- axis-level intent commands -------------------------------------------
+//
+// set-intent shallow-merges, so an `axes` array replaces the whole array. That
+// is why the model was never allowed to send a partial one. These act on a
+// single axis and leave the rest alone.
+{
+  const plan = newPlan({ label: 'Splice' });
+  const ws = newWorkspace();
+  ws.plans = [plan];
+  ws.currentPlanId = plan.id;
+  const state = { workspace: ws, history: [], future: [], listeners: [] };
+  const before = plan.intent.axes.length;
+
+  apply(state, { type: 'add-intent-axis', payload: {
+    axis: { label: 'Reversibility', value: null, origin: 'assistant', sourceRefs: ['doc_1'] },
+  }});
+
+  let axes = state.workspace.plans[0].intent.axes;
+  assert.equal(axes.length, before + 1, 'adding one axis must not disturb the others');
+  const added = axes[axes.length - 1];
+  assert.equal(added.value, null, 'a proposed axis carries no weight');
+  assert.equal(added.origin, 'assistant');
+  assert.match(added.id, /^axis_/);
+  assert.deepEqual(axes.slice(0, before).map(a => a.label), plan.intent.axes.slice(0, before).map(a => a.label));
+
+  // Undo must remove exactly the axis that was added.
+  undo(state);
+  assert.equal(state.workspace.plans[0].intent.axes.length, before, 'undo removes the added axis');
+
+  redo(state);
+  assert.equal(state.workspace.plans[0].intent.axes.length, before + 1, 'redo puts it back');
+
+  // Removal restores at the original POSITION on undo — axis order is spoke
+  // order on the radar, so appending on undo would silently rotate the shape.
+  const targetId = state.workspace.plans[0].intent.axes[1].id;
+  const labelsBefore = state.workspace.plans[0].intent.axes.map(a => a.label);
+  apply(state, { type: 'remove-intent-axis', payload: { axisId: targetId } });
+  assert.equal(state.workspace.plans[0].intent.axes.length, before, 'the axis is gone');
+  undo(state);
+  assert.deepEqual(
+    state.workspace.plans[0].intent.axes.map(a => a.label), labelsBefore,
+    'undo restores the axis at its original position, not at the end',
+  );
+
+  // An unknown axis is a no-op that does not corrupt the list.
+  apply(state, { type: 'remove-intent-axis', payload: { axisId: 'axis_nope' } });
+  assert.deepEqual(state.workspace.plans[0].intent.axes.map(a => a.label), labelsBefore);
+
+  console.log('✓ axis-level intent commands add, remove and undo in place');
+}

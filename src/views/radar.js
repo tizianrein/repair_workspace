@@ -75,9 +75,13 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
     axes.forEach((axis, i) => {
       const a = -Math.PI / 2 + i * (Math.PI * 2 / n);
       ctx.beginPath();
+      // An unweighed axis gets a dashed spoke: the criterion is on the board,
+      // but nobody has said how much it matters, so it has no shape yet.
+      ctx.setLineDash(isWeighed(axis) ? [] : [4, 4]);
       ctx.moveTo(cx, cy);
       ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
       ctx.stroke();
+      ctx.setLineDash([]);
 
       ctx.fillStyle = '#1a1a1a';
       ctx.font = '20px "JetBrains Mono", monospace';
@@ -94,21 +98,29 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
       wrap(ctx, axis.label, lx, ly, LABEL_W, 22);
     });
 
-    ctx.fillStyle = 'rgba(193,39,45,.18)';
-    ctx.strokeStyle = '#c1272d';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    axes.forEach((axis, i) => {
-      const a = -Math.PI / 2 + i * (Math.PI * 2 / n);
-      const px = cx + Math.cos(a) * r * axis.value;
-      const py = cy + Math.sin(a) * r * axis.value;
-      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    });
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    // The polygon spans only the weighed axes. An unweighed one contributes no
+    // vertex at all — not a vertex at zero, which would read as "scored zero"
+    // and pull the shape into a spike it never earned. Guarding here is also
+    // what keeps `null` out of the arithmetic: null * r is 0, but any later
+    // NaN in a canvas path fails silently and leaves a blank chart.
+    const weighed = axes.map((axis, i) => ({ axis, i })).filter(({ axis }) => isWeighed(axis));
+    if (weighed.length >= 2) {
+      ctx.fillStyle = 'rgba(193,39,45,.18)';
+      ctx.strokeStyle = '#c1272d';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      weighed.forEach(({ axis, i }, k) => {
+        const a = -Math.PI / 2 + i * (Math.PI * 2 / n);
+        const px = cx + Math.cos(a) * r * axis.value;
+        const py = cy + Math.sin(a) * r * axis.value;
+        if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      });
+      ctx.closePath();
+      if (weighed.length >= 3) ctx.fill();
+      ctx.stroke();
+    }
 
-    axes.forEach((axis, i) => {
+    weighed.forEach(({ axis, i }) => {
       const a = -Math.PI / 2 + i * (Math.PI * 2 / n);
       const px = cx + Math.cos(a) * r * axis.value;
       const py = cy + Math.sin(a) * r * axis.value;
@@ -124,12 +136,17 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
     intent.axes.forEach((axis, idx) => {
       const row = document.createElement('div');
       row.className = 'axis-row';
+      // An unweighed axis parks its slider at the midpoint so it is draggable,
+      // but shows "—" rather than "50%": the participant has not said 50, they
+      // have not said anything. The first drag is what turns it into a weight.
+      const unweighed = !isWeighed(axis);
+      if (unweighed) row.classList.add('unweighed');
       row.innerHTML = `
         <div>
           <input type="text" value="${escapeHtml(axis.label)}" data-kind="label" data-idx="${idx}">
-          <input type="range" min="0" max="1" step="0.01" value="${axis.value}" data-kind="value" data-idx="${idx}">
+          <input type="range" min="0" max="1" step="0.01" value="${unweighed ? 0.5 : axis.value}" data-kind="value" data-idx="${idx}">
         </div>
-        <div class="axis-value" data-idx="${idx}">${Math.round(axis.value * 100)}%</div>
+        <div class="axis-value" data-idx="${idx}"${unweighed ? ' title="Not yet weighted — drag to set"' : ''}>${unweighed ? '—' : Math.round(axis.value * 100) + '%'}</div>
         <button class="mini-btn x" data-kind="remove" data-idx="${idx}">×</button>
       `;
       listContainer.appendChild(row);
@@ -261,6 +278,12 @@ export function createRadar(canvas, listContainer, summaryTextarea, { onChange }
   });
 
   return { render, addAxis };
+}
+
+// A weight is a number. null means the criterion is on the board but nobody
+// has said how much it matters — see schema.newAxis.
+function isWeighed(axis) {
+  return typeof axis?.value === 'number' && Number.isFinite(axis.value);
 }
 
 function newAxisId() {

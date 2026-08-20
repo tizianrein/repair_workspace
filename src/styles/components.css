@@ -2085,3 +2085,9 @@ select.detail-input { cursor: pointer; }
   text-underline-offset: 2px;
 }
 .collab-status.actionable:hover { color: var(--ink); }
+
+/* An axis nobody has weighted yet. It is on the board, it commits to nothing,
+   and it stays visibly provisional until someone drags it. */
+.axis-row.unweighed input[type="text"] { opacity: .75; }
+.axis-row.unweighed input[type="range"] { opacity: .45; }
+.axis-row.unweighed .axis-value { color: var(--ink-mute); letter-spacing: .08em; }

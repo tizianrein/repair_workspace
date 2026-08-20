@@ -75,7 +75,7 @@ function assertRefused(result, tool, mustMention) {
 // --- the bug from the workshop screenshot ---------------------------------
 {
   const bad = call('set_intent', { summary: 'Now with reversibility.', axes: [{ id: 'reversibility', value: 0.8 }] });
-  assertRefused(bad, 'set_intent', ['reversibility', 'axis_1', '+ axis']);
+  assertRefused(bad, 'set_intent', ['reversibility', 'axis_1', 'propose_intent_axis']);
   // The summary must NOT sneak through on a refused call — that is what made
   // the original bug so convincing: the prose changed, the radar did not.
   assert.ok(!bad.command, 'a refused set_intent must not apply the summary either');
@@ -162,3 +162,53 @@ function assertRefused(result, tool, mustMention) {
 }
 
 console.log('\n✓ No tool reports success for a change it did not make\n');
+
+// --- proposing a criterion, without imposing one --------------------------
+//
+// The resolution of the tension between "stop asking users to approve AI
+// actions" and "values never move without human acceptance": the assistant may
+// author the VOCABULARY, only a human authors the WEIGHT. A proposal is inert
+// — no weight, no influence — so it needs no approval dialog, and ignoring it
+// costs it everything.
+{
+  const good = call('propose_intent_axis', {
+    label: 'Reversibility',
+    description: 'How readily the intervention can be undone without damaging original fabric.',
+    rationale: 'The conservation manual treats reversibility as a first principle.',
+    sourceRefs: ['doc_abc123'],
+  });
+  assert.equal(good.ok, true, JSON.stringify(good));
+  assert.equal(good.command.type, 'add-intent-axis');
+
+  const axis = good.command.payload.axis;
+  assert.equal(axis.value, null, 'a proposed axis MUST arrive unweighted — this is the whole mechanism');
+  assert.equal(axis.origin, 'assistant', 'provenance records who authored the criterion');
+  assert.equal(axis.label, 'Reversibility');
+  assert.deepEqual(axis.sourceRefs, ['doc_abc123'], 'the document that motivated it is recorded');
+  console.log('  ✓ propose_intent_axis adds an unweighted axis with its provenance');
+
+  // There is no tool that writes a weight. If one ever appears, this fails.
+  const setsAWeight = ['set_intent'].some(t => {
+    const r = call(t, { axes: [{ id: 'axis_1', value: 0.9 }] });
+    return r.ok && r.command?.payload?.intent?.axes?.some(a => a.value === 0.9);
+  });
+  assert.equal(setsAWeight, true, 'set_intent re-weights EXISTING axes — that is allowed and unchanged');
+
+  // ...but it cannot mint one, which is what keeps proposal and imposition apart.
+  const mint = call('set_intent', { axes: [{ id: 'brand_new', value: 0.9 }] });
+  assert.ok(mint.error, 'set_intent must not be able to create an axis');
+  console.log('  ✓ the assistant can propose a criterion but cannot weight a new one');
+}
+
+{
+  // A criterion with no stated reason is not something a participant can judge.
+  assertRefused(call('propose_intent_axis', { label: 'Reversibility' }),
+    'propose_intent_axis', ['rationale']);
+  console.log('  ✓ a proposal without a rationale is refused');
+
+  // The model cannot see its own earlier proposals — chat history replays as
+  // text without tool calls — so near-duplicates need catching server-side.
+  assertRefused(call('propose_intent_axis', { label: 'material authenticity', rationale: 'x' }),
+    'propose_intent_axis', ['Material Authenticity', 'axis_1']);
+  console.log('  ✓ a near-duplicate of an existing axis is refused');
+}
