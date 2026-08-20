@@ -2091,3 +2091,14 @@ select.detail-input { cursor: pointer; }
 .axis-row.unweighed input[type="text"] { opacity: .75; }
 .axis-row.unweighed input[type="range"] { opacity: .45; }
 .axis-row.unweighed .axis-value { color: var(--ink-mute); letter-spacing: .08em; }
+
+/* A generated image inside a chat bubble. The conversation is where the
+   result was asked for, so it is where the result belongs. */
+.chat-msg-rendering { margin-top: 8px; }
+.chat-rendering-img {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  border-radius: var(--radius);
+  border: 1px solid var(--rule);
+}

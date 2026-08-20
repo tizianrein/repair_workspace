@@ -375,7 +375,7 @@ export async function runChat({ thread, userMessage, workspace, files, corpus })
   // proposedOptions is filled in by the propose_options tool — the model
   // calls it when it wants to attach tappable answer chips to its reply.
   // Last call wins if the model calls it more than once in a turn.
-  const turnContext = { pendingPlanId: null, proposedOptions: null };
+  const turnContext = { pendingPlanId: null, proposedOptions: null, renderRequest: null };
 
   // The corpus index arrives with the request. The client already knows which
   // documents this strategy may read — project-wide plus its own, never another
@@ -698,7 +698,14 @@ export async function runChat({ thread, userMessage, workspace, files, corpus })
     plannedSummary: buildSummary(collectedCommands),
     // Tappable answer chips, populated by the propose_options tool. Null
     // when the model didn't call it (most turns).
-    followUpOptions: turnContext.proposedOptions || null
+    followUpOptions: turnContext.proposedOptions || null,
+    // A request to (re)generate the imagined result. The image model is NOT
+    // called here: generation takes tens of seconds and the bytes belong in
+    // the browser IndexedDB, so the client runs it and posts the result back
+    // into this thread. Any plan changes the instruction implied are in
+    // commands above and apply FIRST, so the image regenerates from the
+    // updated plan rather than the one that prompted the complaint.
+    renderRequest: turnContext.renderRequest || null
   };
 }
 
@@ -1080,6 +1087,33 @@ export function mapToolToCommand(name, args, snapshot, fullWorkspace, pendingSte
         // — without this, set-intent would patch the (still-current on
         // the client) OLD plan, leaving the new plan with default intent.
         command: { type: 'set-intent', payload: { intent, planId: activePlanId || null } }
+      };
+    }
+    case 'revise_rendering': {
+      const instruction = String(args.instruction || '').trim();
+      if (!instruction) {
+        return { error: 'revise_rendering: instruction is required — say what the depicted result should be.' };
+      }
+      if (!activePlanId) {
+        return { error: 'revise_rendering: there is no active strategy to imagine a result for.' };
+      }
+      // One render per turn. Without this the model can queue several against
+      // the same starting image, each ignoring the others' changes, and the
+      // participant pays for every one.
+      if (turnContext.renderRequest) {
+        return {
+          error: 'revise_rendering: a revision is already queued for this turn. '
+               + 'Combine everything that should change into one instruction.',
+        };
+      }
+      turnContext.renderRequest = { instruction: instruction.slice(0, 1200), planId: activePlanId };
+      return {
+        ok: true,
+        message: `Queued a revision: "${instruction.slice(0, 80)}"`
+             + (args.changesPlan ? ' (after this turn\'s plan changes)' : ''),
+        // No command. The client runs the generation because the image bytes
+        // live in its IndexedDB and the call takes longer than this endpoint's
+        // budget — see renderRequest on the turn result.
       };
     }
     case 'propose_intent_axis': {

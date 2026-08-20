@@ -141,6 +141,40 @@ export const CHAT_TOOLS = [
     }
   },
   {
+    name: 'revise_rendering',
+    description:
+      'Regenerate the imagined result of this strategy, incorporating what the participant '
+      + 'says is wrong with the current image. Use it whenever they object to something they '
+      + 'see — a material that looks wrong, a joint shaped wrongly, a part that should not be '
+      + 'there.\n\n'
+      + 'FIRST decide whether the objection is about the IMAGE or about the REPAIR. '
+      + '"The new timber is too orange" may be a rendering artefact, or it may mean the plan '
+      + 'specifies the wrong species — ask if it is genuinely unclear. If the objection implies '
+      + 'the repair itself is wrong, change the plan with the plan tools in the SAME turn: '
+      + 'those changes apply before the image regenerates, so the new image reflects the '
+      + 'corrected plan. If it is purely visual, call this alone.\n\n'
+      + 'Generation takes some time; the image will appear in this conversation when it is done.',
+    parameters: {
+      type: 'object',
+      properties: {
+        instruction: {
+          type: 'string',
+          description:
+            'What to change about the depicted result, in the vocabulary of the thing depicted '
+            + '("the splice should be a stop-splayed scarf, not a butt joint"). Describe the '
+            + 'target state, not the edit ("make it browner").'
+        },
+        changesPlan: {
+          type: 'boolean',
+          description:
+            'True if you also changed the plan this turn because the objection was about the '
+            + 'repair rather than the depiction. Tell the participant what you changed and why.'
+        }
+      },
+      required: ['instruction']
+    }
+  },
+  {
     name: 'propose_intent_axis',
     description:
       'Propose a NEW evaluation criterion for this strategy — a dimension the participant '

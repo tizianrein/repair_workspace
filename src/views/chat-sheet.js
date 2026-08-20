@@ -14,7 +14,7 @@
 import { newMessage } from '../core/schema.js';
 import { payloadForChat } from '../ai/ai-payload.js';
 
-export function createChatSheet(elements, { onScopeChange, getWorkspace, onEnsureThread, onAppendMessage, onApplyCommands, getCorpusIndex }) {
+export function createChatSheet(elements, { onScopeChange, getWorkspace, onEnsureThread, onAppendMessage, onApplyCommands, getCorpusIndex, getRenderingUrl, onRenderRequest }) {
   const {
     history, input, sendBtn, scopePill, titleEl, closeBtn, handle, sheet
   } = elements;
@@ -171,6 +171,23 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onEnsur
         }
       } else {
         div.innerHTML = renderAssistantMarkdown(msg.content || '');
+        // A generated image belongs in the conversation that produced it.
+        // The bytes live in IndexedDB, which this module cannot reach, so the
+        // host resolves the id to an object URL. Appended after the text so
+        // the reasoning reads first and the result follows it.
+        if (msg.renderingId && getRenderingUrl) {
+          const figure = document.createElement('div');
+          figure.className = 'chat-msg-rendering';
+          const img = document.createElement('img');
+          img.alt = 'imagined result';
+          img.className = 'chat-rendering-img';
+          figure.appendChild(img);
+          div.appendChild(figure);
+          Promise.resolve(getRenderingUrl(msg.renderingId)).then(url => {
+            if (url) img.src = url;
+            else figure.remove();   // blob is on another device; say nothing
+          }).catch(() => figure.remove());
+        }
       }
       if (msg.uncertainty?.length) {
         const un = document.createElement('div');
@@ -394,6 +411,16 @@ export function createChatSheet(elements, { onScopeChange, getWorkspace, onEnsur
       appendBubble(assistantMsg);
       pendingPhotos = [];
       updatePhotoPreview();
+
+      // A queued image revision runs AFTER the reply is on screen and after
+      // the commands above have applied — so the participant sees the
+      // reasoning and any plan change immediately, and the image regenerates
+      // from the updated plan rather than the one they objected to. Not
+      // awaited: generation takes tens of seconds and must not hold the input
+      // disabled while it runs.
+      if (payload.renderRequest?.instruction) {
+        onRenderRequest?.(payload.renderRequest);
+      }
     } catch (err) {
       const wasTimeout = err.name === 'AbortError' && controller.signal.reason === 'client-timeout';
       if (wasTimeout) {

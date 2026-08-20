@@ -28,7 +28,7 @@ import { createState, subscribe, autoPersist, restore,
          saveIdentity, loadIdentity } from './core/state.js';
 import { apply, undo, redo } from './core/commands.js';
 import { migrateV1ToV2 } from './core/migrate.js';
-import { newWorkspace, validateWorkspace, SCHEMA_VERSION, newEvidence, newCondition,
+import { newWorkspace, validateWorkspace, SCHEMA_VERSION, newEvidence, newCondition, newMessage,
          newIntent, newPlan, pickStrategyColor,
          getCurrentPlan, getCurrentIntent, getCurrentConstraints } from './core/schema.js';
 import { PhotoStorage } from './core/photo-storage.js';
@@ -150,6 +150,24 @@ chatSheet = createChatSheet(
   },
   {
     getWorkspace: () => state.workspace,
+    // Resolve a rendering id to a displayable URL for the chat bubble. The
+    // bytes live in this browser's IndexedDB, so a rendering generated on
+    // another device resolves to null and the bubble simply shows its text.
+    getRenderingUrl: async renderingId => {
+      const rec = await PhotoStorage.get(renderingId);
+      return rec?.blob ? imagineUrl(rec.blob) : null;
+    },
+    // The assistant asked for the imagined result to be regenerated. Runs
+    // here rather than server-side: the image bytes live in IndexedDB and
+    // generation outlasts the chat endpoint's budget. By the time this fires
+    // the turn's commands have already applied, so if the objection changed
+    // the plan, the new image is generated from the corrected plan.
+    onRenderRequest: ({ instruction, planId }) => {
+      runRenderRequest(instruction, planId).catch(err => {
+        console.error('[render-request] failed:', err);
+        log(`Could not regenerate the image: ${err.message}`);
+      });
+    },
     // Persist conversations through the command system. Without these,
     // chat threads are transient JS objects that disappear the next
     // time the workspace re-renders — which is what caused chat
@@ -1486,11 +1504,14 @@ async function runRefineImage(previousRendering, userInstruction) {
   const prevImage = await PhotoStorage.get(previousRendering.id);
   if (!prevImage) { alert('Previous rendering file not on this device.'); return; }
 
+  // These controls belong to the imagine panel, which may not be rendered at
+  // all when a refinement is driven from chat — the panel only exists once a
+  // rendering is on screen for the current strategy. Optional throughout.
   const btn = $('imagine-refine-btn');
   const input = $('imagine-refine-input');
-  btn.disabled = true;
-  input.disabled = true;
-  btn.textContent = '⏳ Modifying target…';
+  const setBtn = (label, disabled) => { if (btn) { btn.textContent = label; btn.disabled = disabled; } };
+  if (input) input.disabled = true;
+  setBtn('⏳ Modifying target…', true);
   log(`Refining imagined result: "${userInstruction}"`);
 
   try {
@@ -1516,7 +1537,7 @@ async function runRefineImage(previousRendering, userInstruction) {
     // discards the source photo on this path, because sending both made the
     // model interpolate between them. So we no longer upload the source at
     // all: it was 200-500 KB base64'd and thrown away on every refine.
-    btn.textContent = '⏳ Generating image…';
+    setBtn('⏳ Generating image…', true);
     const prevBase64 = await blobToBase64(prevImage.blob);
 
     const genResp = await fetch('/api/imagine-result', {
@@ -1555,15 +1576,14 @@ async function runRefineImage(previousRendering, userInstruction) {
     await PhotoStorage.put(rendering.id, imgBlob, rendering.fileName);
     apply(state, { type: 'add-evidence', payload: { evidence: rendering } });
     activeRenderingId = rendering.id;
+    postRenderingToChat(rendering, `Revised the image: "${userInstruction}".${rationale ? " " + rationale : ""}`);
     log(`Refined imagined result → ${rendering.id}`);
   } catch (err) {
     console.error('[refine] failed:', err);
     alert('Refinement failed: ' + err.message);
   } finally {
-    btn.disabled = false;
-    input.disabled = false;
-    btn.textContent = '↻ Refine image';
-    input.value = '';
+    setBtn('↻ Refine image', false);
+    if (input) { input.disabled = false; input.value = ''; }
   }
 }
 
@@ -1955,6 +1975,7 @@ $('soll-generate-btn').onclick = async () => {
     await PhotoStorage.put(rendering.id, imgBlob, rendering.fileName);
     apply(state, { type: 'add-evidence', payload: { evidence: rendering } });
     activeRenderingId = rendering.id;
+    postRenderingToChat(rendering, 'Imagined the repaired state from the current target description.');
     log(`Generated imagined result → ${rendering.id}`);
 
     $('soll-review-modal').classList.remove('on');
@@ -1971,6 +1992,67 @@ $('soll-generate-btn').onclick = async () => {
 async function dataUrlToBlob(dataUrl) {
   const r = await fetch(dataUrl);
   return r.blob();
+}
+
+/**
+ * Regenerate the imagined result because the participant objected to it.
+ *
+ * Reuses the refinement pipeline rather than duplicating it: the instruction
+ * goes through modify-target-json to update the Soll, and the image follows
+ * from the updated Soll. Keeping the Soll in the loop is what makes this
+ * precise — the objection is resolved against a structured description of the
+ * target state, not against the image model's memory of the last picture.
+ */
+async function runRenderRequest(instruction, planId) {
+  const ws = state.workspace;
+  const targetPlan = planId || ws.currentPlanId;
+
+  const renderings = (ws.evidence || [])
+    .filter(e => e.kind === 'rendering' && e.planRef === targetPlan && e.sollJson)
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+  const latest = renderings[0];
+  if (!latest) {
+    // Nothing to revise. Say so in the thread rather than failing silently —
+    // the assistant has just told the participant an image is coming.
+    log('No imagined result yet for this strategy — generate one first, then it can be revised.');
+    return;
+  }
+  await runRefineImage(latest, instruction);
+}
+
+/**
+ * Put a generated image into the strategy's conversation.
+ *
+ * An imagined result is the answer to something someone asked for, and it
+ * belongs where they asked — not only in a side panel they have to go and
+ * look at. Posting it into the strategy thread also gives the next turn
+ * something to refer to: "the new timber looks too orange" only means
+ * anything if the image is in the conversation.
+ *
+ * Targets the plan's thread directly rather than going through the chat
+ * sheet's current scope, so generating an image never changes which
+ * conversation the participant is reading.
+ */
+function postRenderingToChat(rendering, text) {
+  const planId = rendering.planRef || state.workspace.currentPlanId || null;
+  if (!planId) return;
+
+  const findThread = () => (state.workspace.conversations || [])
+    .find(t => t.scope === 'plan' && (t.ref ?? null) === planId);
+
+  if (!findThread()) {
+    apply(state, { type: 'start-conversation', payload: { scope: 'plan', ref: planId } }, { skipHistory: true });
+  }
+  const thread = findThread();
+  if (!thread) return;
+
+  const msg = newMessage('assistant', text);
+  msg.renderingId = rendering.id;
+  // skipHistory: an image already costs a command for its evidence record.
+  // Ctrl+Z should undo the rendering, not peel a narration line off first.
+  apply(state, { type: 'append-message', payload: { threadId: thread.id, message: msg } }, { skipHistory: true });
+  chatSheet?.refresh?.();
 }
 
 // -------------------------------------------------------------------------

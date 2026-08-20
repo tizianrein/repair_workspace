@@ -212,3 +212,47 @@ console.log('\n✓ No tool reports success for a change it did not make\n');
     'propose_intent_axis', ['Material Authenticity', 'axis_1']);
   console.log('  ✓ a near-duplicate of an existing axis is refused');
 }
+
+// --- revising the imagined result from chat -------------------------------
+//
+// The participant objects to what they see; the assistant decides whether that
+// is a complaint about the DEPICTION or about the REPAIR, changes the plan if
+// it is the latter, and queues a regeneration. The image is not generated
+// here: the bytes live in the browser's IndexedDB and generation outlasts this
+// endpoint's budget, so the turn carries a request the client fulfils.
+{
+  const turn = {};
+  const withTurn = (name, args) => mapToolToCommand(name, args, SNAPSHOT, WORKSPACE, [], turn);
+
+  const r = withTurn('revise_rendering', {
+    instruction: 'The splice should be a stop-splayed scarf, not a butt joint.',
+    changesPlan: true,
+  });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.ok(!r.command, 'a revision emits no workspace command — the client runs the generation');
+  assert.equal(turn.renderRequest.instruction, 'The splice should be a stop-splayed scarf, not a butt joint.');
+  assert.equal(turn.renderRequest.planId, 'plan_1', 'the revision is bound to the strategy it belongs to');
+  console.log('  ✓ revise_rendering queues a regeneration for the client');
+
+  // Queueing several against the same starting image means each ignores the
+  // others' changes, and the participant is billed for every one.
+  const second = withTurn('revise_rendering', { instruction: 'Also make the pegs square.' });
+  assert.ok(second.error, 'a second revision in one turn must be refused');
+  assert.match(second.error, /one instruction/);
+  console.log('  ✓ only one revision per turn');
+}
+
+{
+  const turn = {};
+  assert.ok(
+    mapToolToCommand('revise_rendering', { instruction: '' }, SNAPSHOT, WORKSPACE, [], turn).error,
+    'an empty instruction is refused',
+  );
+  // No active strategy: nothing to imagine a result for.
+  const noPlan = { ...WORKSPACE, currentPlanId: null, plans: [] };
+  assert.ok(
+    mapToolToCommand('revise_rendering', { instruction: 'x' }, { intent: null, currentPlan: null }, noPlan, [], {}).error,
+    'without an active strategy the revision is refused',
+  );
+  console.log('  ✓ revise_rendering refuses an empty instruction and a strategy-less workspace');
+}
