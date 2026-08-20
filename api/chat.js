@@ -39,7 +39,15 @@ export default async function handler(req, res) {
     // fetched from the collaboration worker only when the model asks for a
     // specific document, so an unread corpus costs summaries rather than
     // contents.
-    const collabRoot = String(process.env.COLLAB_API_URL || '').replace(/\/$/, '');
+    // One URL, either name. VITE_COLLAB_API_URL exists because Vite inlines
+    // VITE_-prefixed variables into the browser bundle at build time — but
+    // Vercel also exposes every variable to functions at runtime regardless of
+    // prefix, so there is no need to configure the same address twice. Plain
+    // COLLAB_API_URL still wins if it is set, for anyone who wants the
+    // function pointed somewhere else.
+    const collabRoot = String(
+      process.env.COLLAB_API_URL || process.env.VITE_COLLAB_API_URL || '',
+    ).replace(/\/$/, '');
     const corpusBase = () => {
       const base = collabRoot.endsWith('/api/collaboration')
         ? collabRoot
