@@ -851,6 +851,15 @@ async function handlePutCorpusText(request, env, projectId, docId) {
     // Replace this document's chunks wholesale. Re-ingesting must not leave
     // vectors from the previous pass behind — stale chunks would keep matching
     // and quietly return text the document no longer contains.
+    //
+    // Failures here are swallowed deliberately. The chunks are an INDEX; the
+    // document, its extracted text and its summary are already stored above.
+    // If the table is missing because a migration has not been applied, or a
+    // batch fails for any other reason, losing semantic search on one document
+    // is a far better outcome than failing the whole request and leaving the
+    // upload marked unreadable. Keyword search still works from the client's
+    // index either way.
+    try {
     if (Array.isArray(body.chunks) && body.chunks.length) {
       await env.DB.prepare(
         'DELETE FROM rw_corpus_chunks WHERE project_id = ? AND doc_id = ?',
@@ -875,6 +884,9 @@ async function handlePutCorpusText(request, env, projectId, docId) {
       for (let i = 0; i < statements.length; i += 50) {
         await env.DB.batch(statements.slice(i, i + 50));
       }
+    }
+    } catch (err) {
+      console.warn('[corpus] chunk indexing failed, document stored without vectors:', err.message);
     }
     await env.DB.prepare(
       `UPDATE rw_corpus_docs
@@ -946,7 +958,11 @@ async function handleSearchCorpus(request, env, projectId) {
 
   // Same scoping rule as every other corpus read: project documents plus this
   // one strategy's. There is no parameter that widens it.
+  // An unavailable index is not an error worth surfacing to the participant:
+  // the caller falls back to keyword search, which still works. Returning an
+  // empty result keeps the chat usable when the migration has not been applied.
   let rows;
+  try {
   if (planId && authorKey) {
     rows = await env.DB.prepare(
       `SELECT c.doc_id, c.chunk_ix, c.kind, c.label, c.content, c.vector,
@@ -964,6 +980,10 @@ async function handleSearchCorpus(request, env, projectId) {
          JOIN rw_corpus_docs d ON d.project_id = c.project_id AND d.id = c.doc_id
         WHERE c.project_id = ? AND c.scope = 'project'`,
     ).bind(projectId).all();
+  }
+  } catch (err) {
+    console.warn('[corpus] semantic search unavailable:', err.message);
+    return json(request, env, { chunks: [], searched: 0, unavailable: true });
   }
 
   const q = Int8Array.from(query);
