@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="./styles/tokens.css" />
   <link rel="stylesheet" href="./styles/shell.css" />
   <link rel="stylesheet" href="./styles/components.css" />
+  <link rel="stylesheet" href="./styles/repair-proposals.css" />
 </head>
 <body>
 
@@ -134,6 +135,15 @@
         <div class="versions-list" id="versions-list">
           <div class="entity-empty">No strategies yet.</div>
         </div>
+      </div>
+
+      <div class="section collapsed" id="repair-proposals-section" hidden>
+        <div class="section-label" data-toggle="repair-proposals-section">
+          <span>Repair geometry</span>
+          <span class="repair-proposal-count" id="repair-proposal-count">0</span>
+          <span class="chev">▾</span>
+        </div>
+        <div class="section-content repair-proposal-list" id="repair-proposal-list"></div>
       </div>
 
       <div class="section collapsed" id="imagine-section">

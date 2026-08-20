@@ -17,6 +17,7 @@
 
 import { PART_STATUS, CONDITION_STATUS, STEP_STATUS } from '../core/schema.js';
 import { createMiniViewer3D } from './mini-viewer-3d.js';
+import { appendStepRepairProposals } from './repair-proposals.js';
 
 export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, getPhotoBlob, dispatch, onAttachPhoto, canEditCondition, onMarkComplete }) {
 
@@ -388,6 +389,11 @@ export function createDetailEditor({ modalEl, titleEl, bodyEl, getWorkspace, get
     }
 
     bodyEl.appendChild(form);
+
+    // Grasshopper writes proposals at Workspace level and stores their IDs on
+    // the action step. Keep the exact references visible in the place where
+    // participants inspect that action, including a warning for a stale ref.
+    appendStepRepairProposals(bodyEl, ws, s);
 
     // "Mark complete" opens the execution-log form (actual time, deviation,
     // rationale). It used to hang off a quick-action chip in the chat bar —

@@ -44,6 +44,7 @@ import { createEntityList } from './views/entity-list.js';
 import { createChatSheet } from './views/chat-sheet.js';
 import { showExecutionEntry } from './views/execution-log.js';
 import { createDetailEditor } from './views/detail-editor.js';
+import { createRepairProposalView } from './views/repair-proposals.js';
 import {
   CollaborationApi, createProjectId, exampleProjectId,
   normalizeAuthorKey, normalizeAuthorName, projectShareUrl, projectTemplate
@@ -136,6 +137,18 @@ entityList = createEntityList(
   $('entity-count'), $('list-footer'),
   { onDetail: target => openDetail(target) }
 );
+
+const repairProposalView = createRepairProposalView({
+  sectionEl: $('repair-proposals-section'),
+  countEl: $('repair-proposal-count'),
+  listEl: $('repair-proposal-list'),
+  onOpenStep: ({ planId, stepId }) => {
+    if (planId && state.workspace.currentPlanId !== planId) {
+      apply(state, { type: 'set-current-plan', payload: { planId } });
+    }
+    openDetail({ type: 'step', id: stepId });
+  },
+});
 
 chatSheet = createChatSheet(
   {
@@ -420,6 +433,7 @@ function renderAll() {
   radar.render(ws);
   entityList.render(ws);
   renderStrategies(ws);
+  repairProposalView.render(ws);
   renderImagineSection(ws);
   renderCover(ws);
 
