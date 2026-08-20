@@ -20,9 +20,47 @@
  */
 
 import { spawn } from 'node:child_process';
+import { readFileSync, existsSync } from 'node:fs';
 import process from 'node:process';
 
 const isWindows = process.platform === 'win32';
+
+/**
+ * Load .env.local into this process before starting anything.
+ *
+ * `vercel dev` on a LINKED project retrieves the project's environment from
+ * Vercel, and that takes precedence — so if GEMINI_API_KEY is not set in the
+ * Vercel project, the local functions get no key no matter what .env.local
+ * says, and every AI call fails with "GEMINI_API_KEY not configured on the
+ * server". The failure names the key, which sends you looking at .env.local,
+ * which is correct, which is why this wastes ten minutes.
+ *
+ * Putting the values in the environment we spawn from settles it: an inherited
+ * variable is there whichever way the CLI resolves things.
+ */
+function loadEnvLocal() {
+  if (!existsSync('.env.local')) return [];
+  const loaded = [];
+  for (const raw of readFileSync('.env.local', 'utf-8').split('\n')) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+    const eq = line.indexOf('=');
+    if (eq < 1) continue;
+    const key = line.slice(0, eq).trim();
+    let value = line.slice(eq + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    // Never override something the caller set deliberately.
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+      loaded.push(key);
+    }
+  }
+  return loaded;
+}
+
+const loadedEnv = loadEnvLocal();
 
 const SERVICES = [
   {
@@ -65,7 +103,10 @@ console.log('\nStarting the Repair Workspace stack:\n');
 for (const s of SERVICES) {
   console.log(`  ${s.color}${s.name.padEnd(7)}${RESET} ${s.note}`);
 }
-console.log(`\n${DIM}Ctrl+C stops all three.${RESET}\n`);
+console.log(`\n${DIM}Ctrl+C stops all three.${RESET}`);
+console.log(loadedEnv.length
+  ? `${DIM}Loaded from .env.local: ${loadedEnv.join(', ')}${RESET}\n`
+  : `${DIM}Nothing loaded from .env.local — AI endpoints fail unless the key is already in your environment.${RESET}\n`);
 
 for (const service of SERVICES) {
   const child = spawn(service.command, service.args, {
