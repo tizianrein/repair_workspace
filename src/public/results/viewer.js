@@ -40,7 +40,12 @@ export function createViewer({ canvas, wrap, onPickPart, onPickCondition, onHove
   controls.enableDamping = true;
   controls.dampingFactor = 0.08;
   controls.rotateSpeed = 0.9;
-  controls.enablePan = false;
+  controls.enablePan = true;
+  controls.screenSpacePanning = true;
+  controls.panSpeed = 0.9;
+  // One finger turns it, two fingers pinch to zoom and drag to move it.
+  controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+  controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.95));
   const key = new THREE.DirectionalLight(0xffffff, 0.55);
@@ -48,6 +53,19 @@ export function createViewer({ canvas, wrap, onPickPart, onPickCondition, onHove
   scene.add(key);
 
   const outlineMat = new THREE.LineBasicMaterial({ color: 0x1a1a1a, transparent: true, opacity: 0.55 });
+
+  // With the scan on, the boxes drop away and the outline is all that is left,
+  // so the outline carries the member's condition instead of the fill.
+  const statusOutline = new Map();
+  function outlineFor(status) {
+    if (status === 'intact') return outlineMat;
+    if (!statusOutline.has(status)) {
+      statusOutline.set(status, new THREE.LineBasicMaterial({
+        color: STATUS_COLOR[status] ?? STATUS_COLOR.intact, transparent: true, opacity: 0.95,
+      }));
+    }
+    return statusOutline.get(status);
+  }
   const dimOutline = new THREE.LineBasicMaterial({ color: 0x1a1a1a, transparent: true, opacity: 0.14 });
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
@@ -189,7 +207,8 @@ export function createViewer({ canvas, wrap, onPickPart, onPickCondition, onHove
       else if (selectedPart && p.id === selectedPart) emphasis = 'on';
       else if (highlight) emphasis = highlight.has(p.id) ? 'on' : 'dim';
       m.material = material(p.status || 'intact', emphasis);
-      m.children[0].material = (emphasis === 'dim' && !scanMode) ? dimOutline : outlineMat;
+      m.children[0].material = scanMode ? outlineFor(p.status || 'intact')
+        : (emphasis === 'dim' ? dimOutline : outlineMat);
     }
   }
 
@@ -319,6 +338,23 @@ export function createViewer({ canvas, wrap, onPickPart, onPickCondition, onHove
     raycaster.setFromCamera(pointer, camera);
     const onMarker = raycaster.intersectObjects(markerGroup.children, false);
     if (onMarker.length) return { type: 'condition', data: onMarker[0].object.userData.condition, ev };
+
+    // Condition markers are a couple of centimetres across on a two-metre
+    // frame, which is a few pixels on a phone. Accept the nearest one within
+    // a fingertip of the tap before falling through to the member behind it.
+    const tol = ev.pointerType === 'touch' ? 30 : 12;
+    let best = null, bestD = Infinity;
+    const v2 = new THREE.Vector3();
+    for (const m of markers) {
+      v2.copy(m.position).add(world.position).project(camera);
+      if (v2.z > 1) continue;
+      const sx = (v2.x * 0.5 + 0.5) * rect.width;
+      const sy = (-v2.y * 0.5 + 0.5) * rect.height;
+      const d = Math.hypot(sx - (ev.clientX - rect.left), sy - (ev.clientY - rect.top));
+      if (d < bestD) { bestD = d; best = m; }
+    }
+    if (best && bestD <= tol) return { type: 'condition', data: best.userData.condition, ev };
+
     const onPart = raycaster.intersectObjects(partMeshes, false);
     if (onPart.length) return { type: 'part', data: onPart[0].object.userData.part, ev };
     return null;

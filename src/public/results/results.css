@@ -56,10 +56,6 @@
 .compare-sort { display: flex; flex-wrap: wrap; gap: 4px; }
 .compare-sort .mini-btn { flex: 0 0 auto; }
 .compare-sort .mini-btn.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-.compare-grid {
-  max-width: 1180px; margin: 0 auto;
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px;
-}
 .cmp-card { border-left: 4px solid var(--strategy-color, var(--line)); }
 .cmp-who { font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: var(--info); }
 .cmp-label { font-family: var(--display); font-size: 14px; line-height: 1.25; margin: 2px 0 4px; }
@@ -132,9 +128,16 @@
 }
 
 /* compare lives in a modal now */
-#compare-modal .compare-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px;
+/* min() keeps a track from ever exceeding the container: without it auto-fill
+   resolved against an indefinite width and laid out five 210px columns inside
+   a 349px modal. */
+.compare-grid {
+  display: grid; gap: 8px; width: 100%; min-width: 0;
+  grid-template-columns: repeat(auto-fill, minmax(min(210px, 100%), 1fr));
 }
+.modal-body > * { min-width: 0; max-width: 100%; }
+.cmp-card { min-width: 0; overflow: hidden; }
+.cmp-label, .cmp-sum, .cmp-who { overflow-wrap: anywhere; }
 .compare-sort { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
 .compare-sort .mini-btn { flex: 0 0 auto; }
 .compare-sort .mini-btn.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
@@ -151,3 +154,30 @@
 }
 
 .shot figcaption { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* the artefact line put its stats past the panel edge */
+.section-label { min-width: 0; gap: 8px; flex-wrap: wrap; }
+.section-mini-stats { white-space: nowrap; }
+
+@media (max-width: 1099px) {
+  /* Fingers, not cursors: nothing interactive under about 40px. */
+  .tab { padding: 13px 22px; font-size: 12px; }
+  .roster-row { padding: 11px 10px; }
+  .strategy-item { padding: 10px 8px 10px 12px; }
+  .entity-card { padding: 12px 12px; }
+  .mini-btn { padding: 10px 12px; font-size: 12px; }
+  .collab-author-btn { padding: 10px 12px; font-size: 11px; }
+  .collab-scope button { padding: 11px 8px; font-size: 11px; }
+  .list-tools input, .list-tools select { padding: 11px 10px; font-size: 13px; }
+  .drawer-close, .modal-head .icon-btn { width: 40px; height: 40px; font-size: 15px; }
+  .compare-sort { gap: 6px; }
+  .soll summary, .absent-group > summary { padding: 10px 8px; }
+  .shot img { aspect-ratio: 3/2; }
+}
+
+.missing-banner {
+  border-left: 3px solid var(--warn); background: #fff8e6;
+  padding: 9px 11px; font-size: 12px; line-height: 1.5; color: var(--ink-soft);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.missing-banner b { display: block; color: var(--ink); margin-bottom: 3px; }

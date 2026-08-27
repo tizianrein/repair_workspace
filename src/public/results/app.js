@@ -26,8 +26,10 @@ async function init() {
   viewer = createViewer({
     canvas: $('#scene'),
     wrap: $('#pane-3d'),
-    onPickPart: p => { selectEntity('part', p.id); showHover({ type: 'part', data: p, sticky: true }); },
-    onPickCondition: c => { selectEntity('condition', c.id); showHover({ type: 'condition', data: c, sticky: true }); },
+    // Tapping the model opens the thing you tapped. The hover chip alone was
+    // invisible on a phone, so a tap looked like it did nothing at all.
+    onPickPart: p => { selectEntity('part', p.id); openPart(p); },
+    onPickCondition: c => { selectEntity('condition', c.id); openCondition(c); },
     onHover: showHover,
   });
 
@@ -389,8 +391,19 @@ function openStrategy(person, s) {
   const shots = person.evidence.filter(e => e.kind === 'rendering');
   if (shots.length) {
     body.append(el('div', 'modal-section-label', 'Imagined results'));
-    body.append(el('p', 'absent-line',
-      'Recorded against the participant rather than one strategy, so these are the whole sequence they generated.'));
+    const have = shots.filter(e => e.file).length;
+    if (!have) {
+      const warn = el('div', 'missing-banner');
+      warn.innerHTML =
+        `<b>${shots.length} images were generated here, and none of them survive.</b>
+         The platform kept every generated image in the browser that made it and never uploaded one,
+         so the pictures stayed on ${esc(person.name)}'s laptop. What each was meant to show was
+         recorded alongside it, and that is reproduced below.`;
+      body.append(warn);
+    } else {
+      body.append(el('p', 'absent-line',
+        'Recorded against the participant rather than one strategy, so this is the whole sequence they generated.'));
+    }
     body.append(gallery(shots));
   }
   $('#detail-modal').classList.add('on');
@@ -495,6 +508,12 @@ function openPart(part) {
   facts.append(fact('declared', part.declaredStatus || 'intact'));
   facts.append(fact('meets', String((part.connections || []).length) + ' members'));
   body.append(facts);
+
+  if (part.notes) {
+    const n = el('div', 'detail-box');
+    n.append(el('div', 'label', 'note on this member'), el('div', 'value', part.notes));
+    body.append(n);
+  }
 
   const conds = currentConditions().filter(c => c.partRef === part.id);
   body.append(el('div', 'modal-section-label', 'Conditions on this member'));
@@ -622,39 +641,21 @@ function lightbox(src, name) {
 function buildCompare() {
   const grid = $('#compare-grid');
   const all = DATA.participants.flatMap(p => p.strategies.map(s => ({ p, s })));
-  const axis = (s, id) => {
-    const a = (s.intent?.axes || []).find(x => x.id === id);
-    return (a && typeof a.value === 'number') ? a.value : -1;
-  };
-  const sorters = {
-    person: (a, b) => a.p.name.localeCompare(b.p.name) || a.s.label.localeCompare(b.s.label),
-    steps: (a, b) => b.s.steps.length - a.s.steps.length,
-    authenticity: (a, b) => axis(b.s, 'axis_1') - axis(a.s, 'axis_1'),
-    intervention: (a, b) => axis(b.s, 'axis_6') - axis(a.s, 'axis_6'),
-  };
-  function draw(mode) {
-    grid.replaceChildren();
-    for (const { p, s } of [...all].sort(sorters[mode])) {
-      const card = el('div', 'entity-card cmp-card');
-      card.style.setProperty('--strategy-color', s.color || 'var(--info)');
-      card.append(el('div', 'cmp-who', p.name), el('div', 'cmp-label', s.label));
-      if (s.intent?.summary) card.append(el('div', 'cmp-sum', s.intent.summary));
-      const foot = el('div', 'cmp-foot');
-      foot.append(el('span', 'cmp-n', `${s.steps.length} steps`), radar(s.intent?.axes || [], s.color || '#1f4e79', 78));
-      card.append(foot);
-      card.addEventListener('click', () => {
-        $('#compare-modal').classList.remove('on');
-        go(`#/p/${p.key}/s/${s.id}`);
-      });
-      grid.append(card);
-    }
+  all.sort((a, b) => a.p.name.localeCompare(b.p.name) || a.s.label.localeCompare(b.s.label));
+  for (const { p, s } of all) {
+    const card = el('div', 'entity-card cmp-card');
+    card.style.setProperty('--strategy-color', s.color || 'var(--info)');
+    card.append(el('div', 'cmp-who', p.name), el('div', 'cmp-label', s.label));
+    if (s.intent?.summary) card.append(el('div', 'cmp-sum', s.intent.summary));
+    const foot = el('div', 'cmp-foot');
+    foot.append(el('span', 'cmp-n', `${s.steps.length} steps`), radar(s.intent?.axes || [], s.color || '#1f4e79', 78));
+    card.append(foot);
+    card.addEventListener('click', () => {
+      $('#compare-modal').classList.remove('on');
+      go(`#/p/${p.key}/s/${s.id}`);
+    });
+    grid.append(card);
   }
-  $('#sortbar').addEventListener('click', e => {
-    const b = e.target.closest('.mini-btn'); if (!b) return;
-    for (const c of $('#sortbar').children) c.classList.toggle('active', c === b);
-    draw(b.dataset.sort);
-  });
-  draw('person');
 }
 
 // ================================================================ radar ===
