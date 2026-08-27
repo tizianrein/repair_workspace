@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Repair Workspace — Workshop Results</title>
+<meta name="description" content="Twelve practitioners surveyed one damaged timber frame corner and developed divergent repair strategies. Future of Construction 2026.">
+<link rel="stylesheet" href="./app.css">
+<link rel="stylesheet" href="./results.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='none' stroke='%231a1a1a' stroke-width='2'/><path d='M16 2a14 14 0 000 28z' fill='%231a1a1a'/></svg>">
+<script type="importmap">
+{ "imports": {
+    "three": "./threejs/three.module.min.js",
+    "three/addons/": "./threejs/jsm/"
+} }
+</script>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- ======================= left drawer ======================= -->
+  <aside class="drawer-left" id="drawer-left">
+    <div class="brand">
+      <div class="brand-mark">◐</div>
+      <div class="brand-text">
+        <div class="brand-title">Repair Workspace</div>
+        <div class="brand-sub">workshop results · foc 2026</div>
+      </div>
+      <button class="drawer-close" data-close-drawer="left" aria-label="Close">✕</button>
+    </div>
+
+    <div class="left-scroll">
+
+      <div class="section">
+        <div class="section-label">Artefact <span class="section-mini-stats" id="artefact-stats"></span></div>
+        <div class="section-content">
+          <div class="object-input" id="artefact-name">Timber Frame Structure</div>
+          <div class="artefact-cover" id="artefact-cover"><img alt="The artefact before the workshop"></div>
+        </div>
+      </div>
+
+      <div class="section" id="sec-people">
+        <div class="section-label" data-toggle>Participants <span class="chev">›</span></div>
+        <div class="section-content">
+          <div class="roster-label">whose layer is on screen</div>
+          <div class="collab-roster" id="roster"></div>
+        </div>
+      </div>
+
+      <div class="section" id="sec-strategies">
+        <div class="section-label" data-toggle>Strategies <span class="chev">›</span></div>
+        <div class="section-content">
+          <div id="strategy-list"></div>
+        </div>
+      </div>
+
+      <div class="section collapsed" id="sec-intent">
+        <div class="section-label" data-toggle>Repair intent <span class="chev">›</span></div>
+        <div class="section-content">
+          <div class="radar-wrap" id="radar-wrap"></div>
+          <div class="axis-list" id="axis-list"></div>
+        </div>
+      </div>
+
+      <div class="section collapsed" id="sec-constraints">
+        <div class="section-label" data-toggle>Constraints <span class="chev">›</span></div>
+        <div class="section-content" id="constraints"></div>
+      </div>
+
+      <div class="section collapsed" id="sec-about">
+        <div class="section-label" data-toggle>About this snapshot <span class="chev">›</span></div>
+        <div class="section-content">
+          <p class="note-body" id="about-body"></p>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ========================= viewer ========================== -->
+  <main class="viewer-area">
+    <div class="tab-bar">
+      <div class="tab-bar-inner" id="tab-bar">
+        <button class="tab active" data-tab="proxy">Proxy</button>
+        <button class="tab" data-tab="scan">Scan</button>
+        <button class="tab" data-tab="compare">Compare</button>
+      </div>
+    </div>
+
+    <div class="tab-content">
+      <div class="pane active" id="pane-3d">
+        <canvas id="scene"></canvas>
+        <div class="hud-tr" id="hud">
+          <button class="mini-btn" id="btn-reset">reset</button>
+          <button class="mini-btn" id="btn-explode">explode</button>
+          <button class="mini-btn" id="btn-labels">labels</button>
+        </div>
+        <div class="legend-strip" id="legend"></div>
+        <div class="hover-card" id="hover-card" hidden></div>
+      </div>
+
+      <div class="pane" id="pane-compare">
+        <div class="compare-scroll">
+          <div class="compare-intro">
+            <h1>Forty-two strategies, side by side.</h1>
+            <p>Each card is one strategy with the intent weighting its author set before planning.
+               The question the workshop asks is whether the spread comes from the people or from the model.</p>
+            <div class="compare-sort" id="sortbar">
+              <button class="mini-btn active" data-sort="person">by person</button>
+              <button class="mini-btn" data-sort="steps">by depth</button>
+              <button class="mini-btn" data-sort="authenticity">material authenticity</button>
+              <button class="mini-btn" data-sort="intervention">aesthetic intervention</button>
+            </div>
+          </div>
+          <div class="compare-grid" id="compare-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="console" id="console"></div>
+  </main>
+
+  <!-- ======================= right drawer ====================== -->
+  <aside class="drawer-right" id="drawer-right">
+    <div class="list-head">
+      <h2>Parts &amp; conditions</h2>
+      <span class="list-count" id="list-count">0</span>
+      <button class="drawer-close" data-close-drawer="right" aria-label="Close">✕</button>
+    </div>
+
+    <div class="collab-controls">
+      <div class="collab-project-row">
+        <div>
+          <div class="collab-kicker">Project</div>
+          <div class="collab-project-title" id="project-title">Timber Frame Structure</div>
+        </div>
+      </div>
+      <div class="collab-author-row">
+        <span>Viewing</span>
+        <button class="collab-author-btn" id="viewing-btn">everyone</button>
+      </div>
+      <div class="collab-scope" id="scope">
+        <button class="active" data-scope="conditions">Conditions</button>
+        <button data-scope="parts">Parts</button>
+      </div>
+      <div class="collab-status" id="collab-status"></div>
+    </div>
+
+    <div class="list-tools">
+      <input type="search" id="search" placeholder="Search parts and conditions…">
+      <select id="filter"></select>
+    </div>
+
+    <div class="entity-list" id="entity-list"></div>
+    <div class="list-footer" id="list-footer"></div>
+  </aside>
+
+  <button class="fab fab-left" id="fab-left" aria-label="Artefact and strategies">☰</button>
+  <button class="fab fab-right" id="fab-right" aria-label="Parts and conditions">◧</button>
+  <div class="backdrop" id="backdrop"></div>
+</div>
+
+<div class="modal" id="detail-modal">
+  <div class="modal-card big">
+    <div class="modal-head">
+      <h3 id="modal-title">Strategy</h3>
+      <button class="icon-btn" id="modal-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<div class="photo-lightbox" id="lightbox" hidden>
+  <img id="lightbox-img" alt="">
+  <div class="photo-lightbox-name" id="lightbox-name"></div>
+</div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
