@@ -91,9 +91,8 @@
   border: 1px dashed var(--line-soft); border-radius: var(--radius); padding: 6px 8px; background: var(--bg-soft);
 }
 .absent-group > summary:hover { color: var(--ink); border-color: var(--ink-soft); }
-.absent-row { border: 1px dashed var(--line-soft); border-radius: var(--radius); padding: 6px 8px; margin-top: 5px; }
+.absent-row { border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 6px 8px; margin-top: 5px; }
 .absent-head { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; font-family: var(--mono); font-size: 9px; }
-.absent-head .ph { color: var(--warn); border: 1px solid var(--warn); border-radius: 2px; padding: 0 4px; text-transform: uppercase; letter-spacing: .05em; }
 .absent-head .fn { color: var(--ink-mute); }
 .soll summary { font-family: var(--mono); font-size: 9px; color: var(--ink-mute); cursor: pointer; text-transform: uppercase; letter-spacing: .06em; }
 .soll-body { margin-top: 5px; border-left: 2px solid var(--line-soft); padding-left: 8px; font-size: 11px; color: var(--ink-soft); }
@@ -175,9 +174,3 @@
   .shot img { aspect-ratio: 3/2; }
 }
 
-.missing-banner {
-  border-left: 3px solid var(--warn); background: #fff8e6;
-  padding: 9px 11px; font-size: 12px; line-height: 1.5; color: var(--ink-soft);
-  border-radius: 0 var(--radius) var(--radius) 0;
-}
-.missing-banner b { display: block; color: var(--ink); margin-bottom: 3px; }

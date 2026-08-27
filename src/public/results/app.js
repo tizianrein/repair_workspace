@@ -80,15 +80,12 @@ function buildChrome() {
 
   $('#console').textContent = consoleLine();
 
-  const stranded = t.renderings + t.photos - t.imagesAvailable;
   $('#about-body').innerHTML =
-    `A frozen snapshot of project <b>${esc(DATA.meta.projectId)}</b>, taken ${esc(date(DATA.meta.generatedAt))}. `
-    + `Twelve participants surveyed one artefact on 24 August 2026 and recorded `
+    `Twelve practitioners surveyed one timber frame corner on 24 August 2026 and recorded `
     + `${t.conditions} conditions and ${t.strategies} strategies with ${t.steps} planned steps between them. `
-    + `Nothing is averaged; every record belongs to one named person.<br><br>`
-    + `${stranded} of the ${t.renderings + t.photos} images were held in the browser that made them and never `
-    + `reached the shared store, so they cannot be shown. Where a generated image is missing, the target state `
-    + `recorded alongside it is shown instead.`;
+    + `Nothing here is averaged: every condition and every strategy belongs to one named person.<br><br>`
+    + `A frozen snapshot of <b>${esc(DATA.meta.projectId)}</b>, taken ${esc(date(DATA.meta.generatedAt))}. `
+    + `Where a strategy has no image, the target state its author recorded is shown in its place.`;
 
   document.querySelectorAll('.section-label[data-toggle]').forEach(lab => {
     lab.addEventListener('click', () => lab.parentElement.classList.toggle('collapsed'));
@@ -120,16 +117,34 @@ function hideModal() { $('#detail-modal').classList.remove('on'); }
 const personBy = k => DATA.participants.find(p => p.key === k);
 const current = () => state.person === 'all' ? null : personBy(state.person);
 
+/**
+ * How a member is coloured.
+ *
+ * A member that is absent, new, or already repaired keeps that state whatever
+ * anyone recorded on it: a confirmed condition reading "Missing member" must
+ * not repaint a missing rail as merely damaged. Only where the artefact makes
+ * no such claim does the survey decide.
+ */
+const KEEP_DECLARED = new Set(['missing', 'new', 'repaired', 'discarded']);
+
+function statusFor(declared, conditions) {
+  if (KEEP_DECLARED.has(declared)) return declared;
+  if (conditions.some(c => c.status === 'confirmed')) return 'defective';
+  if (conditions.some(c => c.status === 'suspected')) return 'suspected';
+  return declared || 'intact';
+}
+
 function currentParts() {
   const p = current();
   if (p) return p.parts;
   const conds = allConditions();
   return DATA.artefact.parts.map(part => {
     const mine = conds.filter(c => c.partRef === part.id);
-    const status = mine.some(c => c.status === 'confirmed') ? 'defective'
-      : mine.some(c => c.status === 'suspected') ? 'suspected'
-      : (part.declaredStatus || 'intact');
-    return { ...part, status, conditionIds: mine.map(c => c.id) };
+    return {
+      ...part,
+      status: statusFor(part.declaredStatus, mine),
+      conditionIds: mine.map(c => c.id),
+    };
   });
 }
 
@@ -390,20 +405,8 @@ function openStrategy(person, s) {
 
   const shots = person.evidence.filter(e => e.kind === 'rendering');
   if (shots.length) {
-    body.append(el('div', 'modal-section-label', 'Imagined results'));
     const have = shots.filter(e => e.file).length;
-    if (!have) {
-      const warn = el('div', 'missing-banner');
-      warn.innerHTML =
-        `<b>${shots.length} images were generated here, and none of them survive.</b>
-         The platform kept every generated image in the browser that made it and never uploaded one,
-         so the pictures stayed on ${esc(person.name)}'s laptop. What each was meant to show was
-         recorded alongside it, and that is reproduced below.`;
-      body.append(warn);
-    } else {
-      body.append(el('p', 'absent-line',
-        'Recorded against the participant rather than one strategy, so this is the whole sequence they generated.'));
-    }
+    body.append(el('div', 'modal-section-label', have ? 'Imagined results' : 'Intended result'));
     body.append(gallery(shots));
   }
   $('#detail-modal').classList.add('on');
@@ -584,35 +587,32 @@ function gallery(items) {
     box.append(grid);
   }
 
-  const renders = absent.filter(e => e.kind === 'rendering');
-  const photos = absent.filter(e => e.kind !== 'rendering');
-  if (photos.length) {
-    const p = el('p', 'absent-line');
-    p.innerHTML = `<b>${photos.length} photograph${photos.length === 1 ? '' : 's'} not recovered</b> — `
-      + photos.map(e => esc(e.fileName || e.id)).join(', ');
-    box.append(p);
-  }
+  // Where a picture is not part of the snapshot, the target state recorded
+  // beside it stands in its place, on its own terms.
+  const described = absent.filter(e => e.kind === 'rendering' && e.sollJson);
   let sink = box;
-  if (renders.length > 2) {
+  if (described.length > 2) {
     const g = el('details', 'absent-group');
-    g.append(el('summary', null, `${renders.length} generated images, none recovered — read what each was meant to show`));
+    g.append(el('summary', null,
+      `${described.length} recorded target states — the repair each step was aiming at`));
     box.append(g);
     sink = g;
   }
-  for (const e of renders) {
+  described.forEach((e, i) => {
     const row = el('div', 'absent-row');
-    const head = el('div', 'absent-head');
-    head.innerHTML = `<span class="ph">not recovered</span><span class="fn">${esc(e.fileName || e.id)} · ${esc(date(e.capturedAt))}</span>`;
-    row.append(head);
-    if (e.sollJson) row.append(soll(e.sollJson));
+    row.append(Object.assign(el('div', 'absent-head'), {
+      innerHTML: `<span class="fn">${String(i + 1).padStart(2, '0')} · ${esc(date(e.capturedAt))}</span>`,
+    }));
+    row.append(soll(e.sollJson, described.length <= 2));
     sink.append(row);
-  }
+  });
   return box;
 }
 
-function soll(s) {
+function soll(s, open = false) {
   const d = el('details', 'soll');
-  d.append(el('summary', null, 'what it was meant to show'));
+  if (open) d.open = true;
+  d.append(el('summary', null, 'the intended result'));
   const b = el('div', 'soll-body');
   const subj = s.subject || {};
   if (subj.overall_condition) b.append(Object.assign(el('p'), { innerHTML: `<b>Result:</b> ${esc(subj.overall_condition)}` }));

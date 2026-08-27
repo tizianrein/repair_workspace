@@ -21,7 +21,8 @@ export const STATUS_COLOR = {
   discarded: 0x111111,
 };
 
-const OPACITY = { intact: 0.55, suspected: 0.78, defective: 0.78, missing: 0.5, repaired: 0.75, new: 0.75, discarded: 0.15 };
+// A missing member is not there. Draw only where it should be, never a solid.
+const OPACITY = { intact: 0.55, suspected: 0.78, defective: 0.78, missing: 0.12, repaired: 0.75, new: 0.75, discarded: 0.15 };
 
 export function createViewer({ canvas, wrap, onPickPart, onPickCondition, onHover }) {
   const scene = new THREE.Scene();
