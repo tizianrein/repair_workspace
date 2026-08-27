@@ -7,6 +7,7 @@
  * right. Nothing here writes, and nothing here calls a backend.
  */
 import { createViewer, STATUS_COLOR } from './viewer.js';
+import { spatialGraph, actionGraph } from './graphs.js';
 
 const $ = s => document.querySelector(s);
 const el = (t, c, x) => { const n = document.createElement(t); if (c) n.className = c; if (x != null) n.textContent = x; return n; };
@@ -32,7 +33,6 @@ async function init() {
 
   buildChrome();
   buildRoster();
-  buildLegend();
   buildCompare();
   wireTabs();
   wireDrawers();
@@ -40,11 +40,31 @@ async function init() {
   wireHud();
   wireModal();
 
+  wireCompare();
+
   addEventListener('hashchange', route);
   route();
+  loadScan();
+}
+
+function wireCompare() {
+  const modal = $('#compare-modal');
+  const close = () => modal.classList.remove('on');
+  $('#fab-compare').addEventListener('click', () => {
+    document.body.classList.remove('left-open', 'right-open');
+    modal.classList.add('on');
+  });
+  $('#compare-close').addEventListener('click', close);
+  modal.addEventListener('click', e => { if (e.target === modal) close(); });
+  addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
 }
 
 // =============================================================== chrome ===
+function consoleLine() {
+  const t = DATA.meta.totals;
+  return `snapshot ${date(DATA.meta.generatedAt)} · ${t.participants} participants · ${t.strategies} strategies`;
+}
+
 function buildChrome() {
   const t = DATA.meta.totals;
   $('#artefact-name').textContent = DATA.artefact.name || 'Timber Frame Structure';
@@ -56,8 +76,7 @@ function buildChrome() {
     $('#artefact-cover').addEventListener('click', () => lightbox(DATA.artefact.cover, 'The artefact before the workshop'));
   } else $('#artefact-cover').remove();
 
-  $('#console').textContent =
-    `snapshot ${date(DATA.meta.generatedAt)} · ${t.participants} participants · ${t.strategies} strategies`;
+  $('#console').textContent = consoleLine();
 
   const stranded = t.renderings + t.photos - t.imagesAvailable;
   $('#about-body').innerHTML =
@@ -72,17 +91,6 @@ function buildChrome() {
   document.querySelectorAll('.section-label[data-toggle]').forEach(lab => {
     lab.addEventListener('click', () => lab.parentElement.classList.toggle('collapsed'));
   });
-}
-
-function buildLegend() {
-  const order = ['intact', 'suspected', 'defective', 'missing', 'repaired', 'new'];
-  const wrap = $('#legend');
-  for (const k of order) {
-    const s = el('span');
-    const i = el('i'); i.style.setProperty('--c', hex(STATUS_COLOR[k]));
-    s.append(i, document.createTextNode(k));
-    wrap.append(s);
-  }
 }
 
 // ============================================================== routing ===
@@ -140,6 +148,8 @@ function render() {
   renderStrategies();
   renderIntent();
   renderEntities();
+  if (state.tab === 'spatial') drawSpatial();
+  if (state.tab === 'action') drawAction();
 }
 
 // ---- roster -------------------------------------------------------------
@@ -308,6 +318,7 @@ function conditionCard(c) {
     viewer.focusCondition(c.id);
     if (c.partRef) viewer.selectPart(c.partRef);
     selectEntity('condition', c.id);
+    openCondition(c);
   });
   return card;
 }
@@ -323,7 +334,7 @@ function partCard(p) {
       [p.material, p.conditionIds?.length ? `${p.conditionIds.length} condition${p.conditionIds.length === 1 ? '' : 's'}` : null]
         .filter(Boolean).join(' · ')));
   }
-  card.addEventListener('click', () => { viewer.focusPart(p.id); selectEntity('part', p.id); });
+  card.addEventListener('click', () => { viewer.focusPart(p.id); selectEntity('part', p.id); openPart(p); });
   return card;
 }
 
@@ -359,10 +370,9 @@ function openStrategy(person, s) {
   renderStrategies();
   renderIntent();
   viewer.setHighlight(s.affectedParts);
+  if (state.tab === 'action') drawAction();
 
-  $('#modal-title').textContent = s.label;
-  const body = $('#modal-body');
-  body.replaceChildren();
+  const body = openModal(s.label);
 
   const head = el('div', 'detail-box');
   head.append(el('div', 'label', `${person.name} · ${s.steps.length} steps · ${s.status} · updated ${date(s.updatedAt)}`));
@@ -384,6 +394,125 @@ function openStrategy(person, s) {
     body.append(gallery(shots));
   }
   $('#detail-modal').classList.add('on');
+}
+
+/** Every image anyone attached to this condition. */
+function evidenceFor(condition) {
+  const owners = condition._key ? [personBy(condition._key)] : DATA.participants;
+  const refs = new Set(condition.evidenceRefs || []);
+  const out = [];
+  for (const p of owners.filter(Boolean)) {
+    for (const e of p.evidence) {
+      const attached = e.attachedTo?.type === 'condition' && e.attachedTo.id === condition.id;
+      if (attached || refs.has(e.id) || e.confirms === condition.id || e.refutes === condition.id) out.push(e);
+    }
+  }
+  return out;
+}
+
+function openModal(title) {
+  document.body.classList.remove('left-open', 'right-open');
+  $('#modal-title').textContent = title;
+  const body = $('#modal-body');
+  body.replaceChildren();
+  $('#detail-modal').classList.add('on');
+  return body;
+}
+
+function openCondition(c) {
+  const body = openModal(c.type || 'Condition');
+
+  const box = el('div', 'detail-box');
+  const head = el('div', 'ec-row');
+  head.append(el('div', 'ec-id', c.id), el('div', `ec-status ${c.status}`, c.status));
+  box.append(head);
+  if (c.description) box.append(el('div', 'value', c.description));
+  body.append(box);
+
+  const facts = el('div', 'detail-grid');
+  const fact = (k, v) => {
+    const f = el('div', 'detail-box');
+    f.append(el('div', 'label', k), el('div', 'value', v));
+    return f;
+  };
+  facts.append(fact('on member', c.partRef || '—'));
+  if (typeof c.confidence === 'number') facts.append(fact('confidence', `${Math.round(c.confidence * 100)}%`));
+  facts.append(fact('recorded by', c._who || '—'));
+  facts.append(fact('recorded', date(c.createdAt)));
+  body.append(facts);
+
+  const shots = evidenceFor(c);
+  body.append(el('div', 'modal-section-label', shots.length ? 'Evidence' : 'Evidence'));
+  body.append(shots.length ? gallery(shots) : el('p', 'absent-line', 'No evidence was attached to this condition.'));
+
+  // Which plans actually respond to it.
+  const answering = [];
+  for (const p of DATA.participants) {
+    for (const s of p.strategies) {
+      const hits = s.steps.filter(st => (st.addressesConditionRefs || []).includes(c.id));
+      if (hits.length) answering.push({ p, s, hits });
+    }
+  }
+  if (answering.length) {
+    body.append(el('div', 'modal-section-label', 'Addressed by'));
+    for (const { p, s, hits } of answering) {
+      const item = el('div', 'strategy-item');
+      item.style.setProperty('--strategy-color', s.color || 'var(--info)');
+      const main = el('div', 'strategy-main');
+      main.append(el('div', 'strategy-label', s.label),
+                  el('div', 'strategy-meta', `${p.name} · ${hits.length} of ${s.steps.length} steps`));
+      item.append(main);
+      item.addEventListener('click', () => go(`#/p/${p.key}/s/${s.id}`));
+      body.append(item);
+    }
+  }
+
+  if (c.partRef) {
+    const b = el('button', 'mini-btn', 'show this member in 3D');
+    b.addEventListener('click', () => { closeModalKeepStrategy(); setTab('proxy'); viewer.focusPart(c.partRef); });
+    body.append(b);
+  }
+}
+
+function openPart(part) {
+  const body = openModal(part.id.replace(/_/g, ' '));
+
+  const box = el('div', 'detail-box');
+  const head = el('div', 'ec-row');
+  head.append(el('div', 'ec-id', part.id), el('div', `ec-status ${part.status}`, part.status));
+  box.append(head);
+  body.append(box);
+
+  const d = part.dimensions || {};
+  const facts = el('div', 'detail-grid');
+  const fact = (k, v) => {
+    const f = el('div', 'detail-box');
+    f.append(el('div', 'label', k), el('div', 'value', v));
+    return f;
+  };
+  facts.append(fact('size', `${(d.width * 100).toFixed(0)} × ${(d.height * 100).toFixed(0)} × ${(d.depth * 100).toFixed(0)} cm`));
+  if (part.material) facts.append(fact('material', part.material));
+  facts.append(fact('declared', part.declaredStatus || 'intact'));
+  facts.append(fact('meets', String((part.connections || []).length) + ' members'));
+  body.append(facts);
+
+  const conds = currentConditions().filter(c => c.partRef === part.id);
+  body.append(el('div', 'modal-section-label', 'Conditions on this member'));
+  if (!conds.length) body.append(el('p', 'absent-line', 'Nothing was recorded on it.'));
+  for (const c of conds) {
+    const card = conditionCard(c);
+    body.append(card);
+  }
+
+  const b = el('button', 'mini-btn', 'show in 3D');
+  b.addEventListener('click', () => { closeModalKeepStrategy(); setTab('proxy'); viewer.focusPart(part.id); });
+  body.append(b);
+}
+
+function openStep(person, strategy, st) {
+  const body = openModal(st.title);
+  body.append(el('div', 'modal-section-label', `${person.name} · ${strategy.label}`));
+  body.append(stepCard(person, st, strategy.steps.indexOf(st)));
 }
 
 function stepCard(person, st, i) {
@@ -513,7 +642,10 @@ function buildCompare() {
       const foot = el('div', 'cmp-foot');
       foot.append(el('span', 'cmp-n', `${s.steps.length} steps`), radar(s.intent?.axes || [], s.color || '#1f4e79', 78));
       card.append(foot);
-      card.addEventListener('click', () => { setTab('proxy'); go(`#/p/${p.key}/s/${s.id}`); });
+      card.addEventListener('click', () => {
+        $('#compare-modal').classList.remove('on');
+        go(`#/p/${p.key}/s/${s.id}`);
+      });
       grid.append(card);
     }
   }
@@ -583,33 +715,73 @@ function wireTabs() {
 }
 
 async function setTab(tab) {
-  const scan = DATA.artefact.scan;
-  if (tab === 'scan' && !scan) return;
   state.tab = tab;
   for (const b of $('#tab-bar').children) b.classList.toggle('active', b.dataset.tab === tab);
-  $('#pane-3d').classList.toggle('active', tab !== 'compare');
-  $('#pane-compare').classList.toggle('active', tab === 'compare');
+  $('#pane-3d').classList.toggle('active', tab === 'proxy');
+  $('#pane-spatial').classList.toggle('active', tab === 'spatial');
+  $('#pane-action').classList.toggle('active', tab === 'action');
+  if (tab === 'spatial') drawSpatial();
+  if (tab === 'action') drawAction();
+}
 
-  if (tab === 'scan') {
-    const btn = $('#tab-bar').querySelector('[data-tab="scan"]');
-    const was = btn.textContent;
-    btn.textContent = 'Loading…';
-    try {
-      await viewer.showScan(scan.file, p => {
-        if (p.lengthComputable) btn.textContent = `${Math.round((p.loaded / p.total) * 100)}%`;
-      });
-      btn.textContent = 'Scan';
-    } catch { btn.textContent = was; }
-  } else {
-    viewer.hideScan();
+/** The scan is the proxy view now, so it loads with the page. */
+async function loadScan() {
+  const scan = DATA.artefact.scan;
+  if (!scan) return;
+  const note = $('#console');
+  try {
+    await viewer.showScan(scan.file, p => {
+      if (p.lengthComputable && note) {
+        note.textContent = `loading scan ${Math.round((p.loaded / p.total) * 100)}%`;
+      }
+    });
+  } catch { /* boxes remain */ }
+  if (note) note.textContent = consoleLine();
+}
+
+let cySpatial = null, cyAction = null;
+
+function drawSpatial() {
+  const host = $('#spatial-graph-canvas');
+  if (cySpatial) { cySpatial.destroy(); cySpatial = null; }
+  host.replaceChildren();
+  const parts = currentParts();
+  cySpatial = spatialGraph(host, parts, {
+    onPick: id => {
+      viewer.selectPart(id);
+      const p = parts.find(x => x.id === id);
+      if (p) openPart(p);
+    },
+  });
+  $('#spatial-note').textContent =
+    `${parts.length} members · ${current() ? current().name + "'s model" : 'the project model'}`;
+}
+
+function drawAction() {
+  const host = $('#action-graph-canvas');
+  if (cyAction) { cyAction.destroy(); cyAction = null; }
+  host.replaceChildren();
+  const p = current();
+  const s = activeStrategy();
+  if (!p || !s) {
+    $('#action-note').textContent = 'Pick a participant and a strategy on the left.';
+    return;
   }
+  cyAction = actionGraph(host, s, {
+    onPick: id => {
+      const step = s.steps.find(x => x.id === id);
+      if (step) openStep(p, s, step);
+    },
+  });
+  $('#action-note').textContent = s.steps.length
+    ? `${p.name} · ${s.label} · ${s.steps.length} steps`
+    : `${p.name} · ${s.label} — intent was set, no steps were planned`;
 }
 
 function wireHud() {
   $('#btn-reset').addEventListener('click', () => viewer.resetView());
   $('#btn-explode').addEventListener('click', e => e.target.classList.toggle('on', viewer.toggleExplode()));
   $('#btn-labels').addEventListener('click', e => e.target.classList.toggle('on', viewer.toggleLabels()));
-  if (!DATA.artefact.scan) $('#tab-bar').querySelector('[data-tab="scan"]').remove();
 }
 
 function wireDrawers() {

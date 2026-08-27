@@ -68,6 +68,8 @@ export function createViewer({ canvas, wrap, onPickPart, onPickCondition, onHove
   let radius = 1;
   let worldBox = null;
   let fitPoints = [];
+  let anchor = null;
+  let framed = false;
   let highlight = null;          // Set of part ids emphasised by a chosen strategy
   let selectedPart = null;
   let scanRoot = null;
@@ -92,6 +94,12 @@ export function createViewer({ canvas, wrap, onPickPart, onPickCondition, onHove
 
   // ------------------------------------------------------------- build ---
   function setModel(parts, conditions, opts = {}) {
+    // Measure in an un-offset frame. setFromObject reports WORLD bounds, so
+    // measuring while the previous centring offset was still applied fed that
+    // offset back in and the artefact crept further off-centre on every switch.
+    world.position.set(0, 0, 0);
+    world.updateMatrixWorld(true);
+
     partGroup.clear(); markerGroup.clear();
     labelLayer.replaceChildren();
     partMeshes = []; markers = []; labels = []; fitPoints = [];
@@ -129,11 +137,16 @@ export function createViewer({ canvas, wrap, onPickPart, onPickCondition, onHove
       labels.push({ el, mesh });
     }
 
-    // Frame the assembly, then centre it so orbiting feels anchored.
     const box = new THREE.Box3().setFromObject(partGroup);
     const size = box.isEmpty() ? new THREE.Vector3(1, 1, 1) : box.getSize(new THREE.Vector3());
-    const centre = box.isEmpty() ? new THREE.Vector3() : box.getCenter(new THREE.Vector3());
-    world.position.set(-centre.x, -centre.y, -centre.z);
+
+    // Anchor on the first model and never move again. Every participant's model
+    // describes the same physical corner, so switching between them must not
+    // shift the artefact or disturb the camera.
+    if (!anchor) anchor = box.isEmpty() ? new THREE.Vector3() : box.getCenter(new THREE.Vector3());
+    world.position.copy(anchor).negate();
+    world.updateMatrixWorld(true);
+
     const extent = Math.max(size.x, size.y, size.z, 0.2);
     radius = box.isEmpty() ? 1 : box.getBoundingSphere(new THREE.Sphere()).radius;
     worldBox = box.isEmpty() ? null : box;
@@ -156,7 +169,9 @@ export function createViewer({ canvas, wrap, onPickPart, onPickCondition, onHove
       markers.push(dot);
     }
 
-    resetView();
+    // Only frame on the first model. Re-framing on every participant switch is
+    // what made the camera jump.
+    if (!framed) { resetView(); framed = true; }
   }
 
   function setHighlight(partIds) {

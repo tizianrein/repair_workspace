@@ -12,6 +12,12 @@ deploy and needs no build step of its own. The page reads data/exhibit.json and
 the files in images/; it calls no backend at view time, so it keeps working if
 the Worker, the database or the API keys go away.
 
+Views: Proxy (the photogrammetry scan with the conditions on it, loaded with
+the page), Spatial (members and their connections, laid out from the artefact's
+own coordinates), Action (the steps of the selected strategy, ranked with
+dagre). The centre button opens all 42 strategies side by side. Tapping a
+condition or a member opens its detail with its evidence images.
+
 app.css is the application's own stylesheet, copied unchanged, so the exhibit
 reads as the same product the participants used. results.css holds only what
 this read-only build adds on top. Do not edit app.css here: re-copy it from the

@@ -8,6 +8,9 @@
 <link rel="stylesheet" href="./app.css">
 <link rel="stylesheet" href="./results.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='none' stroke='%231a1a1a' stroke-width='2'/><path d='M16 2a14 14 0 000 28z' fill='%231a1a1a'/></svg>">
+<script src="./vendor/cytoscape.min.js"></script>
+<script src="./vendor/dagre.js"></script>
+<script src="./vendor/cytoscape-dagre.js"></script>
 <script type="importmap">
 { "imports": {
     "three": "./threejs/three.module.min.js",
@@ -83,8 +86,8 @@
     <div class="tab-bar">
       <div class="tab-bar-inner" id="tab-bar">
         <button class="tab active" data-tab="proxy">Proxy</button>
-        <button class="tab" data-tab="scan">Scan</button>
-        <button class="tab" data-tab="compare">Compare</button>
+        <button class="tab" data-tab="spatial">Spatial</button>
+        <button class="tab" data-tab="action">Action</button>
       </div>
     </div>
 
@@ -96,25 +99,17 @@
           <button class="mini-btn" id="btn-explode">explode</button>
           <button class="mini-btn" id="btn-labels">labels</button>
         </div>
-        <div class="legend-strip" id="legend"></div>
         <div class="hover-card" id="hover-card" hidden></div>
       </div>
 
-      <div class="pane" id="pane-compare">
-        <div class="compare-scroll">
-          <div class="compare-intro">
-            <h1>Forty-two strategies, side by side.</h1>
-            <p>Each card is one strategy with the intent weighting its author set before planning.
-               The question the workshop asks is whether the spread comes from the people or from the model.</p>
-            <div class="compare-sort" id="sortbar">
-              <button class="mini-btn active" data-sort="person">by person</button>
-              <button class="mini-btn" data-sort="steps">by depth</button>
-              <button class="mini-btn" data-sort="authenticity">material authenticity</button>
-              <button class="mini-btn" data-sort="intervention">aesthetic intervention</button>
-            </div>
-          </div>
-          <div class="compare-grid" id="compare-grid"></div>
-        </div>
+      <div class="pane" id="pane-spatial">
+        <div id="spatial-graph-canvas"></div>
+        <div class="graph-note" id="spatial-note"></div>
+      </div>
+
+      <div class="pane" id="pane-action">
+        <div id="action-graph-canvas"></div>
+        <div class="graph-note" id="action-note"></div>
       </div>
     </div>
 
@@ -157,6 +152,7 @@
   </aside>
 
   <button class="fab fab-left" id="fab-left" aria-label="Artefact and strategies">☰</button>
+  <button class="fab fab-chat" id="fab-compare" aria-label="Compare all strategies">⊞</button>
   <button class="fab fab-right" id="fab-right" aria-label="Parts and conditions">◧</button>
   <div class="backdrop" id="backdrop"></div>
 </div>
@@ -168,6 +164,26 @@
       <button class="icon-btn" id="modal-close" aria-label="Close">✕</button>
     </div>
     <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<div class="modal" id="compare-modal">
+  <div class="modal-card big">
+    <div class="modal-head">
+      <h3>Forty-two strategies</h3>
+      <button class="icon-btn" id="compare-close" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="absent-line">Each card is one strategy with the intent weighting its author set before
+         planning. Sort to see where the spread comes from.</p>
+      <div class="compare-sort" id="sortbar">
+        <button class="mini-btn active" data-sort="person">by person</button>
+        <button class="mini-btn" data-sort="steps">by depth</button>
+        <button class="mini-btn" data-sort="authenticity">material authenticity</button>
+        <button class="mini-btn" data-sort="intervention">aesthetic intervention</button>
+      </div>
+      <div class="compare-grid" id="compare-grid"></div>
+    </div>
   </div>
 </div>
 
