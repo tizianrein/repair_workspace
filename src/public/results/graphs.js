@@ -119,9 +119,8 @@ export function actionGraph(container, strategy, { onPick } = {}) {
   if (!window.cytoscape) return null;
   ensureDagre();
 
-  const steps = strategy?.steps || [];
-  if (!steps.length) return null;
-
+  if (!strategy) return null;
+  const steps = strategy.steps || [];
   const colour = strategy.color || '#1f4e79';
   const elements = steps.map((s, i) => ({
     group: 'nodes',
@@ -168,7 +167,29 @@ export function actionGraph(container, strategy, { onPick } = {}) {
       },
     },
     { selector: 'edge[seq]', style: { 'line-style': 'dashed' } },
+    {
+      selector: 'node[intent]',
+      style: { 'border-style': 'dashed', 'border-width': 1.4, 'font-size': 10, 'text-max-width': 190 },
+    },
   ]);
+
+  // A strategy that was left at intent is still a strategy: show the intent as
+  // the single thing that was planned rather than an empty pane.
+  if (!steps.length) {
+    const only = window.cytoscape({
+      container,
+      elements: [{ group: 'nodes', data: { id: 'intent', label: strategy.label, fill: colour, w: 220, h: 62, intent: 1 } }],
+      style,
+      layout: { name: 'grid', fit: false },
+      wheelSensitivity: 0.25,
+      maxZoom: 2,
+      minZoom: 0.4,
+    });
+    only.zoom(1);
+    only.center();
+    only.on('tap', 'node', () => onPick?.('intent'));
+    return only;
+  }
 
   const cy = window.cytoscape({
     container,

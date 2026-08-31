@@ -217,10 +217,32 @@ function renderStrategies() {
 }
 
 // ---- intent -------------------------------------------------------------
+/**
+ * Which strategy the intent panel and the action view are showing.
+ *
+ * With nothing picked, default to a plan that actually has steps. Seven of the
+ * twelve participants left their first strategy at intent, so defaulting to
+ * index zero showed an empty action view for most of the room.
+ */
 function activeStrategy() {
   const p = current();
   if (!p) return null;
-  return p.strategies.find(s => s.id === state.strategy) || p.strategies[0] || null;
+  if (state.strategy) {
+    const picked = p.strategies.find(s => s.id === state.strategy);
+    if (picked) return picked;
+  }
+  return p.strategies.find(s => s.steps.length) || p.strategies[0] || null;
+}
+
+/** With nobody selected the action view still shows a plan: the longest one. */
+function featuredPlan() {
+  let best = null;
+  for (const p of DATA.participants) {
+    for (const s of p.strategies) {
+      if (!best || s.steps.length > best.s.steps.length) best = { p, s };
+    }
+  }
+  return best && best.s.steps.length ? best : null;
 }
 
 function renderIntent() {
@@ -762,21 +784,27 @@ function drawAction() {
   const host = $('#action-graph-canvas');
   if (cyAction) { cyAction.destroy(); cyAction = null; }
   host.replaceChildren();
-  const p = current();
-  const s = activeStrategy();
-  if (!p || !s) {
-    $('#action-note').textContent = 'Pick a participant and a strategy on the left.';
+  let p = current();
+  let s = activeStrategy();
+  if (p && !s) {
+    $('#action-note').textContent = `${p.name} recorded no strategies.`;
     return;
+  }
+  if (!p) {
+    const pick = featuredPlan();
+    if (!pick) { $('#action-note').textContent = ''; return; }
+    p = pick.p; s = pick.s;
   }
   cyAction = actionGraph(host, s, {
     onPick: id => {
       const step = s.steps.find(x => x.id === id);
       if (step) openStep(p, s, step);
+      else openStrategy(p, s);
     },
   });
   $('#action-note').textContent = s.steps.length
     ? `${p.name} · ${s.label} · ${s.steps.length} steps`
-    : `${p.name} · ${s.label} — intent was set, no steps were planned`;
+    : `${p.name} · ${s.label} · repair intent`;
 }
 
 function wireHud() {
